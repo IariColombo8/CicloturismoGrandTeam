@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: "Sistema de inscripciones para eventos de cicloturismo",
   generator: "v0.app",
   icons: {
-    icon: "/icon.svg",
+    icon: "/logo.png",
   },
 }
 
