@@ -2,7 +2,7 @@ import Hero from "@/components/home/HeroSection"
 import AboutTeam from "@/components/home/AboutTeam"
 // import EventDetails from "@/components/home/EventDetails"
 // import StatsCounter from "@/components/home/StatsCounter"
-// import RouteMap from "@/components/home/RouteMap"
+ import RouteMap from "@/components/home/RouteMap"
 // import Testimonials from "@/components/home/Testimonials"
 import Gallery from "@/components/home/Gallery"
 import Sponsors from "@/components/home/Sponsors"
@@ -18,7 +18,7 @@ export default function Home() {
       <AboutTeam />
       {/* <EventDetails /> */}
       {/* <StatsCounter /> */}
-      {/* <RouteMap /> */}
+       <RouteMap /> 
       {/* <Testimonials /> */}
       <Gallery />
       <Sponsors />

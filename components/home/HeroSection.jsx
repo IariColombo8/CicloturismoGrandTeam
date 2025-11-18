@@ -86,12 +86,16 @@ export default function HeroSection() {
           }`}
         >
           {/* Event badge */}
-         
+          <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
+            <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" aria-hidden="true" />
+            <span className="text-sm font-semibold text-yellow-400">Evento Épico 2026</span>
+          </div>
 
           {/* Main title */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black mb-6 leading-tight text-balance">
-            
-            <span className="block gradient-text-intense">Cicloturismo Concepcion del Uruguay</span>
+            <span className="block text-white">Grand Team Bike</span>
+            <span className="block gradient-text-intense">Cicloturismo</span>
+            <span className="block text-yellow-400 text-4xl sm:text-5xl md:text-6xl lg:text-7xl mt-2">Concepción del Uruguay</span>
           </h1>
 
           {/* Subtitle */}
@@ -159,9 +163,36 @@ export default function HeroSection() {
       </div>
 
       {/* Scroll indicator */}
-    
+      <a
+        href="#nosotros"
+        onClick={(e) => handleScrollToSection(e, "nosotros")}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce cursor-pointer group hidden sm:block"
+        aria-label="Scroll para ver más contenido"
+      >
+        <div className="w-6 h-10 border-2 border-yellow-400/50 rounded-full flex justify-center pt-2 group-hover:border-yellow-400 transition-colors">
+          <div className="w-1 h-2 bg-yellow-400 rounded-full" />
+        </div>
+      </a>
 
-     
+      <style jsx global>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+        
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        
+        .animate-float-delayed {
+          animation: float 6s ease-in-out infinite;
+          animation-delay: 1s;
+        }
+      `}</style>
     </section>
   )
 }
