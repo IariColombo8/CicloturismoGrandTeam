@@ -13,8 +13,8 @@ export default function AboutTeam() {
   })
   const [isClient, setIsClient] = useState(false)
 
-  // Fecha del evento: 8 de Noviembre 2026
-  const eventDate = new Date("2026-11-08T08:00:00").getTime()
+  // Fecha del evento: 8 de Noviembre 2026 a las 07:00 AM
+  const eventDate = new Date("2026-11-08T07:00:00").getTime()
 
   useEffect(() => {
     setIsClient(true)
@@ -45,7 +45,7 @@ export default function AboutTeam() {
     {
       icon: Mountain,
       title: "Aventura Extrema",
-      description: "Desafía tus límites en rutas de alta montaña con paisajes impresionantes y desafíos únicos.",
+      description: "Desafiá tus límites recorriendo rutas de ripio en Entre Ríos, rodeado de paisajes impresionantes y desafíos únicos.",
       gradient: "from-yellow-500/10 to-orange-500/10",
       iconColor: "text-yellow-400",
       hoverGradient: "group-hover:from-yellow-500/20 group-hover:to-orange-500/20",
@@ -53,7 +53,7 @@ export default function AboutTeam() {
     {
       icon: Heart,
       title: "Comunidad Unida",
-      description: "Forma parte de una familia de ciclistas apasionados que comparten tu amor por el deporte.",
+      description: "Unite a una comunidad de ciclistas apasionados que viven y comparten tu amor por el deporte.",
       gradient: "from-red-500/10 to-pink-500/10",
       iconColor: "text-red-400",
       hoverGradient: "group-hover:from-red-500/20 group-hover:to-pink-500/20",
@@ -61,7 +61,7 @@ export default function AboutTeam() {
     {
       icon: Shield,
       title: "Seguridad Primero",
-      description: "Contamos con equipo de apoyo, asistencia médica y mecánica durante todo el recorrido.",
+      description: "Disponemos de equipo de apoyo, asistencia médica y servicio mecánico durante todo el recorrido",
       gradient: "from-blue-500/10 to-cyan-500/10",
       iconColor: "text-blue-400",
       hoverGradient: "group-hover:from-blue-500/20 group-hover:to-cyan-500/20",
@@ -69,7 +69,7 @@ export default function AboutTeam() {
     {
       icon: Award,
       title: "Experiencia Inolvidable",
-      description: "Cada participante recibe medalla, kit de bienvenida y recuerdos que durarán toda la vida.",
+      description: "Todos los participantes reciben una medalla, un kit de bienvenida y experiencias que quedarán para siempre.",
       gradient: "from-purple-500/10 to-violet-500/10",
       iconColor: "text-purple-400",
       hoverGradient: "group-hover:from-purple-500/20 group-hover:to-violet-500/20",
@@ -102,11 +102,10 @@ export default function AboutTeam() {
         {/* Section header */}
         <div className="text-center mb-16 animate-fadeInUp">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4">
-            ¿Por Qué <span className="gradient-text">Grand Team Bike</span>?
+            <span className="gradient-text">Cicloturismo</span> Concepción del Uruguay
           </h2>
           <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-            Somos más que un evento de cicloturismo. Somos una experiencia transformadora que combina deporte,
-            naturaleza y camaradería.
+            Únete a la aventura más desafiante del año. <span className="text-yellow-400 font-semibold">50km de pura adrenalina</span> a través de paisajes inolvidables.
           </p>
         </div>
 
@@ -152,18 +151,18 @@ export default function AboutTeam() {
           </div>
 
           {/* Countdown display */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 max-w-6xl mx-auto">
             {countdownItems.map((item, index) => (
               <div
                 key={index}
-                className="glass relative overflow-hidden rounded-3xl p-8 md:p-10 lg:p-12 hover:scale-105 transition-all duration-300 group border border-yellow-400/20 hover:border-yellow-400/50 hover:shadow-2xl hover:shadow-yellow-500/20"
+                className="glass relative overflow-visible rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 hover:scale-105 transition-all duration-300 group border border-yellow-400/20 hover:border-yellow-400/50 hover:shadow-2xl hover:shadow-yellow-500/20"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10">
-                  <div className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black gradient-text mb-3 tabular-nums leading-none">
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl md:rounded-3xl" />
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black gradient-text mb-2 tabular-nums leading-none w-full text-center">
                     {isClient ? String(item.value).padStart(2, "0") : "00"}
                   </div>
-                  <div className="text-sm md:text-base lg:text-lg text-gray-400 uppercase tracking-wider font-semibold">
+                  <div className="text-xs sm:text-sm md:text-base text-gray-400 uppercase tracking-wider font-semibold text-center">
                     {item.label}
                   </div>
                 </div>
@@ -172,7 +171,7 @@ export default function AboutTeam() {
           </div>
         </div>
 
-       
+      
       </div>
     </section>
   )

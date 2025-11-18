@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
-import { Award, Heart, Mail, Handshake, Star } from "lucide-react"
+import { Award, Heart, MessageCircle, Handshake, Star } from "lucide-react"
 
 export default function Sponsors() {
   const [isVisible, setIsVisible] = useState(false)
@@ -38,6 +38,13 @@ export default function Sponsors() {
     { icon: Heart, text: "Apoyo a la comunidad" },
     { icon: Star, text: "Presencia en redes sociales" },
   ]
+
+  // Número de WhatsApp (actualiza con el número real)
+  const whatsappNumber = "5493442123456" // Formato: código país + código área + número (sin espacios ni guiones)
+  const whatsappMessage = encodeURIComponent(
+    "Hola! Me interesa ser patrocinador del evento Grand Team Bike 2026. Me gustaría recibir más información."
+  )
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`
 
   return (
     <section id="patrocinadores" className="py-20 bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
@@ -142,22 +149,20 @@ export default function Sponsors() {
                 })}
               </div>
 
-              {/* CTA Button */}
+              {/* WhatsApp CTA Button */}
               <div className="text-center">
                 <a
-                  href="#contacto"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    const element = document.getElementById("contacto")
-                    if (element) {
-                      element.scrollIntoView({ behavior: "smooth", block: "start" })
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black px-8 py-4 rounded-xl font-bold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-500/50"
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-green-500/50"
                 >
-                  <Mail className="w-5 h-5" aria-hidden="true" />
-                  Contactar Ahora
+                  <MessageCircle className="w-5 h-5" aria-hidden="true" />
+                  Contactar por WhatsApp
                 </a>
+                <p className="text-gray-500 text-xs mt-3">
+                  Respuesta rápida y personalizada
+                </p>
               </div>
             </CardContent>
           </Card>

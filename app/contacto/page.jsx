@@ -167,8 +167,8 @@ export default function ContactoPage() {
                     </div>
                     <div>
                       <h3 className="text-white font-bold text-lg mb-2">Email</h3>
-                      <p className="text-gray-400">contacto@grandteambike.com</p>
-                      <p className="text-gray-400">info@grandteambike.com</p>
+                      <p className="text-gray-400">grandteamcdelu@gmail.com</p>
+                      <p className="text-gray-400">grandteamcdelu@gmail.com</p>
                     </div>
                   </div>
                 </CardContent>

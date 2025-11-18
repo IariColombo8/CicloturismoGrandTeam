@@ -90,9 +90,9 @@ export default function HeroSection() {
 
           {/* Main title */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black mb-6 leading-tight text-balance">
-            <span className="block text-white">Cicloturismo</span>
+            <span className="block text-white">1er CICLOTURISMO</span>
             
-            <span className="block text-yellow-400 text-4xl sm:text-5xl md:text-6xl lg:text-7xl mt-2">Concepción del Uruguay</span>
+            <span className="block text-yellow-400 text-4xl sm:text-5xl md:text-6xl lg:text-7xl mt-2">RUINAS DEL VIEJO MOLINO</span>
           </h1>
 
           {/* Subtitle */}

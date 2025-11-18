@@ -142,25 +142,25 @@ export default function Footer() {
               <li className="flex items-start gap-3 text-gray-400 text-sm group">
                 <Mail className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <a 
-                  href="mailto:info@grandteambike.com" 
+                  href="mailto:grandteamcdelu@gmail.com" 
                   className="hover:text-yellow-400 transition-colors break-all"
                 >
-                  info@grandteambike.com
+                  grandteamcdelu@gmail.com
                 </a>
               </li>
               <li className="flex items-start gap-3 text-gray-400 text-sm group">
                 <Phone className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <a 
-                  href="tel:+5493442123456" 
+                  href="tel:+5493442" 
                   className="hover:text-yellow-400 transition-colors"
                 >
-                  +54 9 3442 123456
+                  +54 9 3442 
                 </a>
               </li>
               <li className="flex items-start gap-3 text-gray-400 text-sm">
                 <MapPin className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-semibold text-white mb-1">Camping El Molino</p>
+                  <p className="font-semibold text-white mb-1">Camping Ruinas del Viejo Molino</p>
                   <p>Concepción del Uruguay</p>
                   <p>Entre Ríos, Argentina</p>
                 </div>
