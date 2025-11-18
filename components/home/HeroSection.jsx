@@ -86,15 +86,12 @@ export default function HeroSection() {
           }`}
         >
           {/* Event badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
-            <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" aria-hidden="true" />
-            <span className="text-sm font-semibold text-yellow-400">Evento Épico 2026</span>
-          </div>
+         
 
           {/* Main title */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black mb-6 leading-tight text-balance">
-            <span className="block text-white">Grand Team Bike</span>
-            <span className="block gradient-text-intense">Cicloturismo</span>
+            <span className="block text-white">Cicloturismo</span>
+            
             <span className="block text-yellow-400 text-4xl sm:text-5xl md:text-6xl lg:text-7xl mt-2">Concepción del Uruguay</span>
           </h1>
 
