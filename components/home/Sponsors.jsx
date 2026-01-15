@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Award, Heart, MessageCircle, Handshake, Star } from "lucide-react"
 
@@ -16,6 +15,8 @@ export default function Sponsors() {
     gold: [
       { name: "Sponsor Premium 1", logo: "/cycling-sponsor-logo-gold.jpg", tier: "Oro" },
       { name: "Sponsor Premium 2", logo: "/cycling-sponsor-logo-silver.jpg", tier: "Oro" },
+      { name: "ML", logo: "/logolm.png", tier: "Oro" },
+      { name: "LY", logo: "/logoly.png", tier: "Oro" },
     ],
     silver: [
       { name: "Sponsor Plata 1", logo: "/bike-sponsor-logo.jpg", tier: "Plata" },
@@ -67,7 +68,7 @@ export default function Sponsors() {
             <Award className="w-5 h-5 text-yellow-400" aria-hidden="true" />
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4">
-            Nuestros <span className="gradient-text">Aliados</span>
+            Nuestros <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">Aliados</span>
           </h2>
           <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
             Gracias a las empresas y organizaciones que hacen posible este gran evento deportivo
@@ -128,7 +129,7 @@ export default function Sponsors() {
                 <Handshake className="w-8 h-8 text-yellow-400" aria-hidden="true" />
               </div>
               <h3 className="text-3xl md:text-4xl font-black text-white mb-4 text-center">
-                ¿Quieres ser <span className="gradient-text">Patrocinador</span>?
+                ¿Quieres ser <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">Patrocinador</span>?
               </h3>
               <p className="text-gray-400 text-lg mb-8 text-center max-w-2xl mx-auto leading-relaxed">
                 Únete a las empresas que apoyan el ciclismo y el deporte en nuestra región. Obtén visibilidad y sé parte de esta increíble comunidad.
@@ -180,10 +181,10 @@ function SponsorCard({ sponsor, size = "medium", delay = 0 }) {
     small: "p-6 md:p-8",
   }
 
-  const heightClasses = {
-    large: "h-28 md:h-32",
-    medium: "h-20 md:h-24",
-    small: "h-16 md:h-20",
+const heightClasses = {
+    large: "h-40 md:h-48",
+    medium: "h-28 md:h-32",
+    small: "h-20 md:h-24",
   }
 
   return (
@@ -193,12 +194,10 @@ function SponsorCard({ sponsor, size = "medium", delay = 0 }) {
     >
       <CardContent className={`flex items-center justify-center ${sizeClasses[size]}`}>
         <div className={`relative w-full ${heightClasses[size]}`}>
-          <Image
+          <img
             src={sponsor.logo}
             alt={`Logo de ${sponsor.name}`}
-            fill
-            className="object-contain grayscale group-hover:grayscale-0 transition-all duration-300 opacity-70 group-hover:opacity-100"
-            sizes="(max-width: 768px) 50vw, 33vw"
+            className="w-full h-full object-contain grayscale group-hover:grayscale-0 transition-all duration-300 opacity-70 group-hover:opacity-100"
           />
         </div>
       </CardContent>
