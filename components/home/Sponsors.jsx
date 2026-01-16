@@ -27,21 +27,74 @@ export default function Sponsors() {
 
   const sponsorTiers = {
     gold: [
-      { name: "Sponsor Premium 1", logo: "/cycling-sponsor-logo-gold.jpg", tier: "Oro" },
-      { name: "Sponsor Premium 2", logo: "/cycling-sponsor-logo-silver.jpg", tier: "Oro" },
-      { name: "ML", logo: "/logolm.png", tier: "Oro" },
-      { name: "LY", logo: "/logoly.png", tier: "Oro" },
+      { 
+        name: "Sponsor Premium 1", 
+        logo: "/cycling-sponsor-logo-gold.jpg", 
+        tier: "Oro",
+        link: "https://instagram.com/sponsor1", // Cambia por el link real
+        linkType: "instagram" // instagram, whatsapp, facebook, website
+      },
+      { 
+        name: "Sponsor Premium 2", 
+        logo: "/cycling-sponsor-logo-silver.jpg", 
+        tier: "Oro",
+        link: "https://instagram.com/sponsor2",
+        linkType: "instagram"
+      },
     ],
     silver: [
-      { name: "Sponsor Plata 1", logo: "/bike-sponsor-logo.jpg", tier: "Plata" },
-      { name: "Sponsor Plata 2", logo: "/generic-sports-sponsor-logo.png", tier: "Plata" },
-      { name: "Sponsor Plata 3", logo: "/cycling-sponsor-logo-gold.jpg", tier: "Plata" },
+      { 
+        name: "Sponsor Plata 1", 
+        logo: "/bike-sponsor-logo.jpg", 
+        tier: "Plata",
+        link: "https://instagram.com/sponsorplata1",
+        linkType: "instagram"
+      },
+      { 
+        name: "Sponsor Plata 2", 
+        logo: "/generic-sports-sponsor-logo.png", 
+        tier: "Plata",
+        link: "https://wa.me/5493442123456",
+        linkType: "whatsapp"
+      },
+      { 
+        name: "Sponsor Plata 3", 
+        logo: "/cycling-sponsor-logo-gold.jpg", 
+        tier: "Plata",
+        link: "https://facebook.com/sponsorplata3",
+        linkType: "facebook"
+      },
     ],
     bronze: [
-      { name: "Sponsor Bronce 1", logo: "/cycling-gear-logo.jpg", tier: "Bronce" },
-      { name: "Sponsor Bronce 2", logo: "/community-sponsor-logo.jpg", tier: "Bronce" },
-      { name: "Sponsor Bronce 3", logo: "/bike-sponsor-logo.jpg", tier: "Bronce" },
-      { name: "Sponsor Bronce 4", logo: "/cycling-sponsor-logo-silver.jpg", tier: "Bronce" },
+     
+      { 
+        name: "Sponsor Bronce 4", 
+        logo: "/cycling-sponsor-logo-silver.jpg", 
+        tier: "Bronce",
+        link: "https://instagram.com/sponsorbronce4",
+        linkType: "instagram"
+      },
+      { 
+        name: "LM", 
+        logo: "/logolm.png", 
+        tier: "Bronce",
+        link: "https://instagram.com/logolm",
+        linkType: "instagram"
+      },
+      { 
+        name: "LY", 
+        logo: "/logoly.png", 
+        tier: "Bronce",
+        link: "https://instagram.com/logoly",
+        linkType: "instagram"
+      },
+      { 
+        name: "LA", 
+        logo: "/logola.png", 
+        tier: "Bronce",
+        link: "https://instagram.com/logola",
+        linkType: "instagram"
+      },
     ],
   }
 
@@ -341,34 +394,41 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible }) {
       className={`transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <Card
-        className={`group relative overflow-hidden ${styles.card} backdrop-blur-sm hover:scale-[1.03] transition-all duration-500 ${styles.glow}`}
+      <a
+        href={sponsor.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
       >
-        {/* Shine effect on hover */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-        </div>
-
-        {/* Tier badge for gold */}
-        {tier === "gold" && (
-          <div className="absolute top-3 right-3 z-10">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold ${styles.badge} flex items-center gap-1`}>
-              <Star className="w-3 h-3" />
-              ORO
-            </span>
+        <Card
+          className={`group relative overflow-hidden ${styles.card} backdrop-blur-sm hover:scale-105 transition-all duration-500 ${styles.glow} cursor-pointer`}
+        >
+          {/* Shine effect on hover */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           </div>
-        )}
 
-        <CardContent className={`flex items-center justify-center ${styles.padding}`}>
-          <div className={`relative w-full ${styles.height}`}>
-            <img
-              src={sponsor.logo || "/placeholder.svg"}
-              alt={`Logo de ${sponsor.name}`}
-              className="w-full h-full object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105"
-            />
-          </div>
-        </CardContent>
-      </Card>
+          {/* Tier badge for gold */}
+          {tier === "gold" && (
+            <div className="absolute top-3 right-3 z-10">
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${styles.badge} flex items-center gap-1`}>
+                <Star className="w-3 h-3" />
+                ORO
+              </span>
+            </div>
+          )}
+
+          <CardContent className={`flex items-center justify-center ${styles.padding}`}>
+            <div className={`relative w-full ${styles.height}`}>
+              <img
+                src={sponsor.logo || "/placeholder.svg"}
+                alt={`Logo de ${sponsor.name}`}
+                className="w-full h-full object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-125"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </a>
     </div>
   )
 }
