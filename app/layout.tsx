@@ -19,7 +19,7 @@ export const metadata = {
     default: "Grand Team Bike 2026 - Evento de Cicloturismo",
     template: "%s | Grand Team Bike 2026"
   },
-  description: "Únete al evento de ciclismo más emocionante de la región. Grand Team Bike 2026 - Ruinas del Viejo Molino. Inscríbete ahora y vive la aventura sobre ruedas.",
+  description: "Únete al evento de ciclismo más emocionante de la región. Grand Team Bike 2026 en Ruinas del Viejo Molino. Vive una experiencia única sobre ruedas con rutas espectaculares, premios increíbles y una comunidad apasionada por el ciclismo. ¡Inscríbete ahora!",
   keywords: [
     "ciclismo",
     "cicloturismo", 
@@ -42,7 +42,7 @@ export const metadata = {
     url: "https://grandteambike.com",
     siteName: "Grand Team Bike 2026",
     title: "Grand Team Bike 2026 - Evento de Cicloturismo",
-    description: "🚴‍♂️ El evento de ciclismo más emocionante de la región. Ruinas del Viejo Molino 2026. ¡Inscríbete ahora y vive la aventura!",
+    description: "🚴‍♂️ El evento de ciclismo más emocionante de la región. Grand Team Bike 2026 en Ruinas del Viejo Molino. Rutas espectaculares, premios increíbles y una comunidad apasionada. ¡Inscríbete ahora y vive la aventura!",
     images: [
       {
         url: "/og-image.jpg", // Imagen principal para compartir (1200x630px recomendado)
@@ -63,7 +63,7 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Grand Team Bike 2026 - Evento de Cicloturismo",
-    description: "🚴‍♂️ El evento de ciclismo más emocionante de la región. Ruinas del Viejo Molino 2026. ¡Inscríbete ahora!",
+    description: "🚴‍♂️ El evento de ciclismo más emocionante de la región. Grand Team Bike 2026 en Ruinas del Viejo Molino. Rutas espectaculares, premios increíbles y una comunidad apasionada. ¡Inscríbete ahora!",
     images: ["/twitter-image.jpg"], // 1200x600px recomendado
     creator: "@grandteambike", // Tu usuario de Twitter
     site: "@grandteambike",
@@ -76,10 +76,18 @@ export const metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico" },
-      { url: "/icon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/icon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/favicon-64x64.png", sizes: "64x64", type: "image/png" },
+      { url: "/favicon-128x128.png", sizes: "128x128", type: "image/png" },
+      { url: "/favicon-256x256.png", sizes: "256x256", type: "image/png" },
+      { url: "/favicon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
+      { url: "/apple-touch-icon-57x57.png", sizes: "57x57", type: "image/png" },
+      { url: "/apple-touch-icon-114x114.png", sizes: "114x114", type: "image/png" },
+      { url: "/apple-touch-icon-120x120.png", sizes: "120x120", type: "image/png" },
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
@@ -123,6 +131,7 @@ export default function RootLayout({ children }) {
     <html lang="es" className={`${inter.variable} ${poppins.variable}`}>
       <head>
         {/* Meta tags adicionales que no están en metadata */}
+        <meta name="msapplication-TileColor" content="#000000" />
         <meta name="theme-color" content="#000000" />
         <meta name="format-detection" content="telephone=no" />
       </head>
