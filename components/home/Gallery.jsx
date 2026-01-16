@@ -82,7 +82,7 @@ export default function Gallery() {
   }
 
   return (
-    <section id="galeria" className="py-20 bg-gradient-to-b from-zinc-900 via-black to-zinc-900 relative overflow-hidden">
+    <section id="galeria" className="py-12 sm:py-20 bg-gradient-to-b from-zinc-900 via-black to-zinc-900 relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-40 left-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
@@ -90,26 +90,26 @@ export default function Gallery() {
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Section header */}
+        {/* Section header - COMPACTO EN MÓVIL */}
         <div
-          className={`text-center mb-16 transition-all duration-1000 ${
+          className={`text-center mb-8 sm:mb-16 transition-all duration-1000 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
           }`}
         >
-          <div className="inline-flex items-center justify-center gap-2 mb-4 px-4 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
-            <Camera className="w-5 h-5 text-yellow-400" aria-hidden="true" />
-            <span className="text-sm font-semibold text-yellow-400">Galería</span>
+          <div className="inline-flex items-center justify-center gap-2 mb-3 sm:mb-4 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
+            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" aria-hidden="true" />
+            <span className="text-xs sm:text-sm font-semibold text-yellow-400">Galería</span>
           </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4">
+          <h2 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4">
             <span className="gradient-text">Momentos</span> Inolvidables
           </h2>
-          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Revive la emoción de nuestros eventos anteriores y descubre lo que te espera
+          <p className="text-xs sm:text-sm md:text-base text-gray-400 max-w-2xl mx-auto leading-relaxed px-2">
+            Revive la emoción de nuestros eventos anteriores
           </p>
         </div>
 
-        {/* Gallery grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto">
+        {/* Gallery grid - 2 COLUMNAS EN MÓVIL */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 md:gap-6 max-w-7xl mx-auto">
           {galleryImages.map((image, index) => (
             <Card
               key={index}
@@ -123,19 +123,19 @@ export default function Gallery() {
                   alt={image.alt}
                   fill
                   className="object-cover group-hover:scale-110 transition-transform duration-500"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
                 />
                 
-                {/* Overlay */}
+                {/* Overlay - SIMPLIFICADO EN MÓVIL */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <ZoomIn className="w-12 h-12 text-yellow-400 mb-2 transform scale-0 group-hover:scale-100 transition-transform duration-300" />
-                    <p className="text-white font-bold text-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                    <ZoomIn className="w-8 h-8 sm:w-12 sm:h-12 text-yellow-400 mb-1 sm:mb-2 transform scale-0 group-hover:scale-100 transition-transform duration-300" />
+                    <p className="text-white font-bold text-xs sm:text-base md:text-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 px-2 text-center">
                       {image.title}
                     </p>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <p className="text-gray-300 text-sm">{image.alt}</p>
+                  <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 hidden sm:block">
+                    <p className="text-gray-300 text-xs sm:text-sm">{image.alt}</p>
                   </div>
                 </div>
               </div>
@@ -143,55 +143,54 @@ export default function Gallery() {
           ))}
         </div>
 
-        {/* CTA después de la galería */}
-        <div className="mt-16 text-center">
-          <p className="text-gray-400 mb-4">¿Listo para crear tus propios momentos?</p>
+        {/* CTA después de la galería - COMPACTO EN MÓVIL */}
+        <div className="mt-8 sm:mt-16 text-center">
+          <p className="text-gray-400 text-xs sm:text-base mb-3 sm:mb-4">¿Listo para crear tus propios momentos?</p>
           <a
             href="/inscripcion"
-            className="inline-block px-8 py-4 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-500/50"
+            className="inline-block px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg sm:rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-500/50"
           >
             Inscríbete Ahora
           </a>
         </div>
       </div>
 
-      {/* Modal mejorado con navegación */}
+      {/* Modal mejorado con navegación - OPTIMIZADO PARA MÓVIL */}
       {selectedImage && (
         <div
-          className="fixed inset-0 bg-black/95 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+          className="fixed inset-0 bg-black/95 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fadeIn"
           onClick={() => setSelectedImage(null)}
           role="dialog"
           aria-modal="true"
           aria-label="Vista ampliada de imagen"
         >
-          {/* Botón cerrar */}
+          {/* Botón cerrar - MÁS PEQUEÑO EN MÓVIL */}
           <button
-            className="absolute top-4 right-4 z-10 p-2 text-white hover:text-yellow-400 bg-black/50 rounded-full hover:bg-black/70 transition-all"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 p-1.5 sm:p-2 text-white hover:text-yellow-400 bg-black/50 rounded-full hover:bg-black/70 transition-all"
             onClick={() => setSelectedImage(null)}
             aria-label="Cerrar modal"
           >
-            <X className="w-8 h-8" />
+            <X className="w-6 h-6 sm:w-8 sm:h-8" />
           </button>
 
-          {/* Botón anterior */}
+          {/* Botones de navegación - OCULTOS EN MÓVIL PEQUEÑO */}
           <button
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-3 text-white hover:text-yellow-400 bg-black/50 rounded-full hover:bg-black/70 transition-all hidden md:block"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 p-2 sm:p-3 text-white hover:text-yellow-400 bg-black/50 rounded-full hover:bg-black/70 transition-all hidden sm:block"
             onClick={prevImage}
             aria-label="Imagen anterior"
           >
-            <ChevronLeft className="w-8 h-8" />
+            <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
           </button>
 
-          {/* Botón siguiente */}
           <button
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-3 text-white hover:text-yellow-400 bg-black/50 rounded-full hover:bg-black/70 transition-all hidden md:block"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 p-2 sm:p-3 text-white hover:text-yellow-400 bg-black/50 rounded-full hover:bg-black/70 transition-all hidden sm:block"
             onClick={nextImage}
             aria-label="Imagen siguiente"
           >
-            <ChevronRight className="w-8 h-8" />
+            <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
           </button>
 
-          {/* Imagen */}
+          {/* Imagen - COMPACTO EN MÓVIL */}
           <div className="relative max-w-6xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
             <div className="relative w-full h-full">
               <Image
@@ -204,31 +203,31 @@ export default function Gallery() {
               />
             </div>
             
-            {/* Info de la imagen */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
-              <h3 className="text-white text-2xl font-bold mb-1">{selectedImage.title}</h3>
-              <p className="text-gray-300">{selectedImage.alt}</p>
-              <p className="text-gray-500 text-sm mt-2">
+            {/* Info de la imagen - COMPACTO EN MÓVIL */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3 sm:p-6">
+              <h3 className="text-white text-sm sm:text-xl md:text-2xl font-bold mb-0.5 sm:mb-1">{selectedImage.title}</h3>
+              <p className="text-gray-300 text-xs sm:text-base hidden sm:block">{selectedImage.alt}</p>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1 sm:mt-2">
                 {currentIndex + 1} / {galleryImages.length}
               </p>
             </div>
           </div>
 
-          {/* Navegación mobile (swipe hints) */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 md:hidden">
+          {/* Navegación mobile - BOTONES INFERIORES */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 sm:hidden">
             <button
               onClick={prevImage}
-              className="p-2 bg-black/50 rounded-full text-white"
+              className="p-2.5 bg-black/70 rounded-full text-white border border-yellow-400/30"
               aria-label="Anterior"
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={nextImage}
-              className="p-2 bg-black/50 rounded-full text-white"
+              className="p-2.5 bg-black/70 rounded-full text-white border border-yellow-400/30"
               aria-label="Siguiente"
             >
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         </div>

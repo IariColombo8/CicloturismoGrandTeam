@@ -31,8 +31,8 @@ export default function Sponsors() {
         name: "Sponsor Premium 1", 
         logo: "/cycling-sponsor-logo-gold.jpg", 
         tier: "Oro",
-        link: "https://instagram.com/sponsor1", // Cambia por el link real
-        linkType: "instagram" // instagram, whatsapp, facebook, website
+        link: "https://instagram.com/sponsor1",
+        linkType: "instagram"
       },
       { 
         name: "Sponsor Premium 2", 
@@ -66,7 +66,6 @@ export default function Sponsors() {
       },
     ],
     bronze: [
-     
       { 
         name: "Sponsor Bronce 4", 
         logo: "/cycling-sponsor-logo-silver.jpg", 
@@ -111,7 +110,7 @@ export default function Sponsors() {
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`
 
   return (
-    <section ref={sectionRef} id="patrocinadores" className="py-24 bg-black relative overflow-hidden">
+    <section ref={sectionRef} id="patrocinadores" className="py-12 sm:py-20 md:py-24 bg-black relative overflow-hidden">
       {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         {/* Grid pattern */}
@@ -122,11 +121,11 @@ export default function Sponsors() {
         <div className="absolute bottom-40 left-10 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-400/5 rounded-full blur-[150px] animate-pulse [animation-delay:2s]" />
 
-        {/* Floating particles */}
+        {/* Floating particles - OCULTOS EN MÓVIL */}
         {[...Array(20)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 bg-yellow-400/40 rounded-full animate-float"
+            className="absolute w-1 h-1 bg-yellow-400/40 rounded-full animate-float hidden sm:block"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -138,54 +137,54 @@ export default function Sponsors() {
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Section header */}
+        {/* Section header - COMPACTO EN MÓVIL */}
         <div
-          className={`text-center mb-20 transition-all duration-1000 ${
+          className={`text-center mb-10 sm:mb-16 md:mb-20 transition-all duration-1000 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
           }`}
         >
           {/* Badge */}
-          <div className="inline-flex items-center justify-center gap-3 mb-6 px-6 py-3 bg-gradient-to-r from-yellow-400/20 via-amber-500/20 to-yellow-400/20 border border-yellow-400/40 rounded-full backdrop-blur-sm animate-shimmer bg-[length:200%_100%]">
-            <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" aria-hidden="true" />
-            <span className="text-sm font-bold text-yellow-400 uppercase tracking-widest">
+          <div className="inline-flex items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-yellow-400/20 via-amber-500/20 to-yellow-400/20 border border-yellow-400/40 rounded-full backdrop-blur-sm animate-shimmer bg-[length:200%_100%]">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 animate-pulse" aria-hidden="true" />
+            <span className="text-xs sm:text-sm font-bold text-yellow-400 uppercase tracking-widest">
               Patrocinadores Oficiales
             </span>
-            <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" aria-hidden="true" />
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 animate-pulse hidden sm:block" aria-hidden="true" />
           </div>
 
           {/* Title */}
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-white mb-6">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black text-white mb-3 sm:mb-4 md:mb-6 px-2">
             Nuestros{" "}
             <span className="relative inline-block">
               <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
                 Aliados
               </span>
-              <span className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
+              <span className="absolute -bottom-1 sm:-bottom-2 left-0 right-0 h-0.5 sm:h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
             </span>
           </h2>
 
-          <p className="text-lg md:text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed px-2">
             Gracias a las empresas y organizaciones que hacen posible este gran evento deportivo
           </p>
         </div>
 
         {/* Sponsors Grid */}
-        <div className="max-w-6xl mx-auto mb-24">
+        <div className="max-w-6xl mx-auto mb-12 sm:mb-16 md:mb-24">
           {/* Gold Sponsors */}
           {sponsorTiers.gold.length > 0 && (
             <div
-              className={`mb-16 transition-all duration-1000 delay-200 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+              className={`mb-10 sm:mb-12 md:mb-16 transition-all duration-1000 delay-200 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
             >
-              <div className="flex items-center justify-center gap-4 mb-8">
-                <div className="h-px w-20 bg-gradient-to-r from-transparent to-yellow-400" />
-                <div className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-yellow-400/20 to-amber-500/20 rounded-full border border-yellow-400/50">
-                  <Trophy className="w-6 h-6 text-yellow-400" />
-                  <h3 className="text-xl font-bold text-yellow-400 uppercase tracking-wider">Patrocinadores Oro</h3>
-                  <Trophy className="w-6 h-6 text-yellow-400" />
+              <div className="flex items-center justify-center gap-2 sm:gap-4 mb-6 sm:mb-8">
+                <div className="h-px w-10 sm:w-20 bg-gradient-to-r from-transparent to-yellow-400" />
+                <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-1.5 sm:py-2 bg-gradient-to-r from-yellow-400/20 to-amber-500/20 rounded-full border border-yellow-400/50">
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-yellow-400" />
+                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-yellow-400 uppercase tracking-wider">Patrocinadores Oro</h3>
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-yellow-400 hidden sm:block" />
                 </div>
-                <div className="h-px w-20 bg-gradient-to-l from-transparent to-yellow-400" />
+                <div className="h-px w-10 sm:w-20 bg-gradient-to-l from-transparent to-yellow-400" />
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-4 md:gap-8 max-w-4xl mx-auto">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-8 max-w-4xl mx-auto">
                 {sponsorTiers.gold.map((sponsor, index) => (
                   <SponsorCard key={index} sponsor={sponsor} tier="gold" delay={index * 150} isVisible={isVisible} />
                 ))}
@@ -196,16 +195,16 @@ export default function Sponsors() {
           {/* Silver Sponsors */}
           {sponsorTiers.silver.length > 0 && (
             <div
-              className={`mb-16 transition-all duration-1000 delay-400 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+              className={`mb-10 sm:mb-12 md:mb-16 transition-all duration-1000 delay-400 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
             >
-              <div className="flex items-center justify-center gap-4 mb-8">
-                <div className="h-px w-16 bg-gradient-to-r from-transparent to-zinc-400" />
-                <h3 className="text-lg font-bold text-zinc-300 uppercase tracking-wider px-4 py-1 bg-zinc-800/50 rounded-full border border-zinc-700">
+              <div className="flex items-center justify-center gap-2 sm:gap-4 mb-6 sm:mb-8">
+                <div className="h-px w-8 sm:w-16 bg-gradient-to-r from-transparent to-zinc-400" />
+                <h3 className="text-xs sm:text-sm md:text-lg font-bold text-zinc-300 uppercase tracking-wider px-3 sm:px-4 py-1 bg-zinc-800/50 rounded-full border border-zinc-700">
                   Patrocinadores Plata
                 </h3>
-                <div className="h-px w-16 bg-gradient-to-l from-transparent to-zinc-400" />
+                <div className="h-px w-8 sm:w-16 bg-gradient-to-l from-transparent to-zinc-400" />
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
                 {sponsorTiers.silver.map((sponsor, index) => (
                   <SponsorCard
                     key={index}
@@ -224,14 +223,14 @@ export default function Sponsors() {
             <div
               className={`transition-all duration-1000 delay-500 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
             >
-              <div className="flex items-center justify-center gap-4 mb-8">
-                <div className="h-px w-12 bg-gradient-to-r from-transparent to-amber-700" />
-                <h3 className="text-base font-semibold text-zinc-400 uppercase tracking-wider">
+              <div className="flex items-center justify-center gap-2 sm:gap-4 mb-6 sm:mb-8">
+                <div className="h-px w-6 sm:w-12 bg-gradient-to-r from-transparent to-amber-700" />
+                <h3 className="text-[10px] sm:text-xs md:text-base font-semibold text-zinc-400 uppercase tracking-wider">
                   Patrocinadores Bronce
                 </h3>
-                <div className="h-px w-12 bg-gradient-to-l from-transparent to-amber-700" />
+                <div className="h-px w-6 sm:w-12 bg-gradient-to-l from-transparent to-amber-700" />
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {sponsorTiers.bronze.map((sponsor, index) => (
                   <SponsorCard
                     key={index}
@@ -246,7 +245,7 @@ export default function Sponsors() {
           )}
         </div>
 
-        {/* Become a Sponsor CTA */}
+        {/* Become a Sponsor CTA - COMPACTO EN MÓVIL */}
         <div
           className={`max-w-4xl mx-auto transition-all duration-1000 delay-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
         >
@@ -258,68 +257,68 @@ export default function Sponsors() {
               {/* Inner glow */}
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 via-transparent to-amber-500/10" />
 
-              <CardContent className="p-8 md:p-12 relative z-10">
+              <CardContent className="p-6 sm:p-8 md:p-12 relative z-10">
                 {/* Icon */}
-                <div className="flex items-center justify-center mb-8">
+                <div className="flex items-center justify-center mb-6 sm:mb-8">
                   <div className="relative">
                     <div className="absolute inset-0 bg-yellow-400/30 rounded-full blur-xl animate-pulse" />
-                    <div className="relative w-20 h-20 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center">
-                      <Handshake className="w-10 h-10 text-black" aria-hidden="true" />
+                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center">
+                      <Handshake className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-black" aria-hidden="true" />
                     </div>
                   </div>
                 </div>
 
                 {/* Title */}
-                <h3 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 text-center">
+                <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3 sm:mb-4 text-center px-2">
                   ¿Quieres ser{" "}
                   <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
                     Patrocinador
                   </span>
                   ?
                 </h3>
-                <p className="text-zinc-400 text-lg mb-10 text-center max-w-2xl mx-auto leading-relaxed">
+                <p className="text-zinc-400 text-sm sm:text-base md:text-lg mb-8 sm:mb-10 text-center max-w-2xl mx-auto leading-relaxed px-2">
                   Únete a las empresas que apoyan el ciclismo y el deporte en nuestra región. Obtén visibilidad y sé
                   parte de esta increíble comunidad.
                 </p>
 
                 {/* Benefits */}
-                <div className="grid md:grid-cols-3 gap-6 mb-10">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
                   {benefits.map((benefit, index) => {
                     const IconComponent = benefit.icon
                     return (
                       <div
                         key={index}
-                        className="group/benefit relative p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 hover:border-yellow-400/50 transition-all duration-300 hover:-translate-y-1"
+                        className="group/benefit relative p-4 sm:p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 hover:border-yellow-400/50 transition-all duration-300 hover:-translate-y-1"
                       >
                         <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover/benefit:opacity-100 transition-opacity rounded-xl" />
                         <div className="relative flex flex-col items-center text-center">
-                          <div className="w-14 h-14 bg-gradient-to-br from-yellow-400/20 to-amber-500/20 rounded-xl flex items-center justify-center mb-4 group-hover/benefit:scale-110 transition-transform">
-                            <IconComponent className="w-7 h-7 text-yellow-400" aria-hidden="true" />
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-yellow-400/20 to-amber-500/20 rounded-xl flex items-center justify-center mb-3 sm:mb-4 group-hover/benefit:scale-110 transition-transform">
+                            <IconComponent className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-400" aria-hidden="true" />
                           </div>
-                          <p className="text-white font-semibold mb-1">{benefit.text}</p>
-                          <p className="text-zinc-500 text-sm">{benefit.description}</p>
+                          <p className="text-white font-semibold mb-1 text-sm sm:text-base">{benefit.text}</p>
+                          <p className="text-zinc-500 text-xs sm:text-sm">{benefit.description}</p>
                         </div>
                       </div>
                     )
                   })}
                 </div>
 
-                {/* WhatsApp CTA Button */}
+                {/* WhatsApp CTA Button - COMPACTO EN MÓVIL */}
                 <div className="text-center">
                   <a
                     href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group/btn relative inline-flex items-center gap-3 bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 text-white px-10 py-5 rounded-xl font-bold text-lg overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(34,197,94,0.5)]"
+                    className="group/btn relative inline-flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 text-white px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 rounded-xl font-bold text-sm sm:text-base md:text-lg overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(34,197,94,0.5)]"
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-green-400 via-emerald-500 to-green-400 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                     <MessageCircle
-                      className="w-6 h-6 relative z-10 group-hover/btn:animate-bounce"
+                      className="w-5 h-5 sm:w-6 sm:h-6 relative z-10 group-hover/btn:animate-bounce flex-shrink-0"
                       aria-hidden="true"
                     />
                     <span className="relative z-10">Contactar por WhatsApp</span>
                   </a>
-                  <p className="text-zinc-600 text-sm mt-4">Respuesta rápida y personalizada</p>
+                  <p className="text-zinc-600 text-xs sm:text-sm mt-3 sm:mt-4">Respuesta rápida y personalizada</p>
                 </div>
               </CardContent>
             </Card>
@@ -361,28 +360,28 @@ export default function Sponsors() {
   )
 }
 
-// Sponsor Card Component
+// Sponsor Card Component - OPTIMIZADO PARA MÓVIL
 function SponsorCard({ sponsor, tier, delay = 0, isVisible }) {
   const tierStyles = {
     gold: {
       card: "bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border-yellow-400/30 hover:border-yellow-400",
       glow: "group-hover:shadow-[0_0_40px_rgba(250,204,21,0.3)]",
-      height: "h-44 md:h-52",
-      padding: "p-8",
+      height: "h-32 sm:h-40 md:h-52",
+      padding: "p-4 sm:p-6 md:p-8",
       badge: "bg-gradient-to-r from-yellow-400 to-amber-500 text-black",
     },
     silver: {
       card: "bg-gradient-to-br from-zinc-900 to-zinc-800 border-zinc-700 hover:border-zinc-400",
       glow: "group-hover:shadow-[0_0_30px_rgba(161,161,170,0.2)]",
-      height: "h-32 md:h-40",
-      padding: "p-6",
+      height: "h-24 sm:h-32 md:h-40",
+      padding: "p-3 sm:p-4 md:p-6",
       badge: "bg-zinc-400 text-zinc-900",
     },
     bronze: {
       card: "bg-zinc-900/80 border-zinc-800 hover:border-amber-700/50",
       glow: "group-hover:shadow-[0_0_20px_rgba(180,83,9,0.2)]",
-      height: "h-24 md:h-28",
-      padding: "p-4",
+      height: "h-20 sm:h-24 md:h-28",
+      padding: "p-3 sm:p-4",
       badge: "bg-amber-700 text-white",
     },
   }
@@ -410,9 +409,9 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible }) {
 
           {/* Tier badge for gold */}
           {tier === "gold" && (
-            <div className="absolute top-3 right-3 z-10">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${styles.badge} flex items-center gap-1`}>
-                <Star className="w-3 h-3" />
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10">
+              <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold ${styles.badge} flex items-center gap-1`}>
+                <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 ORO
               </span>
             </div>
@@ -423,7 +422,7 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible }) {
               <img
                 src={sponsor.logo || "/placeholder.svg"}
                 alt={`Logo de ${sponsor.name}`}
-                className="w-full h-full object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-125"
+                className="w-full h-full object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-110 sm:group-hover:scale-125"
               />
             </div>
           </CardContent>
