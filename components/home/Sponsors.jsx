@@ -67,8 +67,8 @@ export default function Sponsors() {
     ],
     bronze: [
       { 
-        name: "Sponsor Bronce 4", 
-        logo: "/cycling-sponsor-logo-silver.jpg", 
+        name: "c", 
+        logo: "/logoc.png", 
         tier: "Bronce",
         link: "https://instagram.com/sponsorbronce4",
         linkType: "instagram"
