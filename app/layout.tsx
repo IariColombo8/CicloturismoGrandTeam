@@ -72,10 +72,9 @@ export const metadata = {
   // Metadatos para WhatsApp (usa Open Graph)
   // WhatsApp tomará automáticamente los datos de openGraph
 
-  // Favicon y iconos
+  // Favicon y iconos - Usando tus archivos existentes
   icons: {
     icon: [
-      { url: "/favicon.ico" },
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
       { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
@@ -84,19 +83,10 @@ export const metadata = {
       { url: "/favicon-256x256.png", sizes: "256x256", type: "image/png" },
       { url: "/favicon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
+    shortcut: "/favicon.ico",
     apple: [
-      { url: "/apple-touch-icon-57x57.png", sizes: "57x57", type: "image/png" },
-      { url: "/apple-touch-icon-114x114.png", sizes: "114x114", type: "image/png" },
-      { url: "/apple-touch-icon-120x120.png", sizes: "120x120", type: "image/png" },
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
-  },
-
-  // Configuración de viewport
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
   },
 
   // Verificación de sitio (opcional)
@@ -121,9 +111,14 @@ export const metadata = {
 
   // Información adicional
   category: "sports",
-  
-  // Manifest para PWA (opcional)
-  manifest: "/manifest.json",
+}
+
+// Exportación separada de viewport (requerido en Next.js 15+)
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#000000",
 }
 
 export default function RootLayout({ children }) {
@@ -132,8 +127,13 @@ export default function RootLayout({ children }) {
       <head>
         {/* Meta tags adicionales que no están en metadata */}
         <meta name="msapplication-TileColor" content="#000000" />
-        <meta name="theme-color" content="#000000" />
         <meta name="format-detection" content="telephone=no" />
+        
+        {/* Favicons adicionales para mejor compatibilidad */}
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className={inter.className}>{children}</body>
     </html>
