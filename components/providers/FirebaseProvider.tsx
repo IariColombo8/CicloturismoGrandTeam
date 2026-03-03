@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react"
 import { onAuthStateChanged, type User } from "firebase/auth"
 import { doc, getDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
@@ -121,8 +121,13 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
     fetchEventSettings()
   }, [isFirebaseAvailable])
 
+  const value = useMemo(
+    () => ({ user, loading, eventSettings, isFirebaseAvailable, userRole }),
+    [user, loading, eventSettings, isFirebaseAvailable, userRole]
+  )
+
   return (
-    <FirebaseContext.Provider value={{ user, loading, eventSettings, isFirebaseAvailable, userRole }}>
+    <FirebaseContext.Provider value={value}>
       {children}
     </FirebaseContext.Provider>
   )

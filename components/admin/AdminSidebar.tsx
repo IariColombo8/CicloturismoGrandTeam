@@ -25,55 +25,55 @@ interface NavItem {
   hoverColor: string
 }
 
+const navItems: NavItem[] = [
+  {
+    href: "/",
+    label: "Volver al Inicio",
+    icon: Home,
+    color: "text-blue-400",
+    hoverColor: "hover:bg-blue-500/10"
+  },
+  {
+    href: "/admin/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    color: "text-yellow-400",
+    hoverColor: "hover:bg-yellow-500/10"
+  },
+  {
+    href: "/admin/registro-inscripciones",
+    label: "Inscripciones",
+    icon: ClipboardList,
+    color: "text-green-400",
+    hoverColor: "hover:bg-green-500/10"
+  },
+  {
+    href: "/admin/gastos",
+    label: "Gastos",
+    icon: DollarSign,
+    color: "text-purple-400",
+    hoverColor: "hover:bg-purple-500/10"
+  },
+  {
+    href: "/admin/grandteam",
+    label: "Grand Team",
+    icon: Users,
+    color: "text-pink-400",
+    hoverColor: "hover:bg-pink-500/10"
+  },
+  {
+    href: "/admin/configuraciones",
+    label: "Configuraciones",
+    icon: Settings,
+    color: "text-cyan-400",
+    hoverColor: "hover:bg-cyan-500/10"
+  },
+]
+
 export default function AdminSidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
-
-  const navItems: NavItem[] = [
-    {
-      href: "/",
-      label: "Volver al Inicio",
-      icon: Home,
-      color: "text-blue-400",
-      hoverColor: "hover:bg-blue-500/10"
-    },
-    {
-      href: "/admin/dashboard",
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      color: "text-yellow-400",
-      hoverColor: "hover:bg-yellow-500/10"
-    },
-    {
-      href: "/admin/registro-inscripciones",
-      label: "Inscripciones",
-      icon: ClipboardList,
-      color: "text-green-400",
-      hoverColor: "hover:bg-green-500/10"
-    },
-    {
-      href: "/admin/gastos",
-      label: "Gastos",
-      icon: DollarSign,
-      color: "text-purple-400",
-      hoverColor: "hover:bg-purple-500/10"
-    },
-    {
-      href: "/admin/grandteam",
-      label: "Grand Team",
-      icon: Users,
-      color: "text-pink-400",
-      hoverColor: "hover:bg-pink-500/10"
-    },
-    {
-      href: "/admin/configuraciones",
-      label: "Configuraciones",
-      icon: Settings,
-      color: "text-cyan-400",
-      hoverColor: "hover:bg-cyan-500/10"
-    },
-  ]
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"

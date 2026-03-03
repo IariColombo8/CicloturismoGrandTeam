@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
   Award, Heart, MessageCircle, Handshake, Star, Sparkles, Trophy, 
@@ -507,10 +508,12 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }) {
 
           <CardContent className={`flex items-center justify-center ${styles.padding}`}>
             <div className={`relative w-full ${styles.height}`}>
-              <img
+              <Image
                 src={sponsor.logo || "/placeholder.svg"}
                 alt={`Logo de ${sponsor.name}`}
-                className="w-full h-full object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105 sm:group-hover:scale-110 md:group-hover:scale-125"
+                fill
+                className="object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105 sm:group-hover:scale-110 md:group-hover:scale-125"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               />
             </div>
           </CardContent>
@@ -565,11 +568,15 @@ function SponsorModal({ sponsor, isOpen, onClose }) {
           {/* Header con logo */}
           <div className="relative h-32 xs:h-40 sm:h-48 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center p-6 sm:p-8 border-b border-zinc-800">
             <div className="absolute inset-0 bg-[linear-gradient(rgba(250,204,21,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(250,204,21,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
-            <img
-              src={sponsor.logo || "/placeholder.svg"}
-              alt={`Logo de ${sponsor.businessName}`}
-              className="relative z-10 max-h-24 xs:max-h-28 sm:max-h-32 max-w-[80%] object-contain"
-            />
+            <div className="relative z-10 h-20 sm:h-28 w-52 sm:w-72">
+              <Image
+                src={sponsor.logo || "/placeholder.svg"}
+                alt={`Logo de ${sponsor.businessName}`}
+                fill
+                className="object-contain"
+                sizes="300px"
+              />
+            </div>
           </div>
 
           {/* Content */}
