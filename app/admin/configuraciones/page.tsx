@@ -287,7 +287,7 @@ export default function ConfiguracionesPage() {
           {/* Selector de año */}
           <div className="flex items-center gap-2">
             <Select value={selectedYear} onValueChange={handleYearChange}>
-              <SelectTrigger className="w-[140px] bg-zinc-800 border-yellow-400/30 text-white">
+              <SelectTrigger className="w-[120px] sm:w-[140px] bg-zinc-800 border-yellow-400/30 text-white">
                 <Calendar className="w-4 h-4 mr-2 text-yellow-400" />
                 <SelectValue />
               </SelectTrigger>
@@ -326,8 +326,8 @@ export default function ConfiguracionesPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Toggle Inscripciones - Arriba de todo, bien visible */}
-              <div className={`flex items-center justify-between p-4 rounded-lg border ${inscripcionesAbiertas ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                <div className="flex items-center gap-3">
+              <div className={`flex items-center justify-between p-3 sm:p-4 rounded-lg border gap-3 ${inscripcionesAbiertas ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   {!inscripcionesAbiertas && <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />}
                   <div>
                     <p className="text-white font-medium">

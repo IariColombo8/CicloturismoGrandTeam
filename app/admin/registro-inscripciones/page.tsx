@@ -247,7 +247,7 @@ export default function RegistroInscripciones() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black text-white p-2 md:p-4">
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black text-white p-2 sm:p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -283,7 +283,7 @@ export default function RegistroInscripciones() {
 
         {/* Stats Cards */}
         <motion.div 
-          className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-6"
+          className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -296,12 +296,12 @@ export default function RegistroInscripciones() {
           ].map((stat) => {
             const Icon = stat.icon
             return (
-              <div key={stat.title} className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-4 hover:border-yellow-400/40 transition-all">
-                <div className="flex justify-between items-start mb-2">
+              <div key={stat.title} className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-yellow-400/40 transition-all">
+                <div className="flex justify-between items-start mb-1 sm:mb-2">
                   <div className="text-xs text-gray-400">{stat.title}</div>
-                  <Icon className={`w-4 h-4 text-${stat.color}-400`} />
+                  <Icon className={`w-4 h-4 text-${stat.color}-400 flex-shrink-0`} />
                 </div>
-                <div className="text-2xl font-bold text-white">{stat.value}</div>
+                <div className="text-xl sm:text-2xl font-bold text-white truncate">{stat.value}</div>
                 <div className="text-xs text-gray-500 mt-1">
                   {stat.title === "Ingresos" ? "Total recaudado" : 
                    stat.title === "Total" ? "Inscripciones" : 
@@ -522,12 +522,12 @@ export default function RegistroInscripciones() {
         {isDetailsModalOpen && selectedInscripcion && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
-              className="bg-zinc-900 border border-yellow-400/20 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-zinc-900 border border-yellow-400/20 rounded-lg w-[calc(100vw-1rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <div className="sticky top-0 bg-zinc-900 border-b border-yellow-400/20 p-4 flex justify-between items-center z-10">
-                <h2 className="text-xl font-bold text-yellow-400 flex items-center gap-2">
+              <div className="sticky top-0 bg-zinc-900 border-b border-yellow-400/20 p-3 sm:p-4 flex justify-between items-center z-10">
+                <h2 className="text-base sm:text-xl font-bold text-yellow-400 flex items-center gap-2">
                   <Users className="w-5 h-5" />
                   Detalles de Inscripción
                 </h2>
@@ -539,14 +539,14 @@ export default function RegistroInscripciones() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
                 {/* Personal Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <User className="w-4 h-4" />
                     Información Personal
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Nombre Completo</div>
                       <div className="text-sm font-medium text-white">{selectedInscripcion.nombre} {selectedInscripcion.apellido}</div>
@@ -563,12 +563,12 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Contact Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Mail className="w-4 h-4" />
                     Información de Contacto
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Email</div>
                       <div className="text-sm text-white break-words">{selectedInscripcion.email}</div>
@@ -585,12 +585,12 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Event Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <ClipboardList className="w-4 h-4" />
                     Información del Evento
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Talle de Remera</div>
                       <div className="text-sm text-white uppercase">{selectedInscripcion.talleRemera || "-"}</div>
@@ -607,12 +607,12 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Health Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Stethoscope className="w-4 h-4" />
                     Información de Salud
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Alergias</div>
                       <div className="text-sm text-white">{selectedInscripcion.tieneAlergias === "si" ? selectedInscripcion.alergias : "No"}</div>
@@ -625,12 +625,12 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Emergency Contact */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Phone className="w-4 h-4" />
                     Contacto de Emergencia
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Nombre</div>
                       <div className="text-sm text-white">{selectedInscripcion.nombreEmergencia || "-"}</div>
@@ -647,12 +647,12 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Payment Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <DollarSign className="w-4 h-4" />
                     Información de Pago
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Método de Pago</div>
                       <div className="text-sm text-white capitalize">{selectedInscripcion.metodoPago?.replace("_", " ") || "-"}</div>
@@ -675,12 +675,12 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Status and Notes */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Edit className="w-4 h-4" />
                     Estado y Notas
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Estado</label>
                       <select
@@ -707,7 +707,7 @@ export default function RegistroInscripciones() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-4 flex justify-between items-center">
+              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-3 sm:p-4 flex justify-between items-center gap-2">
                 <button
                   onClick={closeDetailsModal}
                   className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-white hover:bg-zinc-700 transition-all text-sm"

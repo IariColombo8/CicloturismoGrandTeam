@@ -256,7 +256,7 @@ export default function GastosPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-gray-800/50 border-green-500/20">
             <CardHeader>
               <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
@@ -299,11 +299,11 @@ export default function GastosPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="todos">
-              <TabsList className="bg-gray-700">
-                <TabsTrigger value="todos">Todos ({gastos.length})</TabsTrigger>
-                <TabsTrigger value="pendientes">Pendientes ({pendientes.length})</TabsTrigger>
-                <TabsTrigger value="aprobados">Aprobados ({aprobados.length})</TabsTrigger>
-                <TabsTrigger value="rechazados">Rechazados ({rechazados.length})</TabsTrigger>
+              <TabsList className="bg-gray-700 w-full flex flex-wrap h-auto gap-1 p-1">
+                <TabsTrigger value="todos" className="flex-1 min-w-0 text-xs sm:text-sm">Todos ({gastos.length})</TabsTrigger>
+                <TabsTrigger value="pendientes" className="flex-1 min-w-0 text-xs sm:text-sm">Pend. ({pendientes.length})</TabsTrigger>
+                <TabsTrigger value="aprobados" className="flex-1 min-w-0 text-xs sm:text-sm">Aprob. ({aprobados.length})</TabsTrigger>
+                <TabsTrigger value="rechazados" className="flex-1 min-w-0 text-xs sm:text-sm">Rech. ({rechazados.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="todos">
@@ -352,7 +352,7 @@ export default function GastosPage() {
 
         {/* Create/Propose Modal */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="bg-gray-800 border-yellow-400/20">
+          <DialogContent className="bg-gray-800 border-yellow-400/20 max-w-[calc(100vw-2rem)] sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="text-yellow-400">
                 {userRole === "admin" ? "Agregar Nuevo Gasto" : "Proponer Gasto"}
@@ -428,13 +428,13 @@ export default function GastosPage() {
         {/* Detail Modal */}
         {selectedGasto && (
           <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-            <DialogContent className="bg-gray-800 border-yellow-400/20 max-w-2xl">
+            <DialogContent className="bg-gray-800 border-yellow-400/20 max-w-[calc(100vw-2rem)] sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="text-yellow-400">Detalle del Gasto</DialogTitle>
               </DialogHeader>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-gray-400">Descripción</Label>
                     <p className="text-white font-medium">{selectedGasto.descripcion}</p>
@@ -487,7 +487,7 @@ export default function GastosPage() {
                 )}
               </div>
 
-              <DialogFooter className="flex gap-2">
+              <DialogFooter className="flex flex-wrap gap-2">
                 {userRole === "admin" && selectedGasto.estado === "pendiente" && (
                   <>
                     <Button onClick={() => handleApprove(selectedGasto.id)} className="bg-green-500 hover:bg-green-600">

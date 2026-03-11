@@ -61,7 +61,7 @@ export default function DashboardCharts({
   return (
     <>
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Tendencia Acumulada */}
         <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
           <CardHeader>
@@ -71,7 +71,7 @@ export default function DashboardCharts({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={tendenciaData}>
                 <defs>
                   <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
@@ -105,7 +105,7 @@ export default function DashboardCharts({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={estadoData}
@@ -113,7 +113,7 @@ export default function DashboardCharts({
                   cy="50%"
                   labelLine={false}
                   label={(entry) => `${entry.name}: ${entry.value}`}
-                  outerRadius={100}
+                  outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
@@ -129,7 +129,7 @@ export default function DashboardCharts({
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Inscripciones por fecha - Line */}
         <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
           <CardHeader>
@@ -139,7 +139,7 @@ export default function DashboardCharts({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="date" stroke="#9ca3af" style={{ fontSize: "12px" }} />
@@ -168,7 +168,7 @@ export default function DashboardCharts({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={categoriaData}
@@ -176,7 +176,7 @@ export default function DashboardCharts({
                   cy="50%"
                   labelLine={false}
                   label={(entry) => `${entry.name}: ${entry.value}`}
-                  outerRadius={100}
+                  outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
@@ -192,7 +192,7 @@ export default function DashboardCharts({
       </div>
 
       {/* Charts Row 3 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Top Provincias - Bar */}
         <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
           <CardHeader>
@@ -202,11 +202,11 @@ export default function DashboardCharts({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={provinciaData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis type="number" stroke="#9ca3af" />
-                <YAxis dataKey="provincia" type="category" stroke="#9ca3af" width={100} />
+                <YAxis dataKey="provincia" type="category" stroke="#9ca3af" width={80} style={{ fontSize: "11px" }} />
                 <Tooltip {...tooltipStyle} />
                 <Bar dataKey="count" fill="#fbbf24" radius={[0, 8, 8, 0]} />
               </BarChart>
@@ -223,7 +223,7 @@ export default function DashboardCharts({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <RadarChart data={radarData}>
                 <PolarGrid stroke="#374151" />
                 <PolarAngleAxis dataKey="metric" stroke="#9ca3af" />
@@ -243,7 +243,7 @@ export default function DashboardCharts({
       </div>
 
       {/* Resumen de Ingresos - Bar Chart Grande */}
-      <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm mb-8">
+      <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm mb-6 sm:mb-8">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-green-400" />
@@ -251,7 +251,7 @@ export default function DashboardCharts({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart
               data={[
                 {

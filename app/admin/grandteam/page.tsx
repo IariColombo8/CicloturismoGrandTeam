@@ -98,7 +98,7 @@ export default function GrandTeamPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-gray-800/50 border-yellow-400/20">
             <CardHeader>
               <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
@@ -144,10 +144,10 @@ export default function GrandTeamPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="cumpleanos">
-              <TabsList className="bg-gray-700">
-                <TabsTrigger value="cumpleanos">Cumpleaños ({cumpleañeros.length})</TabsTrigger>
-                <TabsTrigger value="salud">Datos de Salud</TabsTrigger>
-                <TabsTrigger value="miembros">Todos los Miembros ({miembros.length})</TabsTrigger>
+              <TabsList className="bg-gray-700 w-full flex flex-wrap h-auto gap-1 p-1">
+                <TabsTrigger value="cumpleanos" className="flex-1 min-w-0 text-xs sm:text-sm">Cumpleaños ({cumpleañeros.length})</TabsTrigger>
+                <TabsTrigger value="salud" className="flex-1 min-w-0 text-xs sm:text-sm">Salud</TabsTrigger>
+                <TabsTrigger value="miembros" className="flex-1 min-w-0 text-xs sm:text-sm">Miembros ({miembros.length})</TabsTrigger>
               </TabsList>
 
               {/* Cumpleaños */}
@@ -158,7 +158,7 @@ export default function GrandTeamPage() {
                     <p>No hay cumpleaños este mes</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     {cumpleañeros.map((miembro) => (
                       <Card
                         key={miembro.id}

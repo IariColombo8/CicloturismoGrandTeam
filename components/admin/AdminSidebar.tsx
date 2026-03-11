@@ -85,7 +85,7 @@ export default function AdminSidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-24 left-4 z-50 md:hidden p-3 bg-zinc-900 border border-yellow-400/30 rounded-lg text-yellow-400 hover:bg-zinc-800 transition-all shadow-lg"
+        className="fixed top-[5.5rem] left-3 z-50 md:hidden p-2.5 bg-zinc-900 border border-yellow-400/30 rounded-lg text-yellow-400 hover:bg-zinc-800 transition-all shadow-lg"
         aria-label="Toggle menu"
       >
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -107,7 +107,7 @@ export default function AdminSidebar() {
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           ${isCollapsed ? "md:w-20" : "md:w-64"}
           md:translate-x-0
-          w-64
+          w-[75vw] max-w-64
         `}
       >
         {/* Collapse Button (Desktop only) */}
@@ -120,7 +120,7 @@ export default function AdminSidebar() {
         </button>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2">
+        <nav className="p-3 md:p-4 space-y-1 md:space-y-2">
           {navItems.map((item) => {
             const IconComponent = item.icon
             const active = isActive(item.href)
@@ -131,7 +131,7 @@ export default function AdminSidebar() {
                 href={item.href}
                 onClick={() => setIsOpen(false)}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
+                  flex items-center gap-3 px-3 py-2.5 md:px-4 md:py-3 rounded-lg transition-all duration-200 text-sm md:text-base
                   ${active 
                     ? `bg-gradient-to-r from-yellow-400/20 to-transparent border-l-4 border-yellow-400 ${item.color}` 
                     : `text-gray-400 ${item.hoverColor} hover:text-white`

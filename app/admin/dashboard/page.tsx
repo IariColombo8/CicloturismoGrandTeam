@@ -197,53 +197,53 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black pt-20">
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black pt-16 md:pt-20">
       {/* Header */}
-      <div className="border-b border-yellow-400/20 bg-black/50 backdrop-blur-sm sticky top-20 z-40">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="border-b border-yellow-400/20 bg-black/50 backdrop-blur-sm sticky top-16 md:top-20 z-40">
+        <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-black text-white">
-                Dashboard <span className="gradient-text">Grand Team Bike 2026</span>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-3xl font-black text-white truncate">
+                Dashboard <span className="gradient-text hidden sm:inline">Grand Team Bike 2026</span>
               </h1>
-              <p className="text-sm text-gray-400 mt-1">Análisis completo y métricas en tiempo real</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">Análisis completo y métricas en tiempo real</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Stats Cards - Principales */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-900/20 border-yellow-400/30 hover:border-yellow-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Total Inscripciones</CardTitle>
-              <Users className="w-5 h-5 text-yellow-400" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Total Inscripciones</CardTitle>
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-black text-white">{inscripciones.length}</div>
-              <p className="text-xs text-gray-500 mt-1">Participantes registrados</p>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-4xl font-black text-white">{inscripciones.length}</div>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Participantes registrados</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-900/20 border-amber-400/30 hover:border-amber-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Pendientes</CardTitle>
-              <Clock className="w-5 h-5 text-amber-400" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Pendientes</CardTitle>
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-black text-amber-400">{pendientes.length}</div>
-              <p className="text-xs text-gray-500 mt-1">Esperando confirmación</p>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-4xl font-black text-amber-400">{pendientes.length}</div>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Esperando confirmación</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-green-900/20 border-green-400/30 hover:border-green-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Confirmadas</CardTitle>
-              <CheckCircle className="w-5 h-5 text-green-500" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Confirmadas</CardTitle>
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-black text-green-500">{aprobadas.length}</div>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-4xl font-black text-green-500">{aprobadas.length}</div>
               <p className="text-xs text-gray-500 mt-1">
                 {inscripciones.length > 0 ? ((aprobadas.length / inscripciones.length) * 100).toFixed(1) : 0}% del total
               </p>
@@ -251,12 +251,12 @@ export default function AdminDashboard() {
           </Card>
 
           <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-900/20 border-emerald-400/30 hover:border-emerald-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Ingresos Confirmados</CardTitle>
-              <DollarSign className="w-5 h-5 text-emerald-500" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Ingresos</CardTitle>
+              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-black text-emerald-500">
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-4xl font-black text-emerald-500">
                 ${(ingresosConfirmados / 1000).toFixed(0)}k
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards - Secundarias */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-400">Tasa de Conversión</CardTitle>
@@ -336,11 +336,11 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="space-y-4">
               {inscripciones.slice(0, 5).map((inscripcion, index) => (
-                <div 
+                <div
                   key={index}
-                  className="flex items-center justify-between p-4 bg-zinc-900 rounded-lg border border-yellow-400/10 hover:border-yellow-400/30 transition-all"
+                  className="flex items-center justify-between p-3 sm:p-4 bg-zinc-900 rounded-lg border border-yellow-400/10 hover:border-yellow-400/30 transition-all gap-3"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-black font-bold text-sm sm:text-base flex-shrink-0">
                       {inscripcion.nombre?.charAt(0)}{inscripcion.apellido?.charAt(0)}
                     </div>
@@ -354,8 +354,8 @@ export default function AdminDashboard() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  <div className="text-right flex-shrink-0">
+                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
                       inscripcion.estado === "confirmada" 
                         ? "bg-green-500/20 text-green-400 border border-green-500/30" 
                         : inscripcion.estado === "pendiente"
