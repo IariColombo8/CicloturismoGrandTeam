@@ -110,7 +110,7 @@ export default function AboutTeam() {
         </div>
 
         {/* Values grid - 2 COLUMNAS EN MÓVIL */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-12 sm:mb-20">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mb-12 sm:mb-20">
           {values.map((value, index) => {
             const IconComponent = value.icon
             return (

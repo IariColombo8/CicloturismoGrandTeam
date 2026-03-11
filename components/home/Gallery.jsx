@@ -109,7 +109,7 @@ export default function Gallery() {
         </div>
 
         {/* Gallery grid - 2 COLUMNAS EN MÓVIL */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 md:gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-7xl mx-auto">
           {galleryImages.map((image, index) => (
             <Card
               key={index}

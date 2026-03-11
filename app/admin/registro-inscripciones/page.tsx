@@ -6,7 +6,7 @@ import { collection, query, onSnapshot, orderBy, getDocs, where, doc, updateDoc 
 import { auth, db } from "@/lib/firebase"
 import { signOut } from "firebase/auth"
 import { motion } from "framer-motion"
-import Navbar from "@/components/Navbar"
+import Navbar from "@/components/layout/Navbar"
 import {
   Users,
   LogOut,
@@ -92,13 +92,12 @@ export default function RegistroInscripciones() {
   useEffect(() => {
     if (!user) return
     
-    const q = query(collection(db, "inscripciones"), orderBy("fechaInscripcion", "desc"))
+    const q = query(collection(db, "Participantes"), orderBy("fechaInscripcion", "desc"))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }))
-      console.log("📦 Datos Firestore:", data)
       setInscripciones(data)
       setLoading(false)
     })
@@ -135,8 +134,8 @@ export default function RegistroInscripciones() {
 
   const filteredInscripciones = inscripciones.filter((insc) => {
     const matchesSearch = 
-      insc.nombres?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insc.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insc.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insc.apellido?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       insc.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       insc.dni?.includes(searchTerm)
     
@@ -206,7 +205,7 @@ export default function RegistroInscripciones() {
     
     setUpdatingStatus(true)
     try {
-      const registrationRef = doc(db, "inscripciones", selectedInscripcion.id)
+      const registrationRef = doc(db, "Participantes", selectedInscripcion.id)
       await updateDoc(registrationRef, {
         estado: newStatus,
         nota: statusNote,
@@ -415,12 +414,12 @@ export default function RegistroInscripciones() {
                       <td className="px-4 py-3 text-sm text-gray-400">{indexOfFirstItem + index + 1}</td>
                       <td className="px-4 py-3">
                         <div className="font-semibold text-yellow-400 text-sm">
-                          {insc.nombres} {insc.apellidos}
+                          {insc.nombre} {insc.apellido}
                         </div>
                         <div className="text-xs text-gray-500 md:hidden">{insc.email}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.email}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.ciudad}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.localidad}</td>
                       <td className="px-4 py-3">{getStatusBadge(insc.estado)}</td>
                       <td className="px-4 py-3 text-right">
                         <button
@@ -550,7 +549,7 @@ export default function RegistroInscripciones() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Nombre Completo</div>
-                      <div className="text-sm font-medium text-white">{selectedInscripcion.nombres} {selectedInscripcion.apellidos}</div>
+                      <div className="text-sm font-medium text-white">{selectedInscripcion.nombre} {selectedInscripcion.apellido}</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400">DNI</div>
@@ -579,8 +578,8 @@ export default function RegistroInscripciones() {
                       <div className="text-sm text-white">{selectedInscripcion.telefono || "-"}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400">Ciudad</div>
-                      <div className="text-sm text-white">{selectedInscripcion.ciudad || "-"}</div>
+                      <div className="text-xs text-gray-400">Localidad</div>
+                      <div className="text-sm text-white">{selectedInscripcion.localidad || "-"}</div>
                     </div>
                   </div>
                 </div>
@@ -601,8 +600,48 @@ export default function RegistroInscripciones() {
                       <div className="text-sm text-white">{selectedInscripcion.grupoSanguineo || "-"}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400">Grupo de Ciclistas</div>
-                      <div className="text-sm text-white">{selectedInscripcion.grupoCiclistas || "-"}</div>
+                      <div className="text-xs text-gray-400">Ha recorrido distancia</div>
+                      <div className="text-sm text-white">{selectedInscripcion.haRecorridoDistancia || "-"}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Health Info */}
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
+                    <Stethoscope className="w-4 h-4" />
+                    Información de Salud
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs text-gray-400">Alergias</div>
+                      <div className="text-sm text-white">{selectedInscripcion.tieneAlergias === "si" ? selectedInscripcion.alergias : "No"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Condición de Salud</div>
+                      <div className="text-sm text-white">{selectedInscripcion.tieneProblemasSalud === "si" ? selectedInscripcion.condicionSalud : "No"}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Emergency Contact */}
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
+                    <Phone className="w-4 h-4" />
+                    Contacto de Emergencia
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <div className="text-xs text-gray-400">Nombre</div>
+                      <div className="text-sm text-white">{selectedInscripcion.nombreEmergencia || "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Teléfono</div>
+                      <div className="text-sm text-white">{selectedInscripcion.telefonoEmergencia || "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Relación</div>
+                      <div className="text-sm text-white">{selectedInscripcion.relacionEmergencia || "-"}</div>
                     </div>
                   </div>
                 </div>
@@ -613,20 +652,26 @@ export default function RegistroInscripciones() {
                     <DollarSign className="w-4 h-4" />
                     Información de Pago
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Método de Pago</div>
                       <div className="text-sm text-white capitalize">{selectedInscripcion.metodoPago?.replace("_", " ") || "-"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-400">Precio</div>
-                      <div className="text-sm font-semibold text-green-400">{selectedInscripcion.precio || "-"}</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400">N° de Referencia</div>
                       <div className="text-sm text-white font-mono">{selectedInscripcion.numeroReferencia || "-"}</div>
                     </div>
                   </div>
+                  {selectedInscripcion.imagenBase64 && (
+                    <div className="mt-3">
+                      <div className="text-xs text-gray-400 mb-2">Comprobante de Pago</div>
+                      <img
+                        src={selectedInscripcion.imagenBase64}
+                        alt="Comprobante de pago"
+                        className="max-w-full max-h-64 rounded-lg border border-yellow-400/20"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Status and Notes */}

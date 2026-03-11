@@ -33,12 +33,12 @@ export default function ReviewStep({ formData, eventConfig }: ReviewStepProps) {
           <div>
             <p className="text-gray-400">Nombre Completo</p>
             <p className="text-white font-medium">
-              {formData.nombres} {formData.apellidos}
+              {formData.nombre} {formData.apellido}
             </p>
           </div>
           <div>
-            <p className="text-gray-400">Cédula/DNI</p>
-            <p className="text-white font-medium">{formData.cedula}</p>
+            <p className="text-gray-400">DNI</p>
+            <p className="text-white font-medium">{formData.dni}</p>
           </div>
           <div>
             <p className="text-gray-400">Email</p>
@@ -54,11 +54,11 @@ export default function ReviewStep({ formData, eventConfig }: ReviewStepProps) {
           </div>
           <div>
             <p className="text-gray-400">País</p>
-            <p className="text-white font-medium">{formData.pais}</p>
+            <p className="text-white font-medium">{formData.paisTelefono}</p>
           </div>
           <div>
-            <p className="text-gray-400">Ciudad</p>
-            <p className="text-white font-medium">{formData.ciudad}</p>
+            <p className="text-gray-400">Localidad</p>
+            <p className="text-white font-medium">{formData.localidad}</p>
           </div>
         </CardContent>
       </Card>
@@ -105,12 +105,12 @@ export default function ReviewStep({ formData, eventConfig }: ReviewStepProps) {
             </Badge>
           </div>
           <div>
-            <p className="text-gray-400">Talla de Camiseta</p>
-            <p className="text-white font-medium uppercase">{formData.tallaCamiseta}</p>
+            <p className="text-gray-400">Talle de Remera</p>
+            <p className="text-white font-medium uppercase">{formData.talleRemera}</p>
           </div>
           <div>
-            <p className="text-gray-400">Tipo de Sangre</p>
-            <p className="text-white font-medium">{formData.tipoSangre}</p>
+            <p className="text-gray-400">Grupo Sanguíneo</p>
+            <p className="text-white font-medium">{formData.grupoSanguineo}</p>
           </div>
           <div>
             <p className="text-gray-400">¿Tiene alergias?</p>
@@ -130,10 +130,10 @@ export default function ReviewStep({ formData, eventConfig }: ReviewStepProps) {
               {formData.tieneProblemasSalud === 'si' ? 'Sí' : 'No'}
             </Badge>
           </div>
-          {formData.tieneProblemasSalud === 'si' && formData.condicionesMedicas && (
+          {formData.tieneProblemasSalud === 'si' && formData.condicionSalud && (
             <div className="md:col-span-2">
-              <p className="text-gray-400">Condiciones Médicas</p>
-              <p className="text-white font-medium">{formData.condicionesMedicas}</p>
+              <p className="text-gray-400">Condición de Salud</p>
+              <p className="text-white font-medium">{formData.condicionSalud}</p>
             </div>
           )}
         </CardContent>

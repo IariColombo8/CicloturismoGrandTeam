@@ -36,7 +36,7 @@ export default function GrandTeamDashboard() {
 
     // Get only approved inscriptions
     const q = query(
-      collection(db, "inscripciones"),
+      collection(db, "Participantes"),
       where("estado", "==", "aprobado"),
       orderBy("fechaInscripcion", "desc"),
     )
@@ -62,13 +62,13 @@ export default function GrandTeamDashboard() {
     // Export participants list to CSV
     const headers = ["Nombre", "Cédula", "Email", "Teléfono", "Categoría", "Talla", "Tipo Sangre"]
     const csvData = inscripciones.map((i) => [
-      `${i.nombres} ${i.apellidos}`,
-      i.cedula,
+      `${i.nombre} ${i.apellido}`,
+      i.dni,
       i.email,
       i.telefono,
       i.categoria,
-      //i.tallaCamiseta,
-      i.tipoSangre,
+      //i.talleRemera,
+      i.grupoSanguineo,
     ])
 
     const csv = [headers, ...csvData].map((row) => row.join(",")).join("\n")
@@ -83,10 +83,10 @@ export default function GrandTeamDashboard() {
   const filteredInscripciones = inscripciones.filter((i) => {
     const searchLower = searchTerm.toLowerCase()
     return (
-      i.nombres?.toLowerCase().includes(searchLower) ||
-      i.apellidos?.toLowerCase().includes(searchLower) ||
+      i.nombre?.toLowerCase().includes(searchLower) ||
+      i.apellido?.toLowerCase().includes(searchLower) ||
       i.email?.toLowerCase().includes(searchLower) ||
-      i.cedula?.toLowerCase().includes(searchLower)
+      i.dni?.toLowerCase().includes(searchLower)
     )
   })
 

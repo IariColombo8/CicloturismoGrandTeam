@@ -101,12 +101,6 @@ export default function LoginPage() {
         lastLogin: new Date(),
       })
 
-      console.log("[v0] Usuario autenticado:", {
-        email: user.email,
-        role: userRole,
-        docId: userDocId,
-      })
-
       toast({
         title: "¡Bienvenido!",
         description: `Sesión iniciada como ${userRole}`,
@@ -172,12 +166,6 @@ export default function LoginPage() {
         loginMethod: "google",
         createdAt: adminSnapshot.empty ? new Date() : adminSnapshot.docs[0].data().createdAt,
         lastLogin: new Date(),
-      })
-
-      console.log("[v0] Usuario guardado en colección administrador:", {
-        email: user.email,
-        role: userRole,
-        docId: userDocId,
       })
 
       toast({

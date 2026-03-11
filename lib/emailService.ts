@@ -2,8 +2,8 @@
 import emailjs from "@emailjs/browser"
 
 // Inicializar EmailJS con tu Public Key
-const EMAILJS_PUBLIC_KEY 
-const SERVICE_ID 
+const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || ""
+const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || ""
 
 // IDs de templates - actualiza estos con tus propios template IDs
 const TEMPLATE_IDS = {

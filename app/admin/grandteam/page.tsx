@@ -89,16 +89,16 @@ export default function GrandTeamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-6 pt-28">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-4 sm:p-6 pt-24 sm:pt-28">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <Users className="w-10 h-10 text-yellow-400" />
-          <h1 className="text-4xl font-bold text-yellow-400">Panel Grand Team</h1>
+        <div className="flex items-center gap-3 mb-6 sm:mb-8">
+          <Users className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-400" />
+          <h1 className="text-2xl sm:text-4xl font-bold text-yellow-400">Panel Grand Team</h1>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <Card className="bg-gray-800/50 border-yellow-400/20">
             <CardHeader>
               <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
@@ -158,7 +158,7 @@ export default function GrandTeamPage() {
                     <p>No hay cumpleaños este mes</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {cumpleañeros.map((miembro) => (
                       <Card
                         key={miembro.id}
@@ -199,14 +199,14 @@ export default function GrandTeamPage() {
                   </Button>
                 </div>
 
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                <div className="rounded-lg border border-gray-700 overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-gray-700">
                       <TableRow>
                         <TableHead className="text-yellow-400">Nombre</TableHead>
                         <TableHead className="text-yellow-400">Grupo Sanguíneo</TableHead>
-                        <TableHead className="text-yellow-400">Alergias</TableHead>
-                        <TableHead className="text-yellow-400">Medicamentos</TableHead>
+                        <TableHead className="text-yellow-400 hidden sm:table-cell">Alergias</TableHead>
+                        <TableHead className="text-yellow-400 hidden md:table-cell">Medicamentos</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -220,10 +220,10 @@ export default function GrandTeamPage() {
                             <TableCell>
                               <Badge className="bg-red-500/20 text-red-400">{miembro.grupoSanguineo || "N/A"}</Badge>
                             </TableCell>
-                            <TableCell className="text-gray-400 text-sm">
+                            <TableCell className="text-gray-400 text-sm hidden sm:table-cell">
                               {miembro.datosSalud?.alergias || "Ninguna"}
                             </TableCell>
-                            <TableCell className="text-gray-400 text-sm">
+                            <TableCell className="text-gray-400 text-sm hidden md:table-cell">
                               {miembro.datosSalud?.medicamentos || "Ninguno"}
                             </TableCell>
                           </TableRow>
@@ -235,14 +235,14 @@ export default function GrandTeamPage() {
 
               {/* Todos los Miembros */}
               <TabsContent value="miembros" className="mt-6">
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                <div className="rounded-lg border border-gray-700 overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-gray-700">
                       <TableRow>
                         <TableHead className="text-yellow-400">Nombre</TableHead>
-                        <TableHead className="text-yellow-400">Email</TableHead>
-                        <TableHead className="text-yellow-400">Teléfono</TableHead>
-                        <TableHead className="text-yellow-400">Localidad</TableHead>
+                        <TableHead className="text-yellow-400 hidden sm:table-cell">Email</TableHead>
+                        <TableHead className="text-yellow-400 hidden md:table-cell">Teléfono</TableHead>
+                        <TableHead className="text-yellow-400 hidden lg:table-cell">Localidad</TableHead>
                         <TableHead className="text-yellow-400">Rol</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -251,10 +251,11 @@ export default function GrandTeamPage() {
                         <TableRow key={miembro.id} className="border-gray-700">
                           <TableCell className="text-white font-medium">
                             {miembro.nombreCompleto || miembro.email.split("@")[0]}
+                            <span className="block text-xs text-gray-500 sm:hidden">{miembro.email}</span>
                           </TableCell>
-                          <TableCell className="text-gray-400">{miembro.email}</TableCell>
-                          <TableCell className="text-gray-400">{miembro.telefono || "N/A"}</TableCell>
-                          <TableCell className="text-gray-400">{miembro.localidad || "N/A"}</TableCell>
+                          <TableCell className="text-gray-400 hidden sm:table-cell">{miembro.email}</TableCell>
+                          <TableCell className="text-gray-400 hidden md:table-cell">{miembro.telefono || "N/A"}</TableCell>
+                          <TableCell className="text-gray-400 hidden lg:table-cell">{miembro.localidad || "N/A"}</TableCell>
                           <TableCell>
                             <Badge
                               className={

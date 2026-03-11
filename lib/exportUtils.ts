@@ -1,5 +1,7 @@
-// Utilidades para exportar datos a Excel
+// Utilidades para exportar datos a Excel/CSV
 export const exportToExcel = (data: any[], filename: string) => {
+  if (!data || data.length === 0) return
+
   // Convertir datos a CSV
   const headers = Object.keys(data[0] || {})
   const csvContent = [
@@ -33,15 +35,25 @@ export const exportToExcel = (data: any[], filename: string) => {
 
 export const formatInscripcionForExport = (inscripcion: any) => {
   return {
-    "Nombre Completo": inscripcion.nombreCompleto,
-    DNI: inscripcion.dni,
-    Email: inscripcion.email,
-    Teléfono: inscripcion.telefono,
-    Localidad: inscripcion.localidad,
-    "Grupo Sanguíneo": inscripcion.grupoSanguineo,
-    "Grupo Ciclista": inscripcion.grupoCiclista || "N/A",
-    "Contacto Emergencia": `${inscripcion.contactoEmergencia?.nombre} - ${inscripcion.contactoEmergencia?.telefono}`,
-    Estado: inscripcion.estado,
-    "Fecha Inscripción": new Date(inscripcion.fechaInscripcion?.seconds * 1000).toLocaleDateString("es-AR"),
+    "N° Inscripción": inscripcion.numeroInscripcion || "",
+    Nombre: inscripcion.nombre || "",
+    Apellido: inscripcion.apellido || "",
+    DNI: inscripcion.dni || "",
+    Email: inscripcion.email || "",
+    Teléfono: inscripcion.telefono || "",
+    "Fecha Nacimiento": inscripcion.fechaNacimiento || "",
+    País: inscripcion.paisTelefono || "",
+    Localidad: inscripcion.localidad || "",
+    "Talle Remera": inscripcion.talleRemera || "",
+    "Grupo Sanguíneo": inscripcion.grupoSanguineo || "",
+    Alergias: inscripcion.tieneAlergias === "si" ? inscripcion.alergias : "No",
+    "Condición de Salud": inscripcion.tieneProblemasSalud === "si" ? inscripcion.condicionSalud : "No",
+    "Contacto Emergencia": `${inscripcion.nombreEmergencia || ""} - ${inscripcion.telefonoEmergencia || ""}`,
+    "Método Pago": inscripcion.metodoPago || "",
+    "N° Referencia": inscripcion.numeroReferencia || "",
+    Estado: inscripcion.estado || "pendiente",
+    "Fecha Inscripción": inscripcion.fechaInscripcion?.seconds
+      ? new Date(inscripcion.fechaInscripcion.seconds * 1000).toLocaleDateString("es-AR")
+      : "",
   }
 }

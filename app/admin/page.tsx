@@ -56,8 +56,6 @@ export default function AdminLoginPage() {
 
       if (!adminSnapshot.empty) {
         const adminData = adminSnapshot.docs[0].data()
-        console.log("[v0] Admin status check:", adminData.role)
-
         if (adminData.role === "admin" || adminData.role === "grandteam") {
           router.push("/admin/dashboard")
         }
@@ -113,11 +111,6 @@ export default function AdminLoginPage() {
           loginMethod: "email",
           createdAt: new Date(),
           lastLogin: new Date(),
-        })
-
-        console.log("[v0] Nuevo usuario creado en administrador:", {
-          email: user.email,
-          role: "usuario",
         })
 
         await auth.signOut()
@@ -193,11 +186,6 @@ export default function AdminLoginPage() {
           loginMethod: "google",
           createdAt: new Date(),
           lastLogin: new Date(),
-        })
-
-        console.log("[v0] Nuevo usuario creado en administrador:", {
-          email: user.email,
-          role: "usuario",
         })
 
         await auth.signOut()

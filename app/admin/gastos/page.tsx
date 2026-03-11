@@ -238,13 +238,13 @@ export default function GastosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-6 pt-28">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-4 sm:p-6 pt-24 sm:pt-28">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <DollarSign className="w-10 h-10 text-yellow-400" />
-            <h1 className="text-4xl font-bold text-yellow-400">Gastos</h1>
+            <DollarSign className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-400" />
+            <h1 className="text-2xl sm:text-4xl font-bold text-yellow-400">Gastos</h1>
           </div>
           <Button
             onClick={() => setIsModalOpen(true)}
@@ -256,7 +256,7 @@ export default function GastosPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <Card className="bg-gray-800/50 border-green-500/20">
             <CardHeader>
               <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
@@ -532,14 +532,14 @@ function GastosTable({ gastos, onView, getStatusBadge }: any) {
   }
 
   return (
-    <div className="rounded-lg border border-gray-700 overflow-hidden mt-4">
+    <div className="rounded-lg border border-gray-700 overflow-x-auto mt-4">
       <Table>
         <TableHeader className="bg-gray-700">
           <TableRow>
             <TableHead className="text-yellow-400">Descripción</TableHead>
-            <TableHead className="text-yellow-400">Categoría</TableHead>
+            <TableHead className="text-yellow-400 hidden sm:table-cell">Categoría</TableHead>
             <TableHead className="text-yellow-400">Monto</TableHead>
-            <TableHead className="text-yellow-400">Creado por</TableHead>
+            <TableHead className="text-yellow-400 hidden md:table-cell">Creado por</TableHead>
             <TableHead className="text-yellow-400">Estado</TableHead>
             <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
           </TableRow>
@@ -547,10 +547,13 @@ function GastosTable({ gastos, onView, getStatusBadge }: any) {
         <TableBody>
           {gastos.map((gasto: any) => (
             <TableRow key={gasto.id} className="border-gray-700">
-              <TableCell className="text-white font-medium">{gasto.descripcion}</TableCell>
-              <TableCell className="text-gray-400 capitalize">{gasto.categoria}</TableCell>
+              <TableCell className="text-white font-medium">
+                {gasto.descripcion}
+                <span className="block text-xs text-gray-500 capitalize sm:hidden">{gasto.categoria}</span>
+              </TableCell>
+              <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{gasto.categoria}</TableCell>
               <TableCell className="text-white font-bold">${gasto.monto?.toLocaleString("es-AR")}</TableCell>
-              <TableCell className="text-gray-400 text-sm">
+              <TableCell className="text-gray-400 text-sm hidden md:table-cell">
                 {gasto.creadoPor}
                 <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
               </TableCell>

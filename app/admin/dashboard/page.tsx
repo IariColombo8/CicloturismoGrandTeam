@@ -68,7 +68,7 @@ export default function AdminDashboard() {
   useEffect(() => {
   if (!user) return
 
-  const q = query(collection(db, "inscripciones"), orderBy("fechaInscripcion", "desc"))
+  const q = query(collection(db, "Participantes"), orderBy("fechaInscripcion", "desc"))
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const data = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -214,7 +214,7 @@ export default function AdminDashboard() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards - Principales */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
           <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-900/20 border-yellow-400/30 hover:border-yellow-400/60 transition-all duration-300 hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-400">Total Inscripciones</CardTitle>
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards - Secundarias */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-400">Tasa de Conversión</CardTitle>
@@ -341,15 +341,15 @@ export default function AdminDashboard() {
                   className="flex items-center justify-between p-4 bg-zinc-900 rounded-lg border border-yellow-400/10 hover:border-yellow-400/30 transition-all"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-black font-bold">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-black font-bold text-sm sm:text-base flex-shrink-0">
                       {inscripcion.nombre?.charAt(0)}{inscripcion.apellido?.charAt(0)}
                     </div>
-                    <div>
-                      <p className="text-white font-semibold">
+                    <div className="min-w-0">
+                      <p className="text-white font-semibold text-sm sm:text-base truncate">
                         {inscripcion.nombre} {inscripcion.apellido}
                       </p>
-                      <p className="text-gray-400 text-sm flex items-center gap-2">
-                        <Mail className="w-3 h-3" />
+                      <p className="text-gray-400 text-xs sm:text-sm flex items-center gap-2 truncate">
+                        <Mail className="w-3 h-3 flex-shrink-0" />
                         {inscripcion.email}
                       </p>
                     </div>

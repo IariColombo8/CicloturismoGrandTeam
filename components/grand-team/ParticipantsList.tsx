@@ -55,9 +55,9 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
             {participants.map((participant) => (
               <TableRow key={participant.id} className="border-yellow-400/10 hover:bg-zinc-900/50">
                 <TableCell className="text-white font-medium">
-                  {participant.nombres} {participant.apellidos}
+                  {participant.nombre} {participant.apellido}
                 </TableCell>
-                <TableCell className="text-gray-400">{participant.cedula}</TableCell>
+                <TableCell className="text-gray-400">{participant.dni}</TableCell>
                 <TableCell className="text-gray-400">{participant.email}</TableCell>
                 <TableCell className="text-gray-400">{participant.telefono}</TableCell>
                 <TableCell>
@@ -65,7 +65,7 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
                     {participant.categoria}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-gray-400 uppercase">{participant.tallaCamiseta}</TableCell>
+                <TableCell className="text-gray-400 uppercase">{participant.talleRemera}</TableCell>
                 <TableCell className="text-right">
                   <Button
                     size="sm"
@@ -101,12 +101,12 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
                   <div>
                     <p className="text-gray-400">Nombre Completo</p>
                     <p className="text-white font-medium">
-                      {selectedParticipant.nombres} {selectedParticipant.apellidos}
+                      {selectedParticipant.nombre} {selectedParticipant.apellido}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-400">Cédula</p>
-                    <p className="text-white font-medium">{selectedParticipant.cedula}</p>
+                    <p className="text-gray-400">DNI</p>
+                    <p className="text-white font-medium">{selectedParticipant.dni}</p>
                   </div>
                   <div>
                     <p className="text-gray-400">Email</p>
@@ -120,10 +120,10 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
                     <p className="text-gray-400">Fecha de Nacimiento</p>
                     <p className="text-white font-medium">{selectedParticipant.fechaNacimiento}</p>
                   </div>
-                  {selectedParticipant.ciudad && (
+                  {selectedParticipant.localidad && (
                     <div>
-                      <p className="text-gray-400">Ciudad</p>
-                      <p className="text-white font-medium">{selectedParticipant.ciudad}</p>
+                      <p className="text-gray-400">Localidad</p>
+                      <p className="text-white font-medium">{selectedParticipant.localidad}</p>
                     </div>
                   )}
                 </div>
@@ -155,12 +155,12 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
                     </Badge>
                   </div>
                   {/*<div>
-                    <p className="text-gray-400">Talla</p>
-                    <p className="text-white font-medium uppercase">{selectedParticipant.tallaCamiseta}</p>
+                    <p className="text-gray-400">Talle</p>
+                    <p className="text-white font-medium uppercase">{selectedParticipant.talleRemera}</p>
                   </div>*/}
                   <div>
-                    <p className="text-gray-400">Tipo de Sangre</p>
-                    <p className="text-white font-medium">{selectedParticipant.tipoSangre}</p>
+                    <p className="text-gray-400">Grupo Sanguíneo</p>
+                    <p className="text-white font-medium">{selectedParticipant.grupoSanguineo}</p>
                   </div>
                   {selectedParticipant.alergias && (
                     <div className="col-span-2">
@@ -168,10 +168,10 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
                       <p className="text-white font-medium">{selectedParticipant.alergias}</p>
                     </div>
                   )}
-                  {selectedParticipant.condicionesMedicas && (
+                  {selectedParticipant.condicionSalud && (
                     <div className="col-span-2">
-                      <p className="text-gray-400">Condiciones Médicas</p>
-                      <p className="text-white font-medium">{selectedParticipant.condicionesMedicas}</p>
+                      <p className="text-gray-400">Condición de Salud</p>
+                      <p className="text-white font-medium">{selectedParticipant.condicionSalud}</p>
                     </div>
                   )}
                 </div>

@@ -55,12 +55,12 @@ export default function CategoryStep({ formData, updateFormData }: CategoryStepP
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="tallaCamiseta" className="text-gray-300">
-            Talla de Camiseta <span className="text-red-500">*</span>
+          <Label htmlFor="talleRemera" className="text-gray-300">
+            Talle de Remera <span className="text-red-500">*</span>
           </Label>
-          <Select value={formData.tallaCamiseta} onValueChange={(value) => updateFormData({ tallaCamiseta: value })}>
+          <Select value={formData.talleRemera} onValueChange={(value) => updateFormData({ talleRemera: value })}>
             <SelectTrigger className="bg-zinc-900 border-yellow-400/30 text-white">
-              <SelectValue placeholder="Selecciona tu talla" />
+              <SelectValue placeholder="Seleccioná tu talle" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-yellow-400/30">
               <SelectItem value="xs">XS - Extra Small</SelectItem>
@@ -79,12 +79,12 @@ export default function CategoryStep({ formData, updateFormData }: CategoryStepP
         <h3 className="text-lg font-semibold text-yellow-400">Información Médica</h3>
 
         <div className="space-y-2">
-          <Label htmlFor="tipoSangre" className="text-gray-300">
-            Tipo de Sangre <span className="text-red-500">*</span>
+          <Label htmlFor="grupoSanguineo" className="text-gray-300">
+            Grupo Sanguíneo <span className="text-red-500">*</span>
           </Label>
-          <Select value={formData.tipoSangre} onValueChange={(value) => updateFormData({ tipoSangre: value })}>
+          <Select value={formData.grupoSanguineo} onValueChange={(value) => updateFormData({ grupoSanguineo: value })}>
             <SelectTrigger className="bg-zinc-900 border-yellow-400/30 text-white">
-              <SelectValue placeholder="Selecciona tu tipo de sangre" />
+              <SelectValue placeholder="Seleccioná tu grupo sanguíneo" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-yellow-400/30">
               <SelectItem value="A+">A+</SelectItem>
@@ -151,7 +151,7 @@ export default function CategoryStep({ formData, updateFormData }: CategoryStepP
             onValueChange={(value) => {
               updateFormData({ tieneProblemasSalud: value })
               if (value === "no") {
-                updateFormData({ condicionesMedicas: "" })
+                updateFormData({ condicionSalud: "" })
               }
             }}
             className="flex gap-4"
@@ -172,9 +172,9 @@ export default function CategoryStep({ formData, updateFormData }: CategoryStepP
 
           {formData.tieneProblemasSalud === "si" && (
             <Textarea
-              id="condicionesMedicas"
-              value={formData.condicionesMedicas}
-              onChange={(e) => updateFormData({ condicionesMedicas: e.target.value })}
+              id="condicionSalud"
+              value={formData.condicionSalud}
+              onChange={(e) => updateFormData({ condicionSalud: e.target.value })}
               placeholder="Describe tus condiciones médicas (diabetes, asma, etc.)"
               className="bg-zinc-900 border-yellow-400/30 text-white min-h-[80px]"
               required

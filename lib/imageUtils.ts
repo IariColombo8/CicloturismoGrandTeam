@@ -33,8 +33,11 @@ export const compressAndConvertToBase64 = async (file: File, maxSizeKB = 500): P
         let quality = 0.8
         let base64 = canvas.toDataURL("image/jpeg", quality)
 
+        // base64 string is ~37% larger than actual bytes, so adjust threshold
+        const maxBase64Length = Math.ceil(maxSizeKB * 1024 * 1.37)
+
         // Reduce quality until file is under maxSizeKB
-        while (base64.length > maxSizeKB * 1024 && quality > 0.1) {
+        while (base64.length > maxBase64Length && quality > 0.1) {
           quality -= 0.1
           base64 = canvas.toDataURL("image/jpeg", quality)
         }

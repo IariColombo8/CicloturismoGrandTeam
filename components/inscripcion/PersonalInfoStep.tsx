@@ -2,13 +2,16 @@
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Loader2, Search } from "lucide-react"
 
 interface PersonalInfoStepProps {
   formData: any
   updateFormData: (data: any) => void
+  onDNIBlur?: (dni: string) => void
+  buscandoDNI?: boolean
 }
 
-export default function PersonalInfoStep({ formData, updateFormData }: PersonalInfoStepProps) {
+export default function PersonalInfoStep({ formData, updateFormData, onDNIBlur, buscandoDNI }: PersonalInfoStepProps) {
   return (
     <div className="space-y-6">
       {/* Personal Information */}
@@ -17,13 +20,13 @@ export default function PersonalInfoStep({ formData, updateFormData }: PersonalI
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="nombres" className="text-gray-300">
-              Nombres <span className="text-red-500">*</span>
+            <Label htmlFor="nombre" className="text-gray-300">
+              Nombre <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="nombres"
-              value={formData.nombres}
-              onChange={(e) => updateFormData({ nombres: e.target.value })}
+              id="nombre"
+              value={formData.nombre}
+              onChange={(e) => updateFormData({ nombre: e.target.value })}
               placeholder="Juan Carlos"
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required
@@ -31,13 +34,13 @@ export default function PersonalInfoStep({ formData, updateFormData }: PersonalI
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="apellidos" className="text-gray-300">
-              Apellidos <span className="text-red-500">*</span>
+            <Label htmlFor="apellido" className="text-gray-300">
+              Apellido <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="apellidos"
-              value={formData.apellidos}
-              onChange={(e) => updateFormData({ apellidos: e.target.value })}
+              id="apellido"
+              value={formData.apellido}
+              onChange={(e) => updateFormData({ apellido: e.target.value })}
               placeholder="Pérez González"
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required
@@ -47,17 +50,28 @@ export default function PersonalInfoStep({ formData, updateFormData }: PersonalI
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="cedula" className="text-gray-300">
+            <Label htmlFor="dni" className="text-gray-300">
               DNI/Cédula <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="cedula"
-              value={formData.cedula}
-              onChange={(e) => updateFormData({ cedula: e.target.value })}
-              placeholder="1234567890"
-              className="bg-zinc-900 border-yellow-400/30 text-white"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="dni"
+                value={formData.dni}
+                onChange={(e) => updateFormData({ dni: e.target.value })}
+                onBlur={(e) => onDNIBlur?.(e.target.value)}
+                placeholder="Ingresá tu DNI y se buscarán tus datos"
+                className="bg-zinc-900 border-yellow-400/30 text-white pr-10"
+                required
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {buscandoDNI ? (
+                  <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4 text-gray-500" />
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Al salir del campo, se buscarán tus datos automáticamente</p>
           </div>
 
           <div className="space-y-2">
@@ -109,13 +123,13 @@ export default function PersonalInfoStep({ formData, updateFormData }: PersonalI
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="pais" className="text-gray-300">
+            <Label htmlFor="paisTelefono" className="text-gray-300">
               País <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="pais"
-              value={formData.pais}
-              onChange={(e) => updateFormData({ pais: e.target.value })}
+              id="paisTelefono"
+              value={formData.paisTelefono}
+              onChange={(e) => updateFormData({ paisTelefono: e.target.value })}
               placeholder="Argentina"
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required
@@ -123,13 +137,13 @@ export default function PersonalInfoStep({ formData, updateFormData }: PersonalI
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ciudad" className="text-gray-300">
-              Ciudad <span className="text-red-500">*</span>
+            <Label htmlFor="localidad" className="text-gray-300">
+              Localidad <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="ciudad"
-              value={formData.ciudad}
-              onChange={(e) => updateFormData({ ciudad: e.target.value })}
+              id="localidad"
+              value={formData.localidad}
+              onChange={(e) => updateFormData({ localidad: e.target.value })}
               placeholder="Concepción del Uruguay"
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required

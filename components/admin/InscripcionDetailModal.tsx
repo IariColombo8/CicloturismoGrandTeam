@@ -97,7 +97,7 @@ export default function InscripcionDetailModal({
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">DNI/Cédula</label>
-                  <p className="text-sm mt-1">{inscripcion.dni || inscripcion.cedula || "-"}</p>
+                  <p className="text-sm mt-1">{inscripcion.dni || "-"}</p>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
@@ -204,12 +204,6 @@ export default function InscripcionDetailModal({
                   <div>
                     <label className="text-xs font-medium text-gray-500">Grupo Sanguíneo</label>
                     <p className="text-sm mt-1 font-medium">{inscripcion.grupoSanguineo}</p>
-                  </div>
-                )}
-                {inscripcion.tipoSangre && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Tipo de Sangre</label>
-                    <p className="text-sm mt-1 font-medium">{inscripcion.tipoSangre}</p>
                   </div>
                 )}
                 {inscripcion.condicionSalud && (
