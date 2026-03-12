@@ -6,6 +6,7 @@ import { collection, query, onSnapshot, orderBy, getDocs, where, doc, updateDoc 
 import { auth, db } from "@/lib/firebase"
 import { signOut } from "firebase/auth"
 import { motion } from "framer-motion"
+import { emailService } from "@/lib/emailService"
 import Navbar from "@/components/layout/Navbar"
 import {
   Users,
@@ -202,7 +203,7 @@ export default function RegistroInscripciones() {
 
   const updateStatus = async () => {
     if (!selectedInscripcion) return
-    
+
     setUpdatingStatus(true)
     try {
       const registrationRef = doc(db, "Participantes", selectedInscripcion.id)
@@ -212,6 +213,23 @@ export default function RegistroInscripciones() {
         fechaActualizacion: new Date(),
       })
 
+      // Enviar email de confirmación con QR cuando se confirma la inscripción
+      if (newStatus === "confirmada" && selectedInscripcion.email) {
+        try {
+          await emailService.sendConfirmationEmail({
+            email: selectedInscripcion.email,
+            nombreCompleto: `${selectedInscripcion.nombre || ""} ${selectedInscripcion.apellido || ""}`.trim(),
+            numeroInscripcion: String(selectedInscripcion.numeroInscripcion || "").padStart(3, "0"),
+            talleRemera: selectedInscripcion.talleRemera || "",
+            tokenQR: selectedInscripcion.tokenQR || "",
+          })
+          console.log("Email de confirmación con QR enviado")
+        } catch (emailError) {
+          console.error("Error enviando email de confirmación:", emailError)
+          // No bloquear la actualización si el email falla
+        }
+      }
+
       setInscripciones((prev) =>
         prev.map((insc) =>
           insc.id === selectedInscripcion.id
@@ -219,7 +237,7 @@ export default function RegistroInscripciones() {
             : insc
         )
       )
-      
+
       closeDetailsModal()
     } catch (error) {
       console.error("Error updating registration:", error)

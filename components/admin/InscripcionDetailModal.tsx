@@ -16,7 +16,9 @@ import {
   Stethoscope,
   FileText,
   CreditCard,
-  Clock
+  Clock,
+  QrCode,
+  UserCheck
 } from "lucide-react"
 
 interface InscripcionDetailModalProps {
@@ -76,8 +78,29 @@ export default function InscripcionDetailModal({
             <CardContent className="pt-6">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-600">Estado actual</span>
-                {getStatusBadge(inscripcion.estado)}
+                <div className="flex items-center gap-2">
+                  {inscripcion.checkedIn && (
+                    <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
+                      <UserCheck className="w-4 h-4 mr-1" />
+                      Presente
+                    </Badge>
+                  )}
+                  {getStatusBadge(inscripcion.estado)}
+                </div>
               </div>
+              {inscripcion.checkedIn && inscripcion.checkedInAt && (
+                <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="text-xs text-emerald-700">
+                    <QrCode className="w-3 h-3 inline mr-1" />
+                    Check-in realizado el{" "}
+                    {inscripcion.checkedInAt?.toDate?.()?.toLocaleString("es-AR", {
+                      day: "2-digit", month: "2-digit", year: "numeric",
+                      hour: "2-digit", minute: "2-digit"
+                    }) || ""}
+                    {inscripcion.checkedInBy && ` por ${inscripcion.checkedInBy}`}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

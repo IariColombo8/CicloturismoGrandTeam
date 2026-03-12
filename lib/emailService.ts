@@ -28,6 +28,8 @@ interface ConfirmationEmailParams extends EmailParams {
   fechaEvento?: string
   ubicacion?: string
   talleRemera?: string
+  qrCodeUrl?: string
+  tokenQR?: string
 }
 
 interface RejectionEmailParams extends EmailParams {
@@ -40,6 +42,11 @@ export const emailService = {
    */
   async sendConfirmationEmail(params: ConfirmationEmailParams) {
     try {
+      // Generar URL de imagen QR si hay token
+      const qrCodeUrl = params.tokenQR
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(params.tokenQR)}`
+        : params.qrCodeUrl || ""
+
       const templateParams = {
         to_email: params.email,
         to_name: params.nombreCompleto,
@@ -49,6 +56,7 @@ export const emailService = {
         fecha_evento: params.fechaEvento || "Por confirmar",
         ubicacion: params.ubicacion || "Concepción del Uruguay, Entre Ríos",
         talle_remera: params.talleRemera || "No especificado",
+        qr_code_url: qrCodeUrl,
         ...params
       }
 

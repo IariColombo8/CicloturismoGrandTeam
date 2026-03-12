@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { serverTimestamp, doc, setDoc, runTransaction, getDoc, updateDoc, collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { compressAndConvertToBase64 } from "@/lib/imageUtils"
+import { v4 as uuidv4 } from "uuid"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -284,6 +285,9 @@ export default function InscripcionPage() {
       const paddedNumber = String(inscriptionNumber).padStart(3, "0")
       const customDocId = `Inscripciones_${activeYear} - ${paddedNumber}-${formData.nombre} ${formData.apellido}`
 
+      // Generar token único para QR de check-in
+      const tokenQR = uuidv4()
+
       const inscripcionData = {
         // Personal info
         nombre: formData.nombre,
@@ -319,6 +323,12 @@ export default function InscripcionPage() {
         estado: "pendiente",
         fechaInscripcion: serverTimestamp(),
         aprobadoPorAdmin: false,
+
+        // QR Check-in
+        tokenQR,
+        checkedIn: false,
+        checkedInAt: null,
+        checkedInBy: null,
       }
 
       await setDoc(doc(db, "Participantes", customDocId), inscripcionData)
@@ -389,7 +399,7 @@ export default function InscripcionPage() {
         description: "Tu solicitud ha sido enviada. Recibirás un correo de confirmación pronto.",
       })
 
-      router.push("/inscripcion/exito")
+      router.push(`/inscripcion/exito?token=${tokenQR}&nombre=${encodeURIComponent(formData.nombre + " " + formData.apellido)}&numero=${paddedNumber}`)
     } catch (error) {
       console.error("Error submitting inscription:", error)
       toast({

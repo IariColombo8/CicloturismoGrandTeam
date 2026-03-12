@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Home,
+  QrCode,
   LucideIcon
 } from "lucide-react"
 
@@ -46,6 +47,13 @@ const navItems: NavItem[] = [
     icon: ClipboardList,
     color: "text-green-400",
     hoverColor: "hover:bg-green-500/10"
+  },
+  {
+    href: "/admin/check-in",
+    label: "Check-in QR",
+    icon: QrCode,
+    color: "text-orange-400",
+    hoverColor: "hover:bg-orange-500/10"
   },
   {
     href: "/admin/gastos",
