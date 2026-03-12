@@ -216,7 +216,13 @@ export default function CheckInPage() {
 
   // Iniciar escáner
   const iniciarScanner = useCallback(async () => {
-    if (scanning || !scannerContainerRef.current) return
+    if (scanning) return
+
+    // Primero hacer visible el contenedor para que html5-qrcode pueda renderizar
+    setScanning(true)
+
+    // Esperar un frame para que el DOM se actualice
+    await new Promise((r) => setTimeout(r, 100))
 
     try {
       const html5QrCode = new Html5Qrcode("qr-reader")
@@ -227,7 +233,6 @@ export default function CheckInPage() {
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
         },
         (decodedText) => {
           // Éxito al escanear
@@ -248,10 +253,9 @@ export default function CheckInPage() {
           // Error de escaneo silencioso (normal cuando no hay QR en vista)
         }
       )
-
-      setScanning(true)
     } catch (error) {
       console.error("Error iniciando escáner:", error)
+      setScanning(false)
       setResultado({
         tipo: "error",
         mensaje: "No se pudo acceder a la cámara. Verificá los permisos del navegador.",
@@ -438,7 +442,8 @@ export default function CheckInPage() {
               <div
                 id="qr-reader"
                 ref={scannerContainerRef}
-                className={`mx-auto mb-4 overflow-hidden rounded-xl ${scanning ? "max-w-sm" : "hidden"}`}
+                style={{ display: scanning ? "block" : "none" }}
+                className="mx-auto mb-4 rounded-xl max-w-sm w-full min-h-[300px]"
               />
 
               <div className="flex gap-3 justify-center">
