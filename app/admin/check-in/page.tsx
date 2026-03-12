@@ -23,7 +23,6 @@ import {
   AlertTriangle,
   RefreshCw,
 } from "lucide-react"
-import Navbar from "@/components/layout/Navbar"
 
 interface CheckInRecord {
   id: string
@@ -390,286 +389,272 @@ export default function CheckInPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
-      <Navbar />
-
-      <div className="container mx-auto px-4 py-24 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-black text-white mb-2">
-              <QrCode className="w-8 h-8 inline-block mr-2 text-yellow-400" />
-              Check-in <span className="gradient-text">QR</span>
-            </h1>
-            <p className="text-gray-400">Escaneá el código QR del participante para registrar su presencia</p>
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black px-3 py-4 sm:p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header compacto */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <QrCode className="w-6 h-6 text-yellow-400" />
+            Check-in <span className="gradient-text">QR</span>
+          </h1>
+          {/* Stats inline */}
+          <div className="flex items-center gap-3 sm:gap-4 text-sm">
+            <span className="text-green-400 font-bold flex items-center gap-1">
+              <UserCheck className="w-4 h-4" />
+              {stats.presentes}
+            </span>
+            <span className="text-yellow-400 font-bold flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              {stats.pendientes}
+            </span>
+            <span className="text-blue-400 font-bold">
+              {porcentajePresentes}%
+            </span>
           </div>
+        </div>
 
-          {/* Estadísticas */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <Card className="bg-black/50 border-green-400/30">
-              <CardContent className="p-4 text-center">
-                <UserCheck className="w-6 h-6 text-green-400 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-green-400">{stats.presentes}</p>
-                <p className="text-xs text-gray-400">Presentes</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-black/50 border-yellow-400/30">
-              <CardContent className="p-4 text-center">
-                <Clock className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-yellow-400">{stats.pendientes}</p>
-                <p className="text-xs text-gray-400">Por llegar</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-black/50 border-blue-400/30">
-              <CardContent className="p-4 text-center">
-                <Users className="w-6 h-6 text-blue-400 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-blue-400">{porcentajePresentes}%</p>
-                <p className="text-xs text-gray-400">Asistencia</p>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Layout split: cámara | resultado */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* COLUMNA IZQUIERDA: Cámara */}
+          <div className="flex flex-col">
+            <Card className="bg-black/50 border-yellow-400/20 flex-1">
+              <CardContent className="p-3 sm:p-4">
+                {/* Contenedor del escáner */}
+                <div
+                  id="qr-reader"
+                  ref={scannerContainerRef}
+                  style={{ display: scanning ? "block" : "none" }}
+                  className="w-full rounded-xl mb-3"
+                />
 
-          {/* Escáner QR */}
-          <Card className="bg-black/50 border-yellow-400/20 mb-6">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Camera className="w-5 h-5 text-yellow-400" />
-                Escáner de QR
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Contenedor del escáner */}
-              <div
-                id="qr-reader"
-                ref={scannerContainerRef}
-                style={{ display: scanning ? "block" : "none" }}
-                className="mx-auto mb-4 rounded-xl max-w-sm w-full min-h-[300px]"
-              />
-
-              <div className="flex gap-3 justify-center">
-                {!scanning ? (
-                  <Button
-                    onClick={iniciarScanner}
-                    className="bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:scale-105 transition-transform"
-                    size="lg"
-                  >
-                    <Camera className="w-5 h-5 mr-2" />
-                    Abrir Cámara
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={detenerScanner}
-                    variant="outline"
-                    className="border-red-500/50 text-red-400 hover:bg-red-500/20 bg-transparent"
-                    size="lg"
-                  >
-                    <CameraOff className="w-5 h-5 mr-2" />
-                    Cerrar Cámara
-                  </Button>
+                {!scanning && (
+                  <div className="flex items-center justify-center py-12 sm:py-16">
+                    <div className="text-center">
+                      <Camera className="w-16 h-16 text-gray-600 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm mb-4">Cámara apagada</p>
+                    </div>
+                  </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Resultado del escaneo */}
-          {procesando && (
-            <Card className="bg-black/50 border-yellow-400/30 mb-6">
-              <CardContent className="p-6 text-center">
-                <Loader2 className="w-8 h-8 text-yellow-400 animate-spin mx-auto mb-2" />
-                <p className="text-gray-300">Procesando...</p>
+                <div className="flex gap-3 justify-center">
+                  {!scanning ? (
+                    <Button
+                      onClick={iniciarScanner}
+                      className="bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:scale-105 transition-transform w-full"
+                      size="lg"
+                    >
+                      <Camera className="w-5 h-5 mr-2" />
+                      Abrir Cámara
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={detenerScanner}
+                      variant="outline"
+                      className="border-red-500/50 text-red-400 hover:bg-red-500/20 bg-transparent w-full"
+                    >
+                      <CameraOff className="w-4 h-4 mr-2" />
+                      Cerrar
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
-          )}
+          </div>
 
-          {resultado && (
+          {/* COLUMNA DERECHA: Resultado + Búsqueda */}
+          <div className="flex flex-col gap-4">
+            {/* Resultado del escaneo */}
             <Card
-              className={`mb-6 border-2 ${
-                resultado.tipo === "exito"
-                  ? "bg-green-500/10 border-green-500/50"
-                  : resultado.tipo === "ya-registrado"
-                  ? "bg-yellow-500/10 border-yellow-500/50"
-                  : resultado.tipo === "no-confirmada"
-                  ? "bg-orange-500/10 border-orange-500/50"
-                  : "bg-red-500/10 border-red-500/50"
+              className={`border-2 flex-shrink-0 ${
+                procesando
+                  ? "bg-black/50 border-yellow-400/30"
+                  : resultado
+                  ? resultado.tipo === "exito"
+                    ? "bg-green-500/10 border-green-500/50"
+                    : resultado.tipo === "ya-registrado"
+                    ? "bg-yellow-500/10 border-yellow-500/50"
+                    : resultado.tipo === "no-confirmada"
+                    ? "bg-orange-500/10 border-orange-500/50"
+                    : "bg-red-500/10 border-red-500/50"
+                  : "bg-black/30 border-zinc-700/50"
               }`}
             >
-              <CardContent className="p-6 text-center">
-                {resultado.tipo === "exito" && (
-                  <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-3 animate-bounce" />
-                )}
-                {resultado.tipo === "ya-registrado" && (
-                  <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-3" />
-                )}
-                {resultado.tipo === "no-confirmada" && (
-                  <AlertTriangle className="w-16 h-16 text-orange-500 mx-auto mb-3" />
-                )}
-                {(resultado.tipo === "no-encontrado" || resultado.tipo === "error") && (
-                  <XCircle className="w-16 h-16 text-red-500 mx-auto mb-3" />
-                )}
+              <CardContent className="p-4 sm:p-6 text-center min-h-[140px] flex flex-col items-center justify-center">
+                {procesando ? (
+                  <>
+                    <Loader2 className="w-10 h-10 text-yellow-400 animate-spin mb-2" />
+                    <p className="text-gray-300">Procesando...</p>
+                  </>
+                ) : resultado ? (
+                  <>
+                    {resultado.tipo === "exito" && (
+                      <CheckCircle2 className="w-12 h-12 text-green-500 mb-2 animate-bounce" />
+                    )}
+                    {resultado.tipo === "ya-registrado" && (
+                      <AlertTriangle className="w-12 h-12 text-yellow-500 mb-2" />
+                    )}
+                    {resultado.tipo === "no-confirmada" && (
+                      <AlertTriangle className="w-12 h-12 text-orange-500 mb-2" />
+                    )}
+                    {(resultado.tipo === "no-encontrado" || resultado.tipo === "error") && (
+                      <XCircle className="w-12 h-12 text-red-500 mb-2" />
+                    )}
 
-                <p className={`text-lg font-semibold ${
-                  resultado.tipo === "exito" ? "text-green-400" :
-                  resultado.tipo === "ya-registrado" ? "text-yellow-400" :
-                  resultado.tipo === "no-confirmada" ? "text-orange-400" :
-                  "text-red-400"
-                }`}>
-                  {resultado.tipo === "exito" && "CHECK-IN EXITOSO"}
-                  {resultado.tipo === "ya-registrado" && "YA REGISTRADO"}
-                  {resultado.tipo === "no-confirmada" && "INSCRIPCIÓN NO CONFIRMADA"}
-                  {resultado.tipo === "no-encontrado" && "NO ENCONTRADO"}
-                  {resultado.tipo === "error" && "ERROR"}
-                </p>
-                <p className="text-gray-300 mt-2">{resultado.mensaje}</p>
+                    <p className={`text-lg font-bold ${
+                      resultado.tipo === "exito" ? "text-green-400" :
+                      resultado.tipo === "ya-registrado" ? "text-yellow-400" :
+                      resultado.tipo === "no-confirmada" ? "text-orange-400" :
+                      "text-red-400"
+                    }`}>
+                      {resultado.tipo === "exito" && "CHECK-IN EXITOSO"}
+                      {resultado.tipo === "ya-registrado" && "YA REGISTRADO"}
+                      {resultado.tipo === "no-confirmada" && "NO CONFIRMADA"}
+                      {resultado.tipo === "no-encontrado" && "NO ENCONTRADO"}
+                      {resultado.tipo === "error" && "ERROR"}
+                    </p>
+                    <p className="text-gray-300 text-sm mt-1">{resultado.mensaje}</p>
 
-                <Button
-                  variant="ghost"
-                  className="mt-4 text-gray-400 hover:text-white"
-                  onClick={() => setResultado(null)}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Limpiar
-                </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-3 text-gray-400 hover:text-white"
+                      onClick={() => setResultado(null)}
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" />
+                      Limpiar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="w-10 h-10 text-gray-600 mb-2" />
+                    <p className="text-gray-500 text-sm">Escaneá un QR para ver el resultado</p>
+                  </>
+                )}
               </CardContent>
             </Card>
-          )}
 
-          {/* Búsqueda manual */}
-          <Card className="bg-black/50 border-yellow-400/20 mb-6">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2 text-base">
-                <Search className="w-5 h-5 text-yellow-400" />
-                Búsqueda Manual (DNI o Nombre)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-3">
-                <Input
-                  value={busquedaManual}
-                  onChange={(e) => setBusquedaManual(e.target.value)}
-                  placeholder="Ingresá DNI o nombre del participante..."
-                  className="bg-zinc-900 border-yellow-400/30 text-white placeholder:text-gray-500"
-                  onKeyDown={(e) => e.key === "Enter" && buscarManual()}
-                />
-                <Button
-                  onClick={buscarManual}
-                  disabled={buscando || !busquedaManual.trim()}
-                  className="bg-gradient-to-r from-yellow-400 to-amber-600 text-black"
-                >
-                  {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Resultados múltiples de búsqueda */}
-          {resultadosMultiples.length > 0 && (
-            <Card className="bg-black/50 border-yellow-400/20 mb-6">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-white flex items-center gap-2 text-base">
-                    <Users className="w-5 h-5 text-yellow-400" />
-                    {resultadosMultiples.length} resultados encontrados
-                  </CardTitle>
+            {/* Búsqueda manual */}
+            <Card className="bg-black/50 border-yellow-400/20">
+              <CardContent className="p-3 sm:p-4">
+                <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                  <Search className="w-3 h-3" />
+                  Búsqueda manual (DNI o Nombre)
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={busquedaManual}
+                    onChange={(e) => setBusquedaManual(e.target.value)}
+                    placeholder="DNI o nombre..."
+                    className="bg-zinc-900 border-yellow-400/30 text-white placeholder:text-gray-500 text-sm h-9"
+                    onKeyDown={(e) => e.key === "Enter" && buscarManual()}
+                  />
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-400 hover:text-white"
-                    onClick={() => setResultadosMultiples([])}
+                    onClick={buscarManual}
+                    disabled={buscando || !busquedaManual.trim()}
+                    className="bg-gradient-to-r from-yellow-400 to-amber-600 text-black h-9 px-3"
                   >
-                    <XCircle className="w-4 h-4" />
+                    {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-gray-400 mb-3">Seleccioná el participante para hacer check-in:</p>
-                <div className="space-y-2">
-                  {resultadosMultiples.map((p: any) => (
-                    <button
-                      key={p.id}
-                      onClick={() => hacerCheckInDirecto(p)}
-                      className="w-full flex items-center justify-between p-3 rounded-lg bg-zinc-900/50 border border-yellow-400/10 hover:border-yellow-400/40 hover:bg-zinc-800/50 transition-all text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        {p.checkedIn ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-gray-600 flex-shrink-0" />
-                        )}
-                        <div>
-                          <p className="text-sm text-white font-medium">
-                            {p.nombre} {p.apellido}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            DNI: {p.dni} — #{String(p.numeroInscripcion).padStart(3, "0")}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {p.checkedIn ? (
-                          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                            Presente
-                          </Badge>
-                        ) : (
-                          <Badge className={`text-xs ${
-                            p.estado === "confirmada"
-                              ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                              : p.estado === "pendiente"
-                              ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                              : "bg-red-500/20 text-red-400 border-red-500/30"
-                          }`}>
-                            {p.estado}
-                          </Badge>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Historial reciente */}
-          {historial.length > 0 && (
-            <Card className="bg-black/50 border-yellow-400/20">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2 text-base">
-                  <Clock className="w-5 h-5 text-yellow-400" />
-                  Últimos Check-ins
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {historial.map((item: any, index: number) => (
-                    <div
-                      key={item.id || index}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/50 border border-green-500/10"
+            {/* Resultados múltiples */}
+            {resultadosMultiples.length > 0 && (
+              <Card className="bg-black/50 border-yellow-400/20">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-white font-medium">
+                      {resultadosMultiples.length} resultados
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-400 hover:text-white h-6 w-6 p-0"
+                      onClick={() => setResultadosMultiples([])}
                     >
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm text-white font-medium">
-                            {item.nombre} {item.apellido}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            #{String(item.numeroInscripcion).padStart(3, "0")} - DNI: {item.dni}
-                          </p>
+                      <XCircle className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                    {resultadosMultiples.map((p: any) => (
+                      <button
+                        key={p.id}
+                        onClick={() => hacerCheckInDirecto(p)}
+                        className="w-full flex items-center justify-between p-2 rounded-lg bg-zinc-900/50 border border-yellow-400/10 hover:border-yellow-400/40 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          {p.checkedIn ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full border-2 border-gray-600 flex-shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm text-white font-medium">
+                              {p.nombre} {p.apellido}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              DNI: {p.dni}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">
-                          {item.checkedInAt?.toDate?.()?.toLocaleTimeString("es-AR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }) || ""}
+                        <Badge className={`text-xs ${
+                          p.checkedIn
+                            ? "bg-green-500/20 text-green-400 border-green-500/30"
+                            : p.estado === "confirmada"
+                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                        }`}>
+                          {p.checkedIn ? "Presente" : p.estado}
+                        </Badge>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Historial reciente - debajo del split, ancho completo */}
+        {historial.length > 0 && (
+          <Card className="bg-black/50 border-yellow-400/20">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-white flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-yellow-400" />
+                Últimos Check-ins
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {historial.map((item: any, index: number) => (
+                  <div
+                    key={item.id || index}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-900/50 border border-green-500/10"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs text-white font-medium truncate">
+                          {item.nombre} {item.apellido}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          #{String(item.numeroInscripcion).padStart(3, "0")}
                         </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                    <p className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                      {item.checkedInAt?.toDate?.()?.toLocaleTimeString("es-AR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }) || ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

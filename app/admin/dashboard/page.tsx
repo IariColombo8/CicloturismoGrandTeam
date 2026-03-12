@@ -197,10 +197,10 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black pt-16 md:pt-20">
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
       {/* Header */}
-      <div className="border-b border-yellow-400/20 bg-black/50 backdrop-blur-sm sticky top-16 md:top-20 z-40">
-        <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="border-b border-yellow-400/20 bg-black/50 backdrop-blur-sm sticky top-20 z-30">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
               <h1 className="text-xl sm:text-3xl font-black text-white truncate">
@@ -212,9 +212,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Stats Cards - Principales */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-900/20 border-yellow-400/30 hover:border-yellow-400/60 transition-all duration-300 hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Total Inscripciones</CardTitle>
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards - Secundarias */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-400">Tasa de Conversión</CardTitle>

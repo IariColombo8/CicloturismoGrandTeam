@@ -265,7 +265,7 @@ export default function RegistroInscripciones() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black text-white p-2 sm:p-4">
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black text-white px-3 py-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -540,7 +540,7 @@ export default function RegistroInscripciones() {
         {isDetailsModalOpen && selectedInscripcion && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
-              className="bg-zinc-900 border border-yellow-400/20 rounded-lg w-[calc(100vw-1rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              className="bg-zinc-900 border border-yellow-400/20 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >

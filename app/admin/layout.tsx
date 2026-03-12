@@ -11,7 +11,7 @@ export default function AdminLayout({
       <Navbar />
       <div className="flex">
         <AdminSidebar />
-        <main className="flex-1 pt-16 md:pt-20">
+        <main className="flex-1 pt-20 md:pt-20 w-full overflow-x-hidden">
           {children}
         </main>
       </div>
