@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Users, MapPin, Award, Bike } from "lucide-react"
 
-function useCountUp(end, duration = 2000) {
+function useCountUp(end: number, duration: number = 2000) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function StatsCounter() {
   )
 }
 
-function StatCard({ stat }) {
+function StatCard({ stat }: { stat: any }) {
   const count = useCountUp(stat.value)
 
   return (

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   collection,
   query,
@@ -36,15 +35,16 @@ import { useToast } from "@/hooks/use-toast"
 import { DollarSign, Plus, CheckCircle, XCircle, Eye, Trash2, TrendingDown } from "lucide-react"
 
 export default function GastosPage() {
-  const router = useRouter()
-  const { user, userRole, loading } = useFirebaseContext()
+  const { user, userRole } = useFirebaseContext()
   const { toast } = useToast()
 
   const [gastos, setGastos] = useState<any[]>([])
-  const [checking, setChecking] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedGasto, setSelectedGasto] = useState<any>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [rejectId, setRejectId] = useState<string | null>(null)
+  const [rejectMotivo, setRejectMotivo] = useState("")
 
   // Form state
   const [descripcion, setDescripcion] = useState("")
@@ -53,19 +53,7 @@ export default function GastosPage() {
   const [comprobante, setComprobante] = useState<File | null>(null)
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push("/login")
-      } else if (userRole !== "admin" && userRole !== "grandteam") {
-        router.push("/")
-      } else {
-        setChecking(false)
-      }
-    }
-  }, [user, userRole, loading, router])
-
-  useEffect(() => {
-    if (!user || checking) return
+    if (!user) return
 
     const q = query(collection(db, "gastos_2026"), orderBy("fecha", "desc"))
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -77,7 +65,7 @@ export default function GastosPage() {
     })
 
     return () => unsubscribe()
-  }, [user, checking])
+  }, [user])
 
   const handleCreateGasto = async () => {
     if (!descripcion || !monto) {
@@ -132,7 +120,7 @@ export default function GastosPage() {
       setComprobante(null)
       setIsModalOpen(false)
     } catch (error) {
-      console.error("[v0] Error creando gasto:", error)
+      console.error("Error creando gasto:", error)
       toast({
         title: "Error",
         description: "No se pudo crear el gasto",
@@ -156,7 +144,7 @@ export default function GastosPage() {
       })
       setIsDetailModalOpen(false)
     } catch (error) {
-      console.error("[v0] Error aprobando gasto:", error)
+      console.error("Error aprobando gasto:", error)
       toast({
         title: "Error",
         description: "No se pudo aprobar el gasto",
@@ -181,7 +169,7 @@ export default function GastosPage() {
       })
       setIsDetailModalOpen(false)
     } catch (error) {
-      console.error("[v0] Error rechazando gasto:", error)
+      console.error("Error rechazando gasto:", error)
       toast({
         title: "Error",
         description: "No se pudo rechazar el gasto",
@@ -190,24 +178,32 @@ export default function GastosPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de eliminar este gasto?")) return
-
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
     try {
-      await deleteDoc(doc(db, "gastos_2026", id))
+      await deleteDoc(doc(db, "gastos_2026", deleteConfirmId))
       toast({
         title: "Gasto eliminado",
         description: "El gasto ha sido eliminado exitosamente",
       })
       setIsDetailModalOpen(false)
     } catch (error) {
-      console.error("[v0] Error eliminando gasto:", error)
+      console.error("Error eliminando gasto:", error)
       toast({
         title: "Error",
         description: "No se pudo eliminar el gasto",
         variant: "destructive",
       })
+    } finally {
+      setDeleteConfirmId(null)
     }
+  }
+
+  const confirmReject = async () => {
+    if (!rejectId) return
+    await handleReject(rejectId, rejectMotivo)
+    setRejectId(null)
+    setRejectMotivo("")
   }
 
   const getStatusBadge = (estado: string) => {
@@ -229,9 +225,9 @@ export default function GastosPage() {
 
   const totalAprobados = aprobados.reduce((sum, g) => sum + (g.monto || 0), 0)
 
-  if (loading || checking) {
+  if (gastos.length === 0 && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-yellow-400 text-xl">Cargando...</div>
       </div>
     )
@@ -472,7 +468,12 @@ export default function GastosPage() {
                     <Button
                       variant="link"
                       className="text-yellow-400"
-                      onClick={() => window.open(selectedGasto.comprobante, "_blank")}
+                      onClick={() => {
+                        const url = selectedGasto.comprobante
+                        if (url && (url.startsWith("https://") || url.startsWith("data:"))) {
+                          window.open(url, "_blank", "noopener,noreferrer")
+                        }
+                      }}
                     >
                       Ver comprobante
                     </Button>
@@ -495,10 +496,7 @@ export default function GastosPage() {
                       Aprobar
                     </Button>
                     <Button
-                      onClick={() => {
-                        const motivo = prompt("Motivo del rechazo (opcional):")
-                        if (motivo !== null) handleReject(selectedGasto.id, motivo)
-                      }}
+                      onClick={() => setRejectId(selectedGasto.id)}
                       variant="destructive"
                     >
                       <XCircle className="w-4 h-4 mr-2" />
@@ -509,7 +507,7 @@ export default function GastosPage() {
 
                 {userRole === "admin" && (
                   <Button
-                    onClick={() => handleDelete(selectedGasto.id)}
+                    onClick={() => setDeleteConfirmId(selectedGasto.id)}
                     variant="outline"
                     className="border-red-500 text-red-500"
                   >
@@ -521,12 +519,60 @@ export default function GastosPage() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Diálogo de confirmación de eliminación */}
+        <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+          <DialogContent className="bg-gray-800 border-gray-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">Confirmar eliminación</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                ¿Estás seguro de que querés eliminar este gasto? Esta acción no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2">
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)} className="border-gray-600 text-gray-300">
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Eliminar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Diálogo de motivo de rechazo */}
+        <Dialog open={!!rejectId} onOpenChange={() => { setRejectId(null); setRejectMotivo("") }}>
+          <DialogContent className="bg-gray-800 border-gray-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">Rechazar gasto</DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Indicá el motivo del rechazo (opcional).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                value={rejectMotivo}
+                onChange={(e) => setRejectMotivo(e.target.value)}
+                placeholder="Motivo del rechazo..."
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button variant="outline" onClick={() => { setRejectId(null); setRejectMotivo("") }} className="border-gray-600 text-gray-300">
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={confirmReject}>
+                Rechazar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
 }
 
-function GastosTable({ gastos, onView, getStatusBadge }: any) {
+function GastosTable({ gastos, onView, getStatusBadge }: { gastos: any[]; onView: (g: any) => void; getStatusBadge: (estado: string) => React.ReactNode }) {
   if (gastos.length === 0) {
     return <div className="text-center py-8 text-gray-400">No hay gastos en esta categoría</div>
   }

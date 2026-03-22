@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { ChevronRight, MapPin, Calendar, Users, Shield, Wrench, Droplet } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { EVENTO } from "@/lib/constants"
 
 export default function HeroSection() {
   const [isVisible, setIsVisible] = useState(false)
@@ -14,7 +15,7 @@ export default function HeroSection() {
   }, [])
 
   // Función para scroll suave a secciones
-  const handleScrollToSection = (e, sectionId) => {
+  const handleScrollToSection = (e: React.MouseEvent, sectionId: string) => {
     e.preventDefault()
     const element = document.getElementById(sectionId)
     if (element) {
@@ -26,7 +27,7 @@ export default function HeroSection() {
     {
       icon: Calendar,
       label: "Fecha",
-      value: "8 de Noviembre 2026",
+      value: EVENTO.fechaTexto,
       color: "text-yellow-400"
     },
     {

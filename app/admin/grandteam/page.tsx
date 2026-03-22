@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
@@ -13,24 +12,15 @@ import { Users, Cake, Heart, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function GrandTeamPage() {
-  const router = useRouter()
-  const { user, userRole, loading } = useFirebaseContext()
-  const [checking, setChecking] = useState(true)
+  const { user } = useFirebaseContext()
   const [miembros, setMiembros] = useState<any[]>([])
   const [cumpleañeros, setCumpleañeros] = useState<any[]>([])
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push("/login")
-      } else if (userRole !== "admin" && userRole !== "grandteam") {
-        router.push("/")
-      } else {
-        setChecking(false)
-        loadMiembros()
-      }
+    if (user) {
+      loadMiembros()
     }
-  }, [user, userRole, loading, router])
+  }, [user])
 
   const loadMiembros = async () => {
     try {
@@ -51,7 +41,7 @@ export default function GrandTeamPage() {
       })
       setCumpleañeros(cumples)
     } catch (error) {
-      console.error("[v0] Error cargando miembros:", error)
+      console.error("Error cargando miembros:", error)
     }
   }
 
@@ -80,9 +70,9 @@ export default function GrandTeamPage() {
     link.click()
   }
 
-  if (loading || checking) {
+  if (miembros.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-yellow-400 text-xl">Cargando...</div>
       </div>
     )

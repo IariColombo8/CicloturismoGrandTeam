@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Award, Heart, Mountain, Shield, Clock, Calendar, Users, TrendingUp } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { EVENTO } from "@/lib/constants"
 
 export default function AboutTeam() {
   const [timeLeft, setTimeLeft] = useState({
@@ -13,8 +14,7 @@ export default function AboutTeam() {
   })
   const [isClient, setIsClient] = useState(false)
 
-  // Fecha del evento: 8 de Noviembre 2026 a las 07:00 AM
-  const eventDate = new Date("2026-11-08T07:00:00").getTime()
+  const eventDate = new Date(EVENTO.fecha).getTime()
 
   useEffect(() => {
     setIsClient(true)
@@ -146,7 +146,7 @@ export default function AboutTeam() {
             </h3>
             <p className="text-xs sm:text-base md:text-lg text-gray-400 flex items-center justify-center gap-2">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
-              8 de Noviembre 2026
+              {EVENTO.fechaTexto}
             </p>
           </div>
 

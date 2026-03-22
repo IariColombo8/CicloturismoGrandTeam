@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Camera, X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react"
 
 export default function Gallery() {
-  const [selectedImage, setSelectedImage] = useState(null)
+  const [selectedImage, setSelectedImage] = useState<any>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
 
@@ -49,7 +49,7 @@ export default function Gallery() {
 
   // Cerrar modal con ESC
   useEffect(() => {
-    const handleEsc = (e) => {
+    const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setSelectedImage(null)
     }
     if (selectedImage) {
@@ -62,19 +62,19 @@ export default function Gallery() {
     }
   }, [selectedImage])
 
-  const openImage = (image, index) => {
+  const openImage = (image: any, index: number) => {
     setSelectedImage(image)
     setCurrentIndex(index)
   }
 
-  const nextImage = (e) => {
+  const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation()
     const newIndex = (currentIndex + 1) % galleryImages.length
     setCurrentIndex(newIndex)
     setSelectedImage(galleryImages[newIndex])
   }
 
-  const prevImage = (e) => {
+  const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation()
     const newIndex = (currentIndex - 1 + galleryImages.length) % galleryImages.length
     setCurrentIndex(newIndex)

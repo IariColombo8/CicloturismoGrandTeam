@@ -50,7 +50,7 @@ export default function AdminInscripcionesTable({
   })
 
   const getStatusBadge = (estado: string) => {
-    const badges = {
+    const badges: Record<string, React.ReactNode> = {
       pendiente: (
         <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30 text-xs">
           <Clock className="w-3 h-3 mr-1" />

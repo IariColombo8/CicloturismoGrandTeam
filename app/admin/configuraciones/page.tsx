@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,13 +17,10 @@ import { Settings, Save, AlertTriangle, Plus, Calendar, Loader2 } from "lucide-r
 const CURRENT_YEAR = new Date().getFullYear()
 
 export default function ConfiguracionesPage() {
-  const router = useRouter()
+  const { user } = useFirebaseContext()
   const { toast } = useToast()
 
-  const [user, setUser] = useState<any>(null)
-  const [isAuthorized, setIsAuthorized] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [loadingAuth, setLoadingAuth] = useState(true)
   const [loadingConfig, setLoadingConfig] = useState(true)
   const [availableYears, setAvailableYears] = useState<string[]>([])
   const [selectedYear, setSelectedYear] = useState(String(CURRENT_YEAR))
@@ -46,44 +43,9 @@ export default function ConfiguracionesPage() {
   const [datosTransferencia, setDatosTransferencia] = useState("")
   const [inscripcionesAbiertas, setInscripcionesAbiertas] = useState(true)
 
-  // Autenticación directa (más robusta que el contexto)
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      if (!currentUser) {
-        router.push("/login?returnUrl=/admin/configuraciones")
-        return
-      }
-
-      try {
-        const adminRef = collection(db, "administrador")
-        const adminQuery = query(adminRef, where("email", "==", currentUser.email))
-        const adminSnapshot = await getDocs(adminQuery)
-
-        if (!adminSnapshot.empty) {
-          const adminData = adminSnapshot.docs[0].data()
-          if (adminData.role === "admin") {
-            setIsAuthorized(true)
-            setUser(currentUser)
-          } else {
-            router.push("/")
-          }
-        } else {
-          router.push("/")
-        }
-      } catch (error) {
-        console.error("Error verificando permisos:", error)
-        router.push("/")
-      } finally {
-        setLoadingAuth(false)
-      }
-    })
-
-    return () => unsubscribe()
-  }, [router])
-
   // Cargar años disponibles y config cuando el usuario está autorizado
   useEffect(() => {
-    if (!isAuthorized) return
+    if (!user) return
 
     const loadYearsAndConfig = async () => {
       setLoadingConfig(true)
@@ -112,7 +74,7 @@ export default function ConfiguracionesPage() {
     }
 
     loadYearsAndConfig()
-  }, [isAuthorized])
+  }, [user])
 
   const loadConfigForYear = async (year: string) => {
     setLoadingConfig(true)
@@ -259,20 +221,6 @@ export default function ConfiguracionesPage() {
     setSelectedYear(nextYear)
     await loadConfigForYear(nextYear)
   }
-
-  // Loading mientras Firebase verifica auth
-  if (loadingAuth) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
-          <div className="text-yellow-400 text-lg">Verificando acceso...</div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthorized) return null
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 px-3 py-4 sm:p-6">

@@ -60,7 +60,7 @@ export default function LoginPage() {
         router.push(returnUrl)
       }
     } catch (error) {
-      console.error("[v0] Error checking user role:", error)
+      console.error("Error checking user role:", error)
     }
   }
 
@@ -79,7 +79,7 @@ export default function LoginPage() {
       const adminSnapshot = await getDocs(adminQuery)
 
       let userRole = "usuario"
-      let userData = {}
+      let userData: Record<string, any> = {}
 
       if (!adminSnapshot.empty) {
         // Usuario ya existe
@@ -113,7 +113,7 @@ export default function LoginPage() {
         router.push(returnUrl)
       }
     } catch (error: any) {
-      console.error("[v0] Error al iniciar sesión:", error)
+      console.error("Error al iniciar sesión:", error)
 
       if (
         error.code === "auth/invalid-credential" ||
@@ -180,7 +180,7 @@ export default function LoginPage() {
         router.push(returnUrl)
       }
     } catch (error: any) {
-      console.error("[v0] Error signing in with Google:", error)
+      console.error("Error signing in with Google:", error)
 
       let errorMessage = "No se pudo iniciar sesión con Google. Intenta nuevamente."
 

@@ -21,7 +21,7 @@ export default function ContactoPage() {
     mensaje: "",
   })
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
@@ -42,7 +42,7 @@ export default function ContactoPage() {
         mensaje: "",
       })
     } catch (error) {
-      console.error("[v0] Error sending message:", error)
+      console.error("Error sending message:", error)
       toast({
         title: "Error",
         description: "No se pudo enviar el mensaje. Intenta nuevamente.",
@@ -53,7 +53,7 @@ export default function ContactoPage() {
     }
   }
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -231,7 +231,7 @@ export default function ContactoPage() {
                   width="100%"
                   height="450"
                   style={{ border: 0 }}
-                  allowFullScreen=""
+                  allowFullScreen
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                   className="w-full"

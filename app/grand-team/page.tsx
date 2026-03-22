@@ -41,7 +41,7 @@ export default function GrandTeamLoginPage() {
       })
       router.push("/grand-team/dashboard")
     } catch (error: any) {
-      console.error("[v0] Login error:", error)
+      console.error("Login error:", error)
       toast({
         title: "Error de autenticación",
         description: "Email o contraseña incorrectos",

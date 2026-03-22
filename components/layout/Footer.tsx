@@ -3,11 +3,12 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, Calendar, ExternalLink } from "lucide-react"
+import { EVENTO } from "@/lib/constants"
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
 
-  const handleScrollToSection = (e, sectionId) => {
+  const handleScrollToSection = (e: React.MouseEvent, sectionId: string) => {
     e.preventDefault()
     const element = document.getElementById(sectionId)
     if (element) {
@@ -66,7 +67,7 @@ export default function Footer() {
             {/* Event date highlight */}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full mb-6">
               <Calendar className="w-4 h-4 text-yellow-400" aria-hidden="true" />
-              <span className="text-sm font-semibold text-yellow-400">8 de Noviembre 2026</span>
+              <span className="text-sm font-semibold text-yellow-400">{EVENTO.fechaTexto}</span>
             </div>
 
             {/* Social links */}

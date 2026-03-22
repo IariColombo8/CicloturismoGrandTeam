@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { collection, query, onSnapshot, orderBy, getDocs, where, doc, updateDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
-import { signOut } from "firebase/auth"
+import { collection, query, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
 import { motion } from "framer-motion"
 import { emailService } from "@/lib/emailService"
+import { useToast } from "@/hooks/use-toast"
 import Navbar from "@/components/layout/Navbar"
 import {
   Users,
-  LogOut,
   CheckCircle,
   Clock,
   X,
@@ -41,13 +41,13 @@ import {
 
 export default function RegistroInscripciones() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
-  const [isAuthorized, setIsAuthorized] = useState(false)
-  const [inscripciones, setInscripciones] = useState([])
+  const { user } = useFirebaseContext()
+  const { toast } = useToast()
+  const [inscripciones, setInscripciones] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [loading, setLoading] = useState(true)
-  const [selectedInscripcion, setSelectedInscripcion] = useState(null)
+  const [selectedInscripcion, setSelectedInscripcion] = useState<any>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -56,38 +56,7 @@ export default function RegistroInscripciones() {
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
   const [updatingStatus, setUpdatingStatus] = useState(false)
-  const topRef = useRef(null)
-
-  // Verificación de autenticación
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        router.push("/login?returnUrl=/admin/registro-inscripciones")
-      } else {
-        try {
-          const adminRef = collection(db, "administrador")
-          const adminQuery = query(adminRef, where("email", "==", user.email))
-          const adminSnapshot = await getDocs(adminQuery)
-
-          if (!adminSnapshot.empty) {
-            const adminData = adminSnapshot.docs[0].data()
-            if (adminData.role === "admin" || adminData.role === "grandteam") {
-              setIsAuthorized(true)
-              setUser(user)
-            } else {
-              router.push("/")
-            }
-          } else {
-            router.push("/")
-          }
-        } catch (error) {
-          console.error("Error verificando permisos:", error)
-          router.push("/")
-        }
-      }
-    })
-    return () => unsubscribe()
-  }, [router])
+  const topRef = useRef<HTMLDivElement>(null)
 
   // Cargar inscripciones de Firebase
   useEffect(() => {
@@ -110,11 +79,6 @@ export default function RegistroInscripciones() {
     setRefreshing(true)
     // Los datos se actualizarán automáticamente por onSnapshot
     setTimeout(() => setRefreshing(false), 1000)
-  }
-
-  const handleLogout = async () => {
-    await signOut(auth)
-    router.push("/")
   }
 
   const scrollToTop = () => {
@@ -150,13 +114,13 @@ export default function RegistroInscripciones() {
   const currentItems = filteredInscripciones.slice(indexOfFirstItem, indexOfLastItem)
   const totalPages = Math.ceil(filteredInscripciones.length / itemsPerPage)
 
-  const paginate = (pageNumber) => {
+  const paginate = (pageNumber: number) => {
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber)
     }
   }
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmada":
         return (
@@ -189,7 +153,7 @@ export default function RegistroInscripciones() {
     }
   }
 
-  const openDetailsModal = (insc) => {
+  const openDetailsModal = (insc: any) => {
     setSelectedInscripcion(insc)
     setNewStatus(insc.estado || "pendiente")
     setStatusNote(insc.nota || "")
@@ -223,7 +187,6 @@ export default function RegistroInscripciones() {
             talleRemera: selectedInscripcion.talleRemera || "",
             tokenQR: selectedInscripcion.tokenQR || "",
           })
-          console.log("Email de confirmación con QR enviado")
         } catch (emailError) {
           console.error("Error enviando email de confirmación:", emailError)
           // No bloquear la actualización si el email falla
@@ -241,7 +204,7 @@ export default function RegistroInscripciones() {
       closeDetailsModal()
     } catch (error) {
       console.error("Error updating registration:", error)
-      alert("Error al actualizar el estado")
+      toast({ title: "Error", description: "Error al actualizar el estado", variant: "destructive" })
     } finally {
       setUpdatingStatus(false)
     }
@@ -249,13 +212,12 @@ export default function RegistroInscripciones() {
 
   const exportApprovedToPDF = () => {
     const approvedRegistrations = inscripciones.filter((reg) => reg.estado === "confirmada")
-    console.log("Exportando", approvedRegistrations.length, "inscripciones confirmadas")
-    alert(`Exportando ${approvedRegistrations.length} inscripciones confirmadas`)
+    toast({ title: "Exportación", description: `Exportando ${approvedRegistrations.length} inscripciones confirmadas` })
   }
 
-  if (loading || !isAuthorized) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-yellow-400 animate-spin" />
           <div className="text-yellow-400 text-lg">Cargando inscripciones...</div>
@@ -288,13 +250,6 @@ export default function RegistroInscripciones() {
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{refreshing ? 'Actualizando...' : 'Actualizar'}</span>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-transparent border border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white transition-all text-sm"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Cerrar Sesión</span>
             </button>
           </div>
         </motion.div>

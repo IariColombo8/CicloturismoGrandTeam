@@ -12,11 +12,11 @@ import { usePathname, useRouter } from "next/navigation"
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [openDropdown, setOpenDropdown] = useState(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const { user, userRole } = useFirebaseContext()
   const pathname = usePathname()
   const router = useRouter()
-  const dropdownRef = useRef(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const isAdminOrGrandTeam = userRole === "admin" || userRole === "grandteam"
   const isInAdminPages = pathname?.startsWith("/admin")
@@ -39,8 +39,8 @@ export default function Navbar() {
 
   // Click outside dropdown
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdown(null)
       }
     }
@@ -65,7 +65,7 @@ export default function Navbar() {
   }
 
   // Función mejorada para navegación suave a secciones
-  const handleSectionClick = (e, sectionId) => {
+  const handleSectionClick = (e: React.MouseEvent, sectionId: string) => {
     e.preventDefault()
     setIsMobileMenuOpen(false)
     setOpenDropdown(null)
@@ -103,7 +103,7 @@ export default function Navbar() {
     { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
   ]
 
-  const toggleDropdown = (dropdown) => {
+  const toggleDropdown = (dropdown: string) => {
     setOpenDropdown(openDropdown === dropdown ? null : dropdown)
   }
 
@@ -409,7 +409,7 @@ export default function Navbar() {
 }
 
 // Componente reutilizable para Dropdown Desktop
-function DropdownMenu({ label, icon, isOpen, onToggle, children }) {
+function DropdownMenu({ label, icon, isOpen, onToggle, children }: { label: any; icon?: any; isOpen: any; onToggle: any; children: any }) {
   return (
     <div className="relative">
       <button
@@ -431,7 +431,7 @@ function DropdownMenu({ label, icon, isOpen, onToggle, children }) {
 }
 
 // Componente reutilizable para Dropdown Mobile
-function MobileDropdown({ label, icon, isOpen, onToggle, children }) {
+function MobileDropdown({ label, icon, isOpen, onToggle, children }: { label: any; icon?: any; isOpen: any; onToggle: any; children: any }) {
   return (
     <div className="border-b border-zinc-800">
       <button

@@ -13,7 +13,6 @@ export default function RouteMap() {
     
     // Initialize map when component mounts
     if (mapRef.current && typeof window !== "undefined") {
-      console.log("[v0] Map container ready for integration")
     }
   }, [])
 

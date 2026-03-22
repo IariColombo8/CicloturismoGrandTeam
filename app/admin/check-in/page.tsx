@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, onSnapshot, orderBy } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { db } from "@/lib/firebase"
+import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
 import { Html5Qrcode } from "html5-qrcode"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,9 +38,7 @@ interface CheckInRecord {
 }
 
 export default function CheckInPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [isAuthorized, setIsAuthorized] = useState(false)
+  const { user } = useFirebaseContext()
   const [scanning, setScanning] = useState(false)
   const [loading, setLoading] = useState(true)
   const [procesando, setProcesando] = useState(false)
@@ -69,38 +67,6 @@ export default function CheckInPage() {
 
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerRef = useRef<HTMLDivElement>(null)
-
-  // Autenticación
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        router.push("/login?returnUrl=/admin/check-in")
-      } else {
-        try {
-          const adminRef = collection(db, "administrador")
-          const adminQuery = query(adminRef, where("email", "==", user.email))
-          const adminSnapshot = await getDocs(adminQuery)
-
-          if (!adminSnapshot.empty) {
-            const adminData = adminSnapshot.docs[0].data()
-            if (adminData.role === "admin" || adminData.role === "grandteam") {
-              setIsAuthorized(true)
-              setUser(user)
-            } else {
-              router.push("/")
-            }
-          } else {
-            router.push("/")
-          }
-        } catch (error) {
-          console.error("Error verificando permisos:", error)
-          router.push("/")
-        }
-      }
-      setLoading(false)
-    })
-    return () => unsubscribe()
-  }, [router])
 
   // Estadísticas en tiempo real
   useEffect(() => {
@@ -376,13 +342,11 @@ export default function CheckInPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
       </div>
     )
   }
-
-  if (!isAuthorized) return null
 
   const porcentajePresentes = stats.totalConfirmadas > 0
     ? Math.round((stats.presentes / stats.totalConfirmadas) * 100)

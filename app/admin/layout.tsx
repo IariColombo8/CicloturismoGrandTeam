@@ -1,5 +1,8 @@
+"use client"
+
 import AdminSidebar from "@/components/admin/AdminSidebar"
 import Navbar from "@/components/layout/Navbar"
+import AdminGuard from "@/components/admin/AdminGuard"
 
 export default function AdminLayout({
   children,
@@ -12,7 +15,9 @@ export default function AdminLayout({
       <div className="flex">
         <AdminSidebar />
         <main className="flex-1 pt-20 md:pt-20 w-full overflow-x-hidden">
-          {children}
+          <AdminGuard>
+            {children}
+          </AdminGuard>
         </main>
       </div>
     </div>

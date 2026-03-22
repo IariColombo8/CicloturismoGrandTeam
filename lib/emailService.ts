@@ -66,10 +66,9 @@ export const emailService = {
         templateParams
       )
 
-      console.log("✅ Email de confirmación enviado:", response)
       return { success: true, response }
     } catch (error) {
-      console.error("❌ Error enviando email de confirmación:", error)
+      console.error("Error enviando email de confirmación:", error)
       return { success: false, error }
     }
   },
@@ -93,10 +92,9 @@ export const emailService = {
         templateParams
       )
 
-      console.log("✅ Email de rechazo enviado:", response)
       return { success: true, response }
     } catch (error) {
-      console.error("❌ Error enviando email de rechazo:", error)
+      console.error("Error enviando email de rechazo:", error)
       return { success: false, error }
     }
   },
@@ -118,10 +116,9 @@ export const emailService = {
         templateParams
       )
 
-      console.log("✅ Email recordatorio enviado:", response)
       return { success: true, response }
     } catch (error) {
-      console.error("❌ Error enviando email recordatorio:", error)
+      console.error("Error enviando email recordatorio:", error)
       return { success: false, error }
     }
   },
@@ -137,10 +134,9 @@ export const emailService = {
         params
       )
 
-      console.log("✅ Email personalizado enviado:", response)
       return { success: true, response }
     } catch (error) {
-      console.error("❌ Error enviando email personalizado:", error)
+      console.error("Error enviando email personalizado:", error)
       return { success: false, error }
     }
   },

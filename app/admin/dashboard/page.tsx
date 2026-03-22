@@ -1,15 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { collection, query, onSnapshot, orderBy, getDocs, where } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Users, Clock, CheckCircle, DollarSign, TrendingUp,
   Activity, Award, Mail
 } from "lucide-react"
-import { signOut } from "firebase/auth"
 import dynamic from "next/dynamic"
 
 const DashboardCharts = dynamic(() => import("./DashboardCharts"), {
@@ -22,48 +21,15 @@ const DashboardCharts = dynamic(() => import("./DashboardCharts"), {
 })
 
 export default function AdminDashboard() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const { user, eventSettings } = useFirebaseContext()
   const [inscripciones, setInscripciones] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [isAuthorized, setIsAuthorized] = useState(false)
   const [chartData, setChartData] = useState<any[]>([])
   const [estadoData, setEstadoData] = useState<any[]>([])
   const [categoriaData, setCategoriaData] = useState<any[]>([])
   const [provinciaData, setProvinciaData] = useState<any[]>([])
   const [tendenciaData, setTendenciaData] = useState<any[]>([])
   const [radarData, setRadarData] = useState<any[]>([])
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        router.push("/login?returnUrl=/admin/dashboard")
-      } else {
-        try {
-          const adminRef = collection(db, "administrador")
-          const adminQuery = query(adminRef, where("email", "==", user.email))
-          const adminSnapshot = await getDocs(adminQuery)
-
-          if (!adminSnapshot.empty) {
-            const adminData = adminSnapshot.docs[0].data()
-
-            if (adminData.role === "admin" || adminData.role === "grandteam") {
-              setIsAuthorized(true)
-              setUser(user)
-            } else {
-              router.push("/")
-            }
-          } else {
-            router.push("/")
-          }
-        } catch (error) {
-          console.error("Error verificando permisos:", error)
-          router.push("/")
-        }
-      }
-    })
-    return () => unsubscribe()
-  }, [router])
 
   useEffect(() => {
   if (!user) return
@@ -172,25 +138,21 @@ export default function AdminDashboard() {
       { metric: "Confirmadas", value: (confirmadas / total) * 100 },
       { metric: "Pendientes", value: (pendientes / total) * 100 },
       { metric: "Tasa Conv.", value: (confirmadas / total) * 100 },
-      { metric: "Participación", value: (total / 200) * 100 }, // Asumiendo meta de 200
+      { metric: "Participación", value: (total / (eventSettings?.cupoMaximo || 300)) * 100 },
       { metric: "Engagement", value: Math.min(((confirmadas + pendientes) / total) * 100, 100) },
     ])
-  }
-
-  const handleLogout = async () => {
-    await signOut(auth)
-    router.push("/")
   }
 
   const pendientes = inscripciones.filter((i) => i.estado === "pendiente")
   const aprobadas = inscripciones.filter((i) => i.estado === "confirmada")
   const rechazadas = inscripciones.filter((i) => i.estado === "rechazada")
-  const ingresosConfirmados = aprobadas.length * 40000
-  const ingresosPotenciales = pendientes.length * 40000
+  const precioInscripcion = eventSettings?.precio || eventSettings?.costoInscripcion || 40000
+  const ingresosConfirmados = aprobadas.length * precioInscripcion
+  const ingresosPotenciales = pendientes.length * precioInscripcion
 
-  if (loading || !isAuthorized) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-yellow-400 text-lg animate-pulse">Cargando Dashboard...</div>
       </div>
     )
@@ -305,7 +267,7 @@ export default function AdminDashboard() {
               <Award className="w-4 h-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-green-400">$40k</div>
+              <div className="text-3xl font-black text-green-400">${(precioInscripcion / 1000).toFixed(0)}k</div>
               <p className="text-xs text-gray-500 mt-1">Por participante confirmado</p>
             </CardContent>
           </Card>

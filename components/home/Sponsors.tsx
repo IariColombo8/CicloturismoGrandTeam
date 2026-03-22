@@ -10,7 +10,7 @@ import {
 
 export default function Sponsors() {
   const [isVisible, setIsVisible] = useState(false)
-  const [selectedSponsor, setSelectedSponsor] = useState(null)
+  const [selectedSponsor, setSelectedSponsor] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const sectionRef = useRef(null)
 
@@ -33,7 +33,7 @@ export default function Sponsors() {
 
   // Cerrar modal con ESC
   useEffect(() => {
-    const handleEsc = (e) => {
+    const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeModal()
     }
     window.addEventListener('keydown', handleEsc)
@@ -49,7 +49,7 @@ export default function Sponsors() {
     }
   }, [isModalOpen])
 
-  const openModal = (sponsor) => {
+  const openModal = (sponsor: any) => {
     setSelectedSponsor(sponsor)
     setIsModalOpen(true)
   }
@@ -447,8 +447,8 @@ export default function Sponsors() {
 }
 
 // Sponsor Card Component - ULTRA RESPONSIVO
-function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }) {
-  const tierStyles = {
+function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }: { sponsor: any; tier: string; delay?: number; isVisible: boolean; onClick: (sponsor: any) => void }) {
+  const tierStyles: Record<string, any> = {
     gold: {
       card: "bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 border-yellow-400/30 hover:border-yellow-400",
       glow: "group-hover:shadow-[0_0_30px_rgba(250,204,21,0.3)] sm:group-hover:shadow-[0_0_40px_rgba(250,204,21,0.3)]",
@@ -524,7 +524,7 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }) {
 }
 
 // Modal Component - COMPLETAMENTE RESPONSIVO
-function SponsorModal({ sponsor, isOpen, onClose }) {
+function SponsorModal({ sponsor, isOpen, onClose }: { sponsor: any; isOpen: boolean; onClose: () => void }) {
   if (!sponsor) return null
 
   const whatsappMessage = encodeURIComponent(
@@ -608,7 +608,7 @@ function SponsorModal({ sponsor, isOpen, onClose }) {
                   Servicios
                 </h3>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {sponsor.services.map((service, index) => (
+                  {sponsor.services.map((service: any, index: number) => (
                     <span
                       key={index}
                       className="px-2 sm:px-3 py-1 bg-zinc-800 text-zinc-300 text-xs sm:text-sm rounded-lg border border-zinc-700"

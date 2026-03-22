@@ -5,12 +5,22 @@ import { onAuthStateChanged, type User } from "firebase/auth"
 import { doc, getDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 
+interface EventSettings {
+  cupoMaximo: number
+  precio: number
+  costoInscripcion?: number
+  metodoPago: string
+  inscripcionesAbiertas: boolean
+  currentYear: number
+  [key: string]: unknown
+}
+
 interface FirebaseContextType {
   user: User | null
   loading: boolean
-  eventSettings: any
+  eventSettings: EventSettings | null
   isFirebaseAvailable: boolean
-  userRole: string | null // Added userRole to context
+  userRole: string | null
 }
 
 const FirebaseContext = createContext<FirebaseContextType>({
@@ -26,7 +36,7 @@ export const useFirebaseContext = () => useContext(FirebaseContext)
 export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [eventSettings, setEventSettings] = useState(null)
+  const [eventSettings, setEventSettings] = useState<any>(null)
   const [isFirebaseAvailable, setIsFirebaseAvailable] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null) // Added userRole state
 

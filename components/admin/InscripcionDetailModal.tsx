@@ -39,7 +39,7 @@ export default function InscripcionDetailModal({
   if (!inscripcion) return null
 
   const getStatusBadge = (estado: string) => {
-    const badges = {
+    const badges: Record<string, React.ReactNode> = {
       pendiente: (
         <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
           <Clock className="w-4 h-4 mr-1" />

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { serverTimestamp, doc, setDoc, runTransaction, getDoc, updateDoc, collection, getDocs, query, where } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { db, storage } from "@/lib/firebase"
 import { compressAndConvertToBase64 } from "@/lib/imageUtils"
 import { v4 as uuidv4 } from "uuid"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -73,7 +74,7 @@ export default function InscripcionPage() {
 
         // Ordenar por año descendente para encontrar el más reciente activo
         const eventos = eventosSnapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
+          .map((d) => ({ id: d.id, ...d.data() } as Record<string, any>))
           .sort((a, b) => Number(b.id) - Number(a.id))
 
         for (const evento of eventos) {
@@ -271,14 +272,19 @@ export default function InscripcionPage() {
     setIsSubmitting(true)
 
     try {
-      let imagenBase64 = ""
+      let comprobanteURL = ""
 
       if (formData.comprobanteFile) {
         toast({
-          title: "Procesando imagen...",
-          description: "Comprimiendo el comprobante de pago.",
+          title: "Subiendo comprobante...",
+          description: "Procesando el comprobante de pago.",
         })
-        imagenBase64 = await compressAndConvertToBase64(formData.comprobanteFile, 500)
+
+        // Subir a Firebase Storage
+        const fileExt = formData.comprobanteFile.name.split(".").pop() || "jpg"
+        const storageRef = ref(storage, `comprobantes/${activeYear}/${formData.dni}_${Date.now()}.${fileExt}`)
+        await uploadBytes(storageRef, formData.comprobanteFile)
+        comprobanteURL = await getDownloadURL(storageRef)
       }
 
       const inscriptionNumber = await getNextInscriptionNumber()
@@ -316,7 +322,7 @@ export default function InscripcionPage() {
         // Payment
         metodoPago: "transferencia",
         numeroReferencia: formData.numeroReferencia,
-        imagenBase64,
+        comprobanteURL,
 
         // Metadata
         numeroInscripcion: inscriptionNumber,
@@ -399,7 +405,13 @@ export default function InscripcionPage() {
         description: "Tu solicitud ha sido enviada. Recibirás un correo de confirmación pronto.",
       })
 
-      router.push(`/inscripcion/exito?token=${tokenQR}&nombre=${encodeURIComponent(formData.nombre + " " + formData.apellido)}&numero=${paddedNumber}`)
+      // Guardar datos en sessionStorage para no exponerlos en la URL
+      sessionStorage.setItem("inscripcion_exito", JSON.stringify({
+        token: tokenQR,
+        nombre: formData.nombre + " " + formData.apellido,
+        numero: paddedNumber,
+      }))
+      router.push("/inscripcion/exito")
     } catch (error) {
       console.error("Error submitting inscription:", error)
       toast({

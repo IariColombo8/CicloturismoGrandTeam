@@ -121,7 +121,7 @@ export const viewport = {
   themeColor: "#000000",
 }
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${inter.variable} ${poppins.variable}`}>
       <head>

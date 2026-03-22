@@ -1,19 +1,27 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
-import { Suspense, useRef, useCallback } from "react"
+import { useRef, useCallback, useState, useEffect } from "react"
 import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CheckCircle2, Mail, Home, FileText, Download, QrCode } from "lucide-react"
 
-function ExitoContent() {
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")
-  const nombre = searchParams.get("nombre")
-  const numero = searchParams.get("numero")
+export default function ExitoPage() {
+  const [token, setToken] = useState<string | null>(null)
+  const [nombre, setNombre] = useState<string | null>(null)
+  const [numero, setNumero] = useState<string | null>(null)
   const qrRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const data = sessionStorage.getItem("inscripcion_exito")
+    if (data) {
+      const parsed = JSON.parse(data)
+      setToken(parsed.token)
+      setNombre(parsed.nombre)
+      setNumero(parsed.numero)
+    }
+  }, [])
 
   const descargarQR = useCallback(() => {
     if (!qrRef.current) return
@@ -21,7 +29,6 @@ function ExitoContent() {
     const svg = qrRef.current.querySelector("svg")
     if (!svg) return
 
-    // Convertir SVG a canvas para descargar como PNG
     const svgData = new XMLSerializer().serializeToString(svg)
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
@@ -31,7 +38,6 @@ function ExitoContent() {
       canvas.width = 400
       canvas.height = 400
       if (ctx) {
-        // Fondo blanco
         ctx.fillStyle = "#ffffff"
         ctx.fillRect(0, 0, 400, 400)
         ctx.drawImage(img, 0, 0, 400, 400)
@@ -157,19 +163,5 @@ function ExitoContent() {
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-export default function ExitoPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black flex items-center justify-center">
-          <div className="text-yellow-400 text-lg animate-pulse">Cargando...</div>
-        </div>
-      }
-    >
-      <ExitoContent />
-    </Suspense>
   )
 }

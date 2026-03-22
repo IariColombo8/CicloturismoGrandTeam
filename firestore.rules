@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Función auxiliar: verificar si el usuario es admin
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/administrador/$(request.auth.token.email.replace('@', '_').replace('.', '_'))) &&
+        get(/databases/$(database)/documents/administrador/$(request.auth.token.email.replace('@', '_').replace('.', '_'))).data.role == 'admin';
+    }
+
+    // Función auxiliar: verificar si es miembro del equipo
+    function isTeamMember() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/administrador/$(request.auth.token.email.replace('@', '_').replace('.', '_')));
+    }
+
+    // Inscripciones (Participantes) - lectura pública para check de DNI, escritura pública para inscribirse
+    match /Participantes/{docId} {
+      allow read: if request.auth != null || true; // Lectura para verificar DNI duplicado
+      allow create: if true; // Cualquiera puede inscribirse
+      allow update, delete: if isTeamMember();
+    }
+
+    // Contadores - lectura pública (para número de inscripción), escritura solo admin
+    match /counters/{docId} {
+      allow read: if true;
+      allow write: if isTeamMember();
+    }
+
+    // Administradores - solo lectura para auth, escritura solo admin
+    match /administrador/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Configuración de eventos - lectura pública, escritura solo admin
+    match /eventos/{year} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings del evento - lectura pública, escritura solo admin
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Gastos - solo miembros del equipo
+    match /gastos_2026/{docId} {
+      allow read, write: if isTeamMember();
+    }
+
+    // Denegar acceso a todo lo demás
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
