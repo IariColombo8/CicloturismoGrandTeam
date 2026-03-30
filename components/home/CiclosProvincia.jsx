@@ -89,7 +89,7 @@ export default function CiclosProvincia() {
 
             {/* Cards de ciclos */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-7xl mx-auto">
-              {ciclos.map((ciclo) => (
+              {ciclos.filter((c) => c.destacado).map((ciclo) => (
                 <article
                   key={ciclo.id}
                   className="group bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-400/40 transition-all duration-300 hover:shadow-xl hover:shadow-yellow-500/10 active:scale-[0.99]"
