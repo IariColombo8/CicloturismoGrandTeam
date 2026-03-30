@@ -238,54 +238,55 @@ export default function GastosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-6 pt-28">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-3 sm:p-6 pt-4 sm:pt-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-10 h-10 text-yellow-400" />
-            <h1 className="text-4xl font-bold text-yellow-400">Gastos</h1>
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <DollarSign className="w-6 h-6 sm:w-10 sm:h-10 text-yellow-400" />
+            <h1 className="text-xl sm:text-4xl font-bold text-yellow-400">Gastos</h1>
           </div>
           <Button
             onClick={() => setIsModalOpen(true)}
-            className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700"
+            className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700 text-xs sm:text-sm px-3 sm:px-4"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            {userRole === "admin" ? "Agregar Gasto" : "Proponer Gasto"}
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">{userRole === "admin" ? "Agregar Gasto" : "Proponer Gasto"}</span>
+            <span className="sm:hidden">Agregar</span>
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
           <Card className="bg-gray-800/50 border-green-500/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-2">
                 <TrendingDown className="w-4 h-4" />
-                Total Gastos Aprobados
+                Total Aprobados
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-500">${totalAprobados.toLocaleString("es-AR")}</div>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-2xl sm:text-3xl font-bold text-green-500">${totalAprobados.toLocaleString("es-AR")}</div>
               <p className="text-xs text-gray-500 mt-1">{aprobados.length} gastos</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800/50 border-yellow-400/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400">Pendientes de Aprobación</CardTitle>
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Pendientes</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-yellow-400">{pendientes.length}</div>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-2xl sm:text-3xl font-bold text-yellow-400">{pendientes.length}</div>
               <p className="text-xs text-gray-500 mt-1">Requieren revisión</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800/50 border-red-500/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400">Rechazados</CardTitle>
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Rechazados</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-500">{rechazados.length}</div>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-2xl sm:text-3xl font-bold text-red-500">{rechazados.length}</div>
               <p className="text-xs text-gray-500 mt-1">No aprobados</p>
             </CardContent>
           </Card>
@@ -293,17 +294,17 @@ export default function GastosPage() {
 
         {/* Gastos Table */}
         <Card className="bg-gray-800/50 border-yellow-400/20">
-          <CardHeader>
-            <CardTitle className="text-yellow-400">Gestión de Gastos</CardTitle>
-            <CardDescription className="text-gray-400">Administra los gastos del evento</CardDescription>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-yellow-400 text-base sm:text-xl">Gestión de Gastos</CardTitle>
+            <CardDescription className="text-gray-400 text-xs sm:text-sm">Administra los gastos del evento</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 sm:p-6 pt-0">
             <Tabs defaultValue="todos">
-              <TabsList className="bg-gray-700">
-                <TabsTrigger value="todos">Todos ({gastos.length})</TabsTrigger>
-                <TabsTrigger value="pendientes">Pendientes ({pendientes.length})</TabsTrigger>
-                <TabsTrigger value="aprobados">Aprobados ({aprobados.length})</TabsTrigger>
-                <TabsTrigger value="rechazados">Rechazados ({rechazados.length})</TabsTrigger>
+              <TabsList className="bg-gray-700 w-full overflow-x-auto flex">
+                <TabsTrigger value="todos" className="text-xs sm:text-sm flex-1">Todos ({gastos.length})</TabsTrigger>
+                <TabsTrigger value="pendientes" className="text-xs sm:text-sm flex-1">Pend. ({pendientes.length})</TabsTrigger>
+                <TabsTrigger value="aprobados" className="text-xs sm:text-sm flex-1">Apro. ({aprobados.length})</TabsTrigger>
+                <TabsTrigger value="rechazados" className="text-xs sm:text-sm flex-1">Rech. ({rechazados.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="todos">
@@ -528,47 +529,73 @@ export default function GastosPage() {
 
 function GastosTable({ gastos, onView, getStatusBadge }: any) {
   if (gastos.length === 0) {
-    return <div className="text-center py-8 text-gray-400">No hay gastos en esta categoría</div>
+    return <div className="text-center py-8 text-gray-400 text-sm">No hay gastos en esta categoría</div>
   }
 
   return (
-    <div className="rounded-lg border border-gray-700 overflow-hidden mt-4">
-      <Table>
-        <TableHeader className="bg-gray-700">
-          <TableRow>
-            <TableHead className="text-yellow-400">Descripción</TableHead>
-            <TableHead className="text-yellow-400">Categoría</TableHead>
-            <TableHead className="text-yellow-400">Monto</TableHead>
-            <TableHead className="text-yellow-400">Creado por</TableHead>
-            <TableHead className="text-yellow-400">Estado</TableHead>
-            <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {gastos.map((gasto: any) => (
-            <TableRow key={gasto.id} className="border-gray-700">
-              <TableCell className="text-white font-medium">{gasto.descripcion}</TableCell>
-              <TableCell className="text-gray-400 capitalize">{gasto.categoria}</TableCell>
-              <TableCell className="text-white font-bold">${gasto.monto?.toLocaleString("es-AR")}</TableCell>
-              <TableCell className="text-gray-400 text-sm">
-                {gasto.creadoPor}
-                <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
-              </TableCell>
-              <TableCell>{getStatusBadge(gasto.estado)}</TableCell>
-              <TableCell className="text-right">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-blue-500/50 text-blue-400 bg-transparent"
-                  onClick={() => onView(gasto)}
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </TableCell>
+    <>
+      {/* Mobile: card list */}
+      <div className="sm:hidden space-y-2 mt-3">
+        {gastos.map((gasto: any) => (
+          <div
+            key={gasto.id}
+            className="bg-gray-700/50 rounded-lg p-3 border border-gray-600 flex items-center justify-between gap-2"
+            onClick={() => onView(gasto)}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-white text-sm font-medium truncate">{gasto.descripcion}</p>
+              <p className="text-yellow-400 text-xs font-bold mt-0.5">${gasto.monto?.toLocaleString("es-AR")}</p>
+              <p className="text-gray-500 text-xs capitalize">{gasto.categoria}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {getStatusBadge(gasto.estado)}
+              <Button size="sm" variant="outline" className="border-blue-500/50 text-blue-400 bg-transparent w-8 h-8 p-0">
+                <Eye className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden sm:block rounded-lg border border-gray-700 overflow-hidden mt-4">
+        <Table>
+          <TableHeader className="bg-gray-700">
+            <TableRow>
+              <TableHead className="text-yellow-400">Descripción</TableHead>
+              <TableHead className="text-yellow-400">Categoría</TableHead>
+              <TableHead className="text-yellow-400">Monto</TableHead>
+              <TableHead className="text-yellow-400">Creado por</TableHead>
+              <TableHead className="text-yellow-400">Estado</TableHead>
+              <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {gastos.map((gasto: any) => (
+              <TableRow key={gasto.id} className="border-gray-700">
+                <TableCell className="text-white font-medium">{gasto.descripcion}</TableCell>
+                <TableCell className="text-gray-400 capitalize">{gasto.categoria}</TableCell>
+                <TableCell className="text-white font-bold">${gasto.monto?.toLocaleString("es-AR")}</TableCell>
+                <TableCell className="text-gray-400 text-sm">
+                  {gasto.creadoPor}
+                  <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
+                </TableCell>
+                <TableCell>{getStatusBadge(gasto.estado)}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-500/50 text-blue-400 bg-transparent"
+                    onClick={() => onView(gasto)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   )
 }

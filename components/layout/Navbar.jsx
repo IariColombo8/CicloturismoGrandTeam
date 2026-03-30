@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, X, User, LayoutDashboard, LogOut, DollarSign, Settings, Home, ChevronDown } from "lucide-react"
+import { Menu, X, User, LayoutDashboard, LogOut, DollarSign, Settings, Home, ChevronDown, Bike } from "lucide-react"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
@@ -93,11 +93,13 @@ export default function Navbar() {
     { id: "inicio", label: "Inicio" },
     { id: "nosotros", label: "Sobre Nosotros" },
     { id: "detalles", label: "Detalles" },
+    { id: "ciclos", label: "Ciclos" },
     { id: "contacto", label: "Contacto" },
   ]
 
   const adminLinks = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
     { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
     { href: "/admin/grandteam", label: "Grand Team", icon: User },
     { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
@@ -143,16 +145,26 @@ export default function Navbar() {
                     isOpen={openDropdown === "inicio"}
                     onToggle={() => toggleDropdown("inicio")}
                   >
-                    {navLinks.map((link) => (
-                      <a
-                        key={link.id}
-                        href={`/#${link.id}`}
-                        onClick={(e) => handleSectionClick(e, link.id)}
-                        className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
-                      >
-                        {link.label}
-                      </a>
-                    ))}
+                    {navLinks.map((link) =>
+                      link.href ? (
+                        <Link
+                          key={link.id}
+                          href={link.href}
+                          className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
+                        >
+                          {link.label}
+                        </Link>
+                      ) : (
+                        <a
+                          key={link.id}
+                          href={`/#${link.id}`}
+                          onClick={(e) => handleSectionClick(e, link.id)}
+                          className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
+                        >
+                          {link.label}
+                        </a>
+                      )
+                    )}
                   </DropdownMenu>
 
                   {adminLinks.map((link) => {
@@ -173,17 +185,28 @@ export default function Navbar() {
               ) : isAdminOrGrandTeam ? (
                 // Vista admin en página principal
                 <>
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
-                    >
-                      {link.label}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
-                    </a>
-                  ))}
+                  {navLinks.map((link) =>
+                    link.href ? (
+                      <Link
+                        key={link.id}
+                        href={link.href}
+                        className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
+                      >
+                        {link.label}
+                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
+                      </Link>
+                    ) : (
+                      <a
+                        key={link.id}
+                        href={`/#${link.id}`}
+                        onClick={(e) => handleSectionClick(e, link.id)}
+                        className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
+                      >
+                        {link.label}
+                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
+                      </a>
+                    )
+                  )}
 
                   <DropdownMenu
                     label="Admin"
@@ -208,17 +231,28 @@ export default function Navbar() {
               ) : (
                 // Vista usuarios normales
                 <>
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
-                    >
-                      {link.label}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
-                    </a>
-                  ))}
+                  {navLinks.map((link) =>
+                    link.href ? (
+                      <Link
+                        key={link.id}
+                        href={link.href}
+                        className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
+                      >
+                        {link.label}
+                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
+                      </Link>
+                    ) : (
+                      <a
+                        key={link.id}
+                        href={`/#${link.id}`}
+                        onClick={(e) => handleSectionClick(e, link.id)}
+                        className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
+                      >
+                        {link.label}
+                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
+                      </a>
+                    )
+                  )}
                 </>
               )}
             </div>
@@ -255,15 +289,17 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors"
-              aria-label="Toggle menu"
-              aria-expanded={isMobileMenuOpen}
-            >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            {/* Mobile Menu Button - hidden on admin pages (AdminSidebar has its own) */}
+            {!(isAdminOrGrandTeam && isInAdminPages) && (
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors"
+                aria-label="Toggle menu"
+                aria-expanded={isMobileMenuOpen}
+              >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -298,16 +334,26 @@ export default function Navbar() {
                   isOpen={openDropdown === "inicio"}
                   onToggle={() => toggleDropdown("inicio")}
                 >
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
+                  {navLinks.map((link) =>
+                    link.href ? (
+                      <Link
+                        key={link.id}
+                        href={link.href}
+                        className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
+                      >
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <a
+                        key={link.id}
+                        href={`/#${link.id}`}
+                        onClick={(e) => handleSectionClick(e, link.id)}
+                        className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
+                      >
+                        {link.label}
+                      </a>
+                    )
+                  )}
                 </MobileDropdown>
 
                 {adminLinks.map((link) => {
@@ -327,16 +373,26 @@ export default function Navbar() {
             ) : isAdminOrGrandTeam ? (
               // Mobile admin en página principal
               <>
-                {navLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={`/#${link.id}`}
-                    onClick={(e) => handleSectionClick(e, link.id)}
-                    className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {navLinks.map((link) =>
+                  link.href ? (
+                    <Link
+                      key={link.id}
+                      href={link.href}
+                      className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      key={link.id}
+                      href={`/#${link.id}`}
+                      onClick={(e) => handleSectionClick(e, link.id)}
+                      className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
+                    >
+                      {link.label}
+                    </a>
+                  )
+                )}
 
                 <MobileDropdown
                   label="Admin"
@@ -361,16 +417,26 @@ export default function Navbar() {
             ) : (
               // Mobile usuarios normales
               <>
-                {navLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={`/#${link.id}`}
-                    onClick={(e) => handleSectionClick(e, link.id)}
-                    className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {navLinks.map((link) =>
+                  link.href ? (
+                    <Link
+                      key={link.id}
+                      href={link.href}
+                      className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      key={link.id}
+                      href={`/#${link.id}`}
+                      onClick={(e) => handleSectionClick(e, link.id)}
+                      className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
+                    >
+                      {link.label}
+                    </a>
+                  )
+                )}
               </>
             )}
 

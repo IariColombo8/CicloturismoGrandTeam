@@ -14,16 +14,14 @@ export default function Sponsors() {
 
   const sponsorTiers = {
     gold: [
-      { name: "Sponsor Premium 1", logo: "/cycling-sponsor-logo-gold.jpg", tier: "Oro" },
-      { name: "Sponsor Premium 2", logo: "/cycling-sponsor-logo-silver.jpg", tier: "Oro" },
+      { name: "Servitec", logo: "/servitec.png", tier: "Oro" },
     ],
-    silver: [
-      { name: "Sponsor Plata 1", logo: "/bike-sponsor-logo.jpg", tier: "Plata" },
-      { name: "Sponsor Plata 2", logo: "/generic-sports-sponsor-logo.png", tier: "Plata" },
-    ],
+    silver: [],
     bronze: [
-      { name: "Sponsor Bronce 1", logo: "/cycling-gear-logo.jpg", tier: "Bronce" },
-      { name: "Sponsor Bronce 2", logo: "/community-sponsor-logo.jpg", tier: "Bronce" },
+      { name: "Cafetería Los Ciclistas", logo: "/logoc.png", tier: "Bronce" },
+      { name: "LM Seguros", logo: "/logolm.png", tier: "Bronce" },
+      { name: "Yoga & Fitness Center", logo: "/logoly.png", tier: "Bronce" },
+      { name: "Local Aventura", logo: "/logola.png", tier: "Bronce" },
     ],
   }
 
@@ -82,7 +80,7 @@ export default function Sponsors() {
               <h3 className="text-2xl font-bold text-center mb-6">
                 <span className="text-yellow-400">★</span> Patrocinadores Oro <span className="text-yellow-400">★</span>
               </h3>
-              <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl mx-auto">
                 {sponsorTiers.gold.map((sponsor, index) => (
                   <SponsorCard key={index} sponsor={sponsor} size="large" delay={index * 100} />
                 ))}

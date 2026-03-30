@@ -6,7 +6,8 @@ import AboutTeam from "@/components/home/AboutTeam"
 // import Testimonials from "@/components/home/Testimonials"
 import Gallery from "@/components/home/Gallery"
 import Sponsors from "@/components/home/Sponsors"
-import CallToAction from "@/components/home/CallToAction"
+import CiclosProvincia from "@/components/home/CiclosProvincia"
+// import CallToAction from "@/components/home/CallToAction"
 import Navbar from "@/components/layout/Navbar"
 import Footer from "@/components/layout/Footer"
 
@@ -22,7 +23,7 @@ export default function Home() {
       {/* <Testimonials /> */}
       <Gallery />
       <Sponsors />
-      <CallToAction />
+      <CiclosProvincia />
       <Footer />
     </main>
   )

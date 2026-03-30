@@ -2,18 +2,22 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { 
-  LayoutDashboard, 
-  DollarSign, 
-  Users, 
-  Settings, 
+import { usePathname, useRouter } from "next/navigation"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import {
+  LayoutDashboard,
+  DollarSign,
+  Users,
+  Settings,
   ClipboardList,
   Menu,
   X,
   ChevronLeft,
   ChevronRight,
   Home,
+  Bike,
+  LogOut,
   LucideIcon
 } from "lucide-react"
 
@@ -27,8 +31,19 @@ interface NavItem {
 
 export default function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      setIsOpen(false)
+      router.push("/")
+    } catch (error) {
+      console.error("Error signing out:", error)
+    }
+  }
 
   const navItems: NavItem[] = [
     {
@@ -58,6 +73,13 @@ export default function AdminSidebar() {
       icon: DollarSign,
       color: "text-purple-400",
       hoverColor: "hover:bg-purple-500/10"
+    },
+    {
+      href: "/admin/ciclos",
+      label: "Ciclos Provincia",
+      icon: Bike,
+      color: "text-orange-400",
+      hoverColor: "hover:bg-orange-500/10"
     },
     {
       href: "/admin/grandteam",
@@ -152,14 +174,22 @@ export default function AdminSidebar() {
         </nav>
 
         {/* Footer Info */}
-        {!isCollapsed && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-yellow-400/20 bg-zinc-900/50">
-            <div className="text-center">
+        <div className="absolute bottom-0 left-0 right-0 border-t border-yellow-400/20 bg-zinc-900/50">
+          {/* Logout button (always visible in sidebar) */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 w-full text-red-400 hover:bg-red-500/10 transition-all duration-200"
+          >
+            <LogOut className={`w-5 h-5 flex-shrink-0`} />
+            <span className={`font-medium ${isCollapsed ? "md:hidden" : ""}`}>Cerrar Sesión</span>
+          </button>
+          {!isCollapsed && (
+            <div className="px-4 pb-4 text-center">
               <p className="text-xs text-gray-500 mb-1">Panel de Administración</p>
               <p className="text-sm font-semibold gradient-text">Grand Team Bike 2026</p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
 
       {/* Main Content Spacer */}

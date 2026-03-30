@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { collection, query, onSnapshot, orderBy, getDocs, where, doc, updateDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { collection, query, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
 import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 import { motion } from "framer-motion"
 import Navbar from "@/components/Navbar"
 import {
@@ -40,8 +42,7 @@ import {
 
 export default function RegistroInscripciones() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
-  const [isAuthorized, setIsAuthorized] = useState(false)
+  const { user, userRole, loading: authLoading } = useFirebaseContext()
   const [inscripciones, setInscripciones] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -57,54 +58,33 @@ export default function RegistroInscripciones() {
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const topRef = useRef(null)
 
-  // Verificación de autenticación
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        router.push("/login?returnUrl=/admin/registro-inscripciones")
-      } else {
-        try {
-          const adminRef = collection(db, "administrador")
-          const adminQuery = query(adminRef, where("email", "==", user.email))
-          const adminSnapshot = await getDocs(adminQuery)
+  const isAuthorized = userRole === "admin" || userRole === "grandteam"
 
-          if (!adminSnapshot.empty) {
-            const adminData = adminSnapshot.docs[0].data()
-            if (adminData.role === "admin" || adminData.role === "grandteam") {
-              setIsAuthorized(true)
-              setUser(user)
-            } else {
-              router.push("/")
-            }
-          } else {
-            router.push("/")
-          }
-        } catch (error) {
-          console.error("Error verificando permisos:", error)
-          router.push("/")
-        }
-      }
-    })
-    return () => unsubscribe()
-  }, [router])
+  // Redirigir si no autorizado
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login?returnUrl=/admin/registro-inscripciones")
+    } else if (!authLoading && user && !isAuthorized) {
+      router.push("/")
+    }
+  }, [authLoading, user, isAuthorized, router])
 
   // Cargar inscripciones de Firebase
   useEffect(() => {
-    if (!user) return
-    
+    if (!isAuthorized || !user) return
+
     const q = query(collection(db, "inscripciones"), orderBy("fechaInscripcion", "desc"))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }))
-      console.log("📦 Datos Firestore:", data)
       setInscripciones(data)
       setLoading(false)
     })
 
     return () => unsubscribe()
-  }, [user])
+  }, [isAuthorized, user])
 
   const handleRefresh = async () => {
     setRefreshing(true)

@@ -31,52 +31,57 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null) // Added userRole state
 
   useEffect(() => {
+    let available = false
     try {
-      if (auth && typeof auth.onAuthStateChanged === "function") {
-        setIsFirebaseAvailable(true)
-      } else {
-        console.warn("Firebase Auth no está disponible. Algunas funcionalidades estarán limitadas.")
-        setIsFirebaseAvailable(false)
-        setLoading(false)
-      }
-    } catch (error) {
-      console.error("Error al verificar Firebase:", error)
+      available = !!(auth && typeof auth.onAuthStateChanged === "function")
+    } catch {
+      available = false
+    }
+
+    if (!available) {
       setIsFirebaseAvailable(false)
       setLoading(false)
+      return
     }
-  }, [])
 
-  useEffect(() => {
-    if (!isFirebaseAvailable) return
+    setIsFirebaseAvailable(true)
+
+    // Cargar rol desde caché para mostrar UI inmediatamente
+    try {
+      const cachedRole = sessionStorage.getItem("gtb_userRole")
+      if (cachedRole) setUserRole(cachedRole)
+    } catch {}
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser)
 
       if (currentUser) {
+        // Si ya tenemos el rol cacheado, no bloqueamos el loading
+        let cachedRole: string | null = null
+        try { cachedRole = sessionStorage.getItem("gtb_userRole") } catch {}
+        if (cachedRole) setLoading(false)
+
         try {
           const emailKey = currentUser.email?.replace(/[@.]/g, "_") || ""
           const userDoc = doc(db, "administrador", emailKey)
           const docSnap = await getDoc(userDoc)
-
-          if (docSnap.exists()) {
-            const userData = docSnap.data()
-            setUserRole(userData.role || "usuario")
-          } else {
-            setUserRole("usuario")
-          }
+          const role = docSnap.exists() ? (docSnap.data().role || "usuario") : "usuario"
+          setUserRole(role)
+          try { sessionStorage.setItem("gtb_userRole", role) } catch {}
         } catch (error) {
           console.error("Error fetching user role:", error)
-          setUserRole("usuario")
+          setUserRole(cachedRole || "usuario")
         }
       } else {
         setUserRole(null)
+        try { sessionStorage.removeItem("gtb_userRole") } catch {}
       }
 
       setLoading(false)
     })
 
     return () => unsubscribe()
-  }, [isFirebaseAvailable])
+  }, []) // un solo effect, corre una vez
 
   useEffect(() => {
     const fetchEventSettings = async () => {

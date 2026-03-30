@@ -100,17 +100,17 @@ export default function AboutTeam() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section header */}
-        <div className="text-center mb-16 animate-fadeInUp">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4">
+        <div className="text-center mb-8 sm:mb-16 animate-fadeInUp">
+          <h2 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white mb-3 sm:mb-4">
             <span className="gradient-text">Cicloturismo</span> Concepción del Uruguay
           </h2>
-          <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed px-2">
             Únete a la aventura más desafiante del año. <span className="text-yellow-400 font-semibold">50km de pura adrenalina</span> a través de paisajes inolvidables.
           </p>
         </div>
 
         {/* Values grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-12 sm:mb-20">
           {values.map((value, index) => {
             const IconComponent = value.icon
             return (
@@ -118,16 +118,16 @@ export default function AboutTeam() {
                 key={index}
                 className="bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 hover:border-yellow-400/50 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-yellow-500/10 group"
               >
-                <CardContent className="p-6 text-center">
+                <CardContent className="p-4 sm:p-6 text-center">
                   <div
-                    className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${value.gradient} ${value.hoverGradient} rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110`}
+                    className={`w-10 h-10 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-gradient-to-br ${value.gradient} ${value.hoverGradient} rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110`}
                   >
-                    <IconComponent className={`w-8 h-8 ${value.iconColor}`} aria-hidden="true" />
+                    <IconComponent className={`w-5 h-5 sm:w-8 sm:h-8 ${value.iconColor}`} aria-hidden="true" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-yellow-400 transition-colors">
+                  <h3 className="text-sm sm:text-xl font-bold text-white mb-1.5 sm:mb-3 group-hover:text-yellow-400 transition-colors leading-tight">
                     {value.title}
                   </h3>
-                  <p className="text-gray-400 leading-relaxed text-sm">{value.description}</p>
+                  <p className="text-gray-400 leading-relaxed text-xs sm:text-sm">{value.description}</p>
                 </CardContent>
               </Card>
             )

@@ -92,24 +92,24 @@ export default function Gallery() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section header */}
         <div
-          className={`text-center mb-16 transition-all duration-1000 ${
+          className={`text-center mb-8 sm:mb-16 transition-all duration-1000 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
           }`}
         >
-          <div className="inline-flex items-center justify-center gap-2 mb-4 px-4 py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
-            <Camera className="w-5 h-5 text-yellow-400" aria-hidden="true" />
-            <span className="text-sm font-semibold text-yellow-400">Galería</span>
+          <div className="inline-flex items-center justify-center gap-2 mb-4 px-3 py-1.5 sm:px-4 sm:py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
+            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" aria-hidden="true" />
+            <span className="text-xs sm:text-sm font-semibold text-yellow-400">Galería</span>
           </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4">
+          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white mb-3 sm:mb-4">
             <span className="gradient-text">Momentos</span> Inolvidables
           </h2>
-          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed px-2">
             Revive la emoción de nuestros eventos anteriores y descubre lo que te espera
           </p>
         </div>
 
         {/* Gallery grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 md:gap-6 max-w-7xl mx-auto">
           {galleryImages.map((image, index) => (
             <Card
               key={index}
@@ -129,13 +129,10 @@ export default function Gallery() {
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <ZoomIn className="w-12 h-12 text-yellow-400 mb-2 transform scale-0 group-hover:scale-100 transition-transform duration-300" />
-                    <p className="text-white font-bold text-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                    <ZoomIn className="w-7 h-7 sm:w-12 sm:h-12 text-yellow-400 mb-1 sm:mb-2 transform scale-0 group-hover:scale-100 transition-transform duration-300" />
+                    <p className="text-white font-bold text-xs sm:text-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 text-center px-1">
                       {image.title}
                     </p>
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <p className="text-gray-300 text-sm">{image.alt}</p>
                   </div>
                 </div>
               </div>
@@ -144,11 +141,11 @@ export default function Gallery() {
         </div>
 
         {/* CTA después de la galería */}
-        <div className="mt-16 text-center">
-          <p className="text-gray-400 mb-4">¿Listo para crear tus propios momentos?</p>
+        <div className="mt-8 sm:mt-16 text-center">
+          <p className="text-gray-400 text-sm sm:text-base mb-3 sm:mb-4">¿Listo para crear tus propios momentos?</p>
           <a
             href="/inscripcion"
-            className="inline-block px-8 py-4 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-500/50"
+            className="inline-block px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-500/50 text-sm sm:text-base"
           >
             Inscríbete Ahora
           </a>

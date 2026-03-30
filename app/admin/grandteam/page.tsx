@@ -89,65 +89,65 @@ export default function GrandTeamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-6 pt-28">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 p-3 sm:p-6 pt-4 sm:pt-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <Users className="w-10 h-10 text-yellow-400" />
-          <h1 className="text-4xl font-bold text-yellow-400">Panel Grand Team</h1>
+        <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-8">
+          <Users className="w-6 h-6 sm:w-10 sm:h-10 text-yellow-400" />
+          <h1 className="text-xl sm:text-4xl font-bold text-yellow-400">Panel Grand Team</h1>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
           <Card className="bg-gray-800/50 border-yellow-400/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Total Miembros
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-white">{miembros.length}</div>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-2xl sm:text-3xl font-bold text-white">{miembros.length}</div>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800/50 border-pink-500/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-2">
                 <Cake className="w-4 h-4" />
                 Cumpleaños Este Mes
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-pink-500">{cumpleañeros.length}</div>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-2xl sm:text-3xl font-bold text-pink-500">{cumpleañeros.length}</div>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800/50 border-red-500/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+            <CardHeader className="p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-2">
                 <Heart className="w-4 h-4" />
-                Con Datos de Salud
+                Datos de Salud
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-500">{miembros.filter((m) => m.datosSalud).length}</div>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-2xl sm:text-3xl font-bold text-red-500">{miembros.filter((m) => m.datosSalud).length}</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Tabs */}
         <Card className="bg-gray-800/50 border-yellow-400/20">
-          <CardHeader>
-            <CardTitle className="text-yellow-400">Información de Miembros</CardTitle>
-            <CardDescription className="text-gray-400">Datos exclusivos del equipo Grand Team</CardDescription>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-yellow-400 text-base sm:text-xl">Información de Miembros</CardTitle>
+            <CardDescription className="text-gray-400 text-xs sm:text-sm">Datos exclusivos del equipo Grand Team</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 sm:p-6 pt-0">
             <Tabs defaultValue="cumpleanos">
-              <TabsList className="bg-gray-700">
-                <TabsTrigger value="cumpleanos">Cumpleaños ({cumpleañeros.length})</TabsTrigger>
-                <TabsTrigger value="salud">Datos de Salud</TabsTrigger>
-                <TabsTrigger value="miembros">Todos los Miembros ({miembros.length})</TabsTrigger>
+              <TabsList className="bg-gray-700 w-full flex">
+                <TabsTrigger value="cumpleanos" className="text-xs sm:text-sm flex-1">Cumpleaños ({cumpleañeros.length})</TabsTrigger>
+                <TabsTrigger value="salud" className="text-xs sm:text-sm flex-1">Salud</TabsTrigger>
+                <TabsTrigger value="miembros" className="text-xs sm:text-sm flex-1">Miembros ({miembros.length})</TabsTrigger>
               </TabsList>
 
               {/* Cumpleaños */}
@@ -188,18 +188,33 @@ export default function GrandTeamPage() {
               </TabsContent>
 
               {/* Datos de Salud */}
-              <TabsContent value="salud" className="mt-6">
-                <div className="flex justify-end mb-4">
+              <TabsContent value="salud" className="mt-4 sm:mt-6">
+                <div className="flex justify-end mb-3 sm:mb-4">
                   <Button
                     onClick={exportarDatosSalud}
-                    className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black"
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black text-xs sm:text-sm px-3 sm:px-4"
                   >
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Exportar CSV
                   </Button>
                 </div>
 
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
+                {/* Mobile cards */}
+                <div className="sm:hidden space-y-2">
+                  {miembros.filter((m) => m.datosSalud || m.grupoSanguineo).map((miembro) => (
+                    <div key={miembro.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-white text-sm font-medium">{miembro.nombreCompleto || miembro.email}</p>
+                        <Badge className="bg-red-500/20 text-red-400 text-xs">{miembro.grupoSanguineo || "N/A"}</Badge>
+                      </div>
+                      <p className="text-gray-400 text-xs">Alergias: {miembro.datosSalud?.alergias || "Ninguna"}</p>
+                      <p className="text-gray-400 text-xs">Medicamentos: {miembro.datosSalud?.medicamentos || "Ninguno"}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden sm:block rounded-lg border border-gray-700 overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-700">
                       <TableRow>
@@ -234,8 +249,25 @@ export default function GrandTeamPage() {
               </TabsContent>
 
               {/* Todos los Miembros */}
-              <TabsContent value="miembros" className="mt-6">
-                <div className="rounded-lg border border-gray-700 overflow-hidden">
+              <TabsContent value="miembros" className="mt-4 sm:mt-6">
+                {/* Mobile cards */}
+                <div className="sm:hidden space-y-2">
+                  {miembros.map((miembro) => (
+                    <div key={miembro.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-white text-sm font-medium">{miembro.nombreCompleto || miembro.email.split("@")[0]}</p>
+                        <Badge className={miembro.role === "admin" ? "bg-yellow-500/20 text-yellow-400 text-xs" : "bg-blue-500/20 text-blue-400 text-xs"}>
+                          {miembro.role}
+                        </Badge>
+                      </div>
+                      <p className="text-gray-400 text-xs truncate">{miembro.email}</p>
+                      {miembro.localidad && <p className="text-gray-500 text-xs">{miembro.localidad}</p>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden sm:block rounded-lg border border-gray-700 overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-700">
                       <TableRow>
