@@ -16,8 +16,8 @@ const COLORS = {
 }
 
 // Dimensiones aproximadas de la etiqueta en píxeles
-const LABEL_W = 185
-const LABEL_H = 54
+const LABEL_W = 160
+const LABEL_H = 38
 
 // Posiciones candidatas (dir + vOffset desde el pin)
 const CANDIDATE_POSITIONS = [
@@ -117,7 +117,6 @@ const createLabelIcon = (ciclo, pos, hidePin) => {
     : ""
 
   const localidad = ciclo.localidad || ""
-  const nombre = (ciclo.nombre || "").toUpperCase()
 
   const borderSide = dir === "right" ? "border-left" : "border-right"
   const borderRadius = dir === "right" ? "0 7px 7px 0" : "7px 0 0 7px"
@@ -138,27 +137,16 @@ const createLabelIcon = (ciclo, pos, hidePin) => {
     ">
       ${localidad ? `<div style="
         font-weight:900;
-        font-size:13.5px;
+        font-size:13px;
         color:#ffffff;
         letter-spacing:0.05em;
         text-transform:uppercase;
         text-shadow:0 0 10px ${color}99;
-        margin-bottom:2px;
+        ${fechaStr ? "margin-bottom:2px;" : ""}
         white-space:nowrap;
       ">${localidad}</div>` : ""}
-      <div style="
-        font-size:9px;
-        color:#999;
-        font-weight:600;
-        letter-spacing:0.02em;
-        white-space:nowrap;
-        max-width:150px;
-        overflow:hidden;
-        text-overflow:ellipsis;
-        ${fechaStr ? "margin-bottom:2px;" : ""}
-      ">${nombre}</div>
       ${fechaStr ? `<div style="
-        font-size:9.5px;
+        font-size:10px;
         color:${color};
         font-weight:700;
         letter-spacing:0.02em;
@@ -281,7 +269,7 @@ export default function CiclosMap({ ciclos }) {
   const ciclosConMapa = ciclos.filter((c) => c.latitud && c.longitud)
 
   return (
-    <div className="w-full h-[300px] sm:h-[500px] rounded-2xl overflow-hidden border-2 border-yellow-400/20 hover:border-yellow-400/40 transition-colors relative">
+    <div className="w-full h-[75svh] sm:h-[500px] rounded-2xl overflow-hidden border-2 border-yellow-400/20 hover:border-yellow-400/40 transition-colors relative">
       <MapContainer
         center={ENTRE_RIOS_CENTER}
         zoom={ENTRE_RIOS_ZOOM}
