@@ -116,7 +116,7 @@ const createLabelIcon = (ciclo, pos, hidePin) => {
       })
     : ""
 
-  const localidad = ciclo.localidad || ""
+  const titulo = ciclo.localidad || ciclo.nombre || ""
 
   const borderSide = dir === "right" ? "border-left" : "border-right"
   const borderRadius = dir === "right" ? "0 7px 7px 0" : "7px 0 0 7px"
@@ -135,7 +135,7 @@ const createLabelIcon = (ciclo, pos, hidePin) => {
       box-shadow:0 3px 14px rgba(0,0,0,0.75);
       line-height:1.25;
     ">
-      ${localidad ? `<div style="
+      ${titulo ? `<div style="
         font-weight:900;
         font-size:13px;
         color:#ffffff;
@@ -144,7 +144,7 @@ const createLabelIcon = (ciclo, pos, hidePin) => {
         text-shadow:0 0 10px ${color}99;
         ${fechaStr ? "margin-bottom:2px;" : ""}
         white-space:nowrap;
-      ">${localidad}</div>` : ""}
+      ">${titulo}</div>` : ""}
       ${fechaStr ? `<div style="
         font-size:10px;
         color:${color};
