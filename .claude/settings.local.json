@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx next:*)",
+      "Bash(find /c/Users/Emanuel/Desktop/ecritorio/proyectos/produccion/cicloturismo-grand-team/app/admin -type f -name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx)"
+    ]
+  }
+}
