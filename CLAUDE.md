@@ -64,7 +64,7 @@ No hay tests configurados en este proyecto.
 | Tailwind CSS v4 | Estilos con tema negro/dorado |
 | shadcn/ui (new-york) | Componentes UI en `components/ui/` |
 | Firebase 12.5 | Auth (login admin) + Firestore (legacy settings/inscripciones) |
-| Supabase | Base de datos principal (remera, content_settings, administradores) |
+| Supabase | Base de datos principal (inscripciones, participantes, sponsors, remera, gastos, administradores) |
 | EmailJS | Emails transaccionales (confirmacion, rechazo) |
 | react-hook-form + zod | Formularios con validacion |
 | framer-motion | Animaciones |
@@ -75,14 +75,16 @@ No hay tests configurados en este proyecto.
 ### Arquitectura clave
 
 - **Todo es client-side**: Firebase se inicializa en el cliente. `"use client"` es obligatorio en componentes que usen Firebase, hooks, o estado.
-- **FirebaseProvider** (`components/providers/FirebaseProvider.tsx`): contexto global que provee `user`, `userRole`, `loading`, `eventSettings`, `isFirebaseAvailable` via `useFirebaseContext()`.
-- **SupabaseProvider** (`components/providers/SupabaseProvider.tsx`): contexto alternativo con alias de compatibilidad. Tambien exporta `useFirebaseContext`.
-- **Autenticacion**: Firebase Auth (Google OAuth + email/password). Post-login se busca el email en coleccion `administrador` de Firestore para determinar rol.
+- **SupabaseProvider** (`components/providers/SupabaseProvider.tsx`): contexto global que provee `user`, `session`, `userRole`, `loading`, `eventSettings`, `isSupabaseAvailable` via `useSupabaseContext()`. Incluye cache de `eventSettings` en sessionStorage (TTL 5 min). Exporta alias `useFirebaseContext` y `FirebaseProvider` para compatibilidad.
+- **Autenticacion**: Supabase Auth (Google OAuth con implicit flow). Post-login se busca el email en tabla `administradores` de Supabase para determinar rol. Funcion RPC `link_auth_user` (SECURITY DEFINER) vincula auth_user_id automaticamente.
 - **Roles**: `admin` (acceso total), `grandteam` (acceso parcial), `usuario` (sin acceso admin). Usuarios no autenticados redirigen a `/login?returnUrl=<ruta>`.
 - **Admin layout**: sidebar colapsable con `AdminLayoutContext`. El sidebar es fixed en desktop (con margin en main) y overlay en movil.
 - **Fuentes**: Geist (body) y Geist Mono, cargadas via `next/font/google`.
 - **API Routes**: Las rutas en `app/api/` usan el cliente admin de Supabase (service_role). Nunca exponer `SUPABASE_SERVICE_ROLE_KEY` al frontend.
-- **Storage**: Supabase Storage bucket `comprobantes` (publico). Subcarpetas: `remera/{dni}/{ts}`, `inscripciones/{dni}/{ts}`.
+- **Storage**: Supabase Storage bucket `comprobantes` (publico). Subcarpetas: `remera/{dni}/{ts}`, `inscripciones/{dni}/{ts}`, `sponsors/{nombre_sanitizado}`.
+- **Avatar de usuario**: Se muestra en Navbar (landing) y AdminSidebar. Usa `user.user_metadata.avatar_url` (Google OAuth) con fallback a iniciales.
+- **Cache headers**: Granulares en `next.config.mjs` — API sin cache, assets estaticos 1 ano, sponsors 1 dia, paginas s-maxage=60.
+- **Optimizaciones**: Dynamic import de librerias pesadas (html5-qrcode, recharts), memoizacion de navLinks/callbacks, sessionStorage cache para event_settings.
 
 ### Colecciones Firestore (Legacy)
 
@@ -112,6 +114,11 @@ public.content_settings      -> id (PK texto), data (JSONB)
 public.gastos                -> descripcion, monto, categoria, estado, aprobado_por
 public.event_settings        -> cupo_maximo, precio, inscripciones_abiertas
 public.counters              -> id, count
+public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url, tier (oro/plata/bronce)
+  contacto: telefono, whatsapp, email, direccion, horario
+  redes: instagram, facebook, website
+  servicios TEXT[], activo, orden
+  RLS: SELECT publico, ALL solo admin
 ```
 
 ### Rutas Publicas
@@ -140,6 +147,7 @@ public.counters              -> id, count
 /admin/check-in              -> Check-in de participantes por QR o DNI
 /admin/ciclos                -> Gestion de ciclos/categorias
 /admin/grandteam             -> Panel especifico para rol Grand Team
+/admin/sponsors              -> CRUD completo de sponsors (oro/plata/bronce) con upload de logo
 ```
 
 ### API Routes
@@ -149,6 +157,8 @@ GET  /api/remera/lookup?dni=X    -> Busca participante y pedido de remera por DN
 POST /api/remera/submit          -> Guarda/actualiza pedido de remera (UPSERT por DNI)
 GET  /api/remera/settings        -> Retorna alias/datos de pago para el formulario publico
 POST /api/inscripcion/submit     -> Guarda inscripcion (si se crean rutas API)
+POST /api/sponsors/upload-logo   -> Sube logo de sponsor a Supabase Storage (max 2MB, jpg/png/webp/svg/gif)
+POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y participantes a "pendiente"
 ```
 
 ### Flujo "Pedir Remera"
@@ -167,7 +177,31 @@ POST /api/inscripcion/submit     -> Guarda inscripcion (si se crean rutas API)
 2. **CategoryStep** -> experiencia, talla remera, datos medicos
 3. **PaymentStep** -> metodo pago, referencia, comprobante (comprimido a base64 via `lib/imageUtils.ts`)
 4. **ReviewStep** -> resumen y envio
-5. -> Firestore (serverTimestamp) + Email confirmacion (EmailJS) -> `/inscripcion/exito`
+5. -> Supabase insert + Crea registro en `participantes` con `token_qr` (UUID) + Email confirmacion con QR (EmailJS + api.qrserver.com) -> `/inscripcion/exito`
+
+### Flujo de Check-in (dia del evento)
+
+1. Admin va a `/admin/check-in` -> escaner QR o busqueda manual por DNI
+2. Participante muestra QR recibido por email (contiene `token_qr` UUID)
+3. Escaner lee el QR -> busca en `participantes` por `token_qr`
+4. Si encuentra y no esta checked_in -> marca `checked_in = true`, `checked_in_at = now()`
+5. Si ya esta checked_in -> muestra advertencia de duplicado
+6. Busqueda manual: ingresa DNI -> busca en `participantes` por `dni`
+
+### Flujo de Sponsors
+
+1. Admin va a `/admin/sponsors` -> CRUD completo con filtro por tier
+2. Puede crear/editar sponsor con: nombre, logo (upload), tier, contacto, redes, servicios
+3. Logo se sube via `POST /api/sponsors/upload-logo` a Supabase Storage `comprobantes/sponsors/`
+4. Landing publica (`components/home/Sponsors.tsx`) carga sponsors activos desde Supabase con fallback a hardcoded
+5. Sponsors se muestran clasificados por tier: oro, plata, bronce
+
+### Dashboard Admin
+
+- Stats en tiempo real: total inscriptos, confirmados, pendientes, rechazados
+- Precio de entrada editable inline (se guarda en `event_settings.precio`)
+- Ingresos calculados dinamicamente: confirmados * precio entrada
+- Graficos con recharts (cargados via dynamic import)
 
 ### Talles de Remera Disponibles
 
@@ -201,6 +235,19 @@ NEXT_PUBLIC_SUPABASE_URL               # URL del proyecto Supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY          # Clave publica (anon) de Supabase
 SUPABASE_SERVICE_ROLE_KEY              # Solo en servidor (API routes). NUNCA exponer al cliente
 ```
+
+## Reglas de Workflow
+
+- **Push en cada cambio**: Hacer commit y push despues de cada cambio completado.
+- **Build antes de commit**: Siempre ejecutar `npm run build` antes de commitear.
+- **Actualizar CLAUDE.md**: Mantener este archivo actualizado con cambios significativos.
+
+## Datos Migrados de Firestore
+
+- 271 inscripciones migradas desde Firestore. Los campos `nombres` y `apellidos` fueron reparados (estaban vacios, se extrajeron del campo `id`).
+- Participantes migrados con sus datos de check-in.
+- Administradores, gastos, event_settings y counters migrados.
+- Sponsors hardcodeados migrados a tabla Supabase via SQL seed.
 
 ## Recordatorio Final
 Responder SIEMPRE en espanol. Esta es la regla mas importante del archivo.
