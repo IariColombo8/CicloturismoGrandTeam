@@ -1,16 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  CheckCircle, 
-  XCircle, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  CheckCircle,
+  XCircle,
+  User,
+  Mail,
+  Phone,
+  MapPin,
   Calendar,
   Users,
   Stethoscope,
@@ -18,7 +19,8 @@ import {
   CreditCard,
   Clock,
   QrCode,
-  UserCheck
+  UserCheck,
+  Eye
 } from "lucide-react"
 
 interface InscripcionDetailModalProps {
@@ -36,6 +38,8 @@ export default function InscripcionDetailModal({
   onApprove,
   onReject,
 }: InscripcionDetailModalProps) {
+  const [comprobanteVisible, setComprobanteVisible] = useState(false)
+
   if (!inscripcion) return null
 
   const getStatusBadge = (estado: string) => {
@@ -63,7 +67,7 @@ export default function InscripcionDetailModal({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={() => { setComprobanteVisible(false); onClose() }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
@@ -279,22 +283,32 @@ export default function InscripcionDetailModal({
                 )}
               </div>
 
-              {/* Comprobante */}
+              {/* Comprobante — carga solo al hacer click en "Ver" */}
               {(inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64) && (
                 <div className="mt-4">
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-2">
                     <FileText className="h-3 w-3" />
                     Comprobante de Pago
                   </label>
-                  <div className="bg-gray-50 rounded-lg p-4 border">
-                    <img
-                      src={inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64}
-                      alt="Comprobante"
-                      className="max-h-64 mx-auto rounded shadow-md cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => window.open(inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64, "_blank")}
-                    />
-                    <p className="text-xs text-center text-gray-500 mt-2">Click para ver en tamaño completo</p>
-                  </div>
+                  {!comprobanteVisible ? (
+                    <button
+                      onClick={() => setComprobanteVisible(true)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors text-sm"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Ver comprobante
+                    </button>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-4 border">
+                      <img
+                        src={inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64}
+                        alt="Comprobante"
+                        className="max-h-64 mx-auto rounded shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                        onClick={() => window.open(inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64, "_blank")}
+                      />
+                      <p className="text-xs text-center text-gray-500 mt-2">Click para ver en tamaño completo</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

@@ -132,6 +132,40 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Smooth scroll nativo para anchors internos (#seccion).
+     Reemplaza los handlers JS de scrollIntoView esparcidos por la landing. */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Ofset para que las secciones con id no queden tapadas por el Navbar fijo. */
+  section[id] {
+    scroll-margin-top: 5rem;
+  }
+
+  /* Respetar prefers-reduced-motion: el usuario lo pidió. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* En dispositivos touch, neutralizar los hover:scale-* que quedan
+     enganchados al tocar una card (típico iOS/Android). */
+  @media (hover: none) {
+    .group:hover,
+    [class*="hover:scale-"]:hover {
+      transform: none !important;
+    }
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -244,6 +278,20 @@
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 3s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* Efectos de gradiente para textos */

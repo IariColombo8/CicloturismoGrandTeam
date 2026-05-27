@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, onSnapshot, orderBy } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
+import { supabase } from "@/lib/supabase"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Html5Qrcode } from "html5-qrcode"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,7 +37,7 @@ interface CheckInRecord {
 }
 
 export default function CheckInPage() {
-  const { user } = useFirebaseContext()
+  const { user } = useSupabaseContext()
   const [scanning, setScanning] = useState(false)
   const [loading, setLoading] = useState(true)
   const [procesando, setProcesando] = useState(false)
@@ -68,39 +67,65 @@ export default function CheckInPage() {
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerRef = useRef<HTMLDivElement>(null)
 
-  // Estadísticas en tiempo real
+  // Estadisticas en tiempo real (solo conteos, no descarga toda la tabla)
   useEffect(() => {
     if (!user) return
 
-    const q = query(collection(db, "Participantes"), orderBy("fechaInscripcion", "desc"))
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const inscripciones = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((d: any) => d.numeroInscripcion) // Solo documentos de inscripción (no los de DNI)
+    const fetchStats = async () => {
+      // Conteos en paralelo usando head: true (sin descargar filas)
+      const [confirmRes, presentRes, histRes] = await Promise.all([
+        supabase
+          .from("participantes")
+          .select("*", { count: "exact", head: true })
+          .eq("estado", "confirmada"),
+        supabase
+          .from("participantes")
+          .select("*", { count: "exact", head: true })
+          .eq("checked_in", true),
+        // Solo las ultimas 10 check-ins para el historial
+        supabase
+          .from("participantes")
+          .select("id, nombre, apellido, dni, numero_inscripcion, estado, checked_in, checked_in_at, checked_in_by, token_qr")
+          .eq("checked_in", true)
+          .order("checked_in_at", { ascending: false })
+          .limit(10),
+      ])
 
-      const confirmadas = inscripciones.filter((i: any) => i.estado === "confirmada")
-      const presentes = inscripciones.filter((i: any) => i.checkedIn === true)
+      const totalConfirmadas = confirmRes.count ?? 0
+      const presentes = presentRes.count ?? 0
 
       setStats({
-        totalConfirmadas: confirmadas.length,
-        presentes: presentes.length,
-        pendientes: confirmadas.length - presentes.length,
+        totalConfirmadas,
+        presentes,
+        pendientes: totalConfirmadas - presentes,
       })
 
-      // Historial: últimos check-ins
-      const checkIns = inscripciones
-        .filter((i: any) => i.checkedIn === true && i.checkedInAt)
-        .sort((a: any, b: any) => {
-          const timeA = a.checkedInAt?.toMillis?.() || 0
-          const timeB = b.checkedInAt?.toMillis?.() || 0
-          return timeB - timeA
-        })
-        .slice(0, 10) as CheckInRecord[]
+      const checkIns = (histRes.data || []).map((d: any) => ({
+        id: d.id,
+        nombre: d.nombre,
+        apellido: d.apellido,
+        dni: d.dni,
+        numeroInscripcion: d.numero_inscripcion,
+        estado: d.estado,
+        checkedIn: d.checked_in,
+        checkedInAt: d.checked_in_at,
+        checkedInBy: d.checked_in_by,
+        tokenQR: d.token_qr,
+      })) as CheckInRecord[]
 
       setHistorial(checkIns)
-    })
+      setLoading(false)
+    }
+    fetchStats()
 
-    return () => unsubscribe()
+    const channel = supabase
+      .channel("checkin-participantes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "participantes" }, () => {
+        fetchStats()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [user])
 
   // Procesar token QR escaneado
@@ -111,13 +136,15 @@ export default function CheckInPage() {
 
     try {
       // Buscar inscripción por tokenQR
-      const q = query(
-        collection(db, "Participantes"),
-        where("tokenQR", "==", token)
-      )
-      const snapshot = await getDocs(q)
+      const { data: rows, error } = await supabase
+        .from("participantes")
+        .select("*")
+        .eq("token_qr", token)
+        .limit(1)
 
-      if (snapshot.empty) {
+      if (error) throw error
+
+      if (!rows || rows.length === 0) {
         setResultado({
           tipo: "no-encontrado",
           mensaje: "No se encontró ninguna inscripción con este código QR.",
@@ -126,12 +153,21 @@ export default function CheckInPage() {
         return
       }
 
-      const docSnap = snapshot.docs[0]
-      const data = docSnap.data()
+      const row = rows[0]
+      const data = {
+        id: row.id,
+        nombre: row.nombre,
+        apellido: row.apellido,
+        checkedIn: row.checked_in,
+        checkedInAt: row.checked_in_at,
+        estado: row.estado,
+        numeroInscripcion: row.numero_inscripcion,
+        tokenQR: row.token_qr,
+      }
 
       // Verificar si ya hizo check-in
       if (data.checkedIn) {
-        const checkedInTime = data.checkedInAt?.toDate?.()
+        const checkedInTime = data.checkedInAt ? new Date(data.checkedInAt) : null
         const timeStr = checkedInTime
           ? checkedInTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
           : ""
@@ -157,11 +193,15 @@ export default function CheckInPage() {
       }
 
       // Realizar check-in
-      await updateDoc(doc(db, "Participantes", docSnap.id), {
-        checkedIn: true,
-        checkedInAt: serverTimestamp(),
-        checkedInBy: user?.email || "desconocido",
-      })
+      const { error: updateError } = await supabase
+        .from("participantes")
+        .update({
+          checked_in: true,
+          checked_in_at: new Date().toISOString(),
+          checked_in_by: user?.email || "desconocido",
+        })
+        .eq("id", data.id)
+      if (updateError) throw updateError
 
       setResultado({
         tipo: "exito",
@@ -278,11 +318,11 @@ export default function CheckInPage() {
             participante,
           })
         } else {
-          await updateDoc(doc(db, "Participantes", participante.id), {
-            checkedIn: true,
-            checkedInAt: serverTimestamp(),
-            checkedInBy: user?.email || "desconocido",
-          })
+          await supabase.from("participantes").update({
+            checked_in: true,
+            checked_in_at: new Date().toISOString(),
+            checked_in_by: user?.email || "desconocido",
+          }).eq("id", participante.id)
           setResultado({
             tipo: "exito",
             mensaje: `Check-in exitoso para ${participante.nombre} ${participante.apellido}`,
@@ -298,7 +338,7 @@ export default function CheckInPage() {
     }
   }
 
-  // Búsqueda manual por DNI o nombre
+  // Busqueda manual por DNI o nombre (server-side, sin descargar toda la tabla)
   const buscarManual = async () => {
     if (!busquedaManual.trim()) return
     setBuscando(true)
@@ -306,34 +346,45 @@ export default function CheckInPage() {
     setResultadosMultiples([])
 
     try {
-      const termino = busquedaManual.trim().toLowerCase()
+      const termino = busquedaManual.trim()
+      const likeTerm = `%${termino}%`
 
-      const q = query(collection(db, "Participantes"), orderBy("fechaInscripcion", "desc"))
-      const snapshot = await getDocs(q)
+      // Busqueda server-side con ilike
+      const { data: rows, error: searchError } = await supabase
+        .from("participantes")
+        .select("id, nombre, apellido, dni, numero_inscripcion, estado, checked_in, checked_in_at, token_qr")
+        .not("numero_inscripcion", "is", null)
+        .or(`nombre.ilike.${likeTerm},apellido.ilike.${likeTerm},dni.ilike.${likeTerm}`)
+        .order("fecha_inscripcion", { ascending: false })
+        .limit(20)
 
-      const resultados = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((d: any) => d.numeroInscripcion)
-        .filter((d: any) => {
-          const nombre = `${d.nombre} ${d.apellido}`.toLowerCase()
-          const dni = (d.dni || "").toLowerCase()
-          return nombre.includes(termino) || dni.includes(termino)
-        })
+      if (searchError) throw searchError
+
+      const resultados = (rows || []).map((d: any) => ({
+        id: d.id,
+        nombre: d.nombre,
+        apellido: d.apellido,
+        dni: d.dni,
+        numeroInscripcion: d.numero_inscripcion,
+        estado: d.estado,
+        checkedIn: d.checked_in,
+        checkedInAt: d.checked_in_at,
+        tokenQR: d.token_qr,
+      }))
 
       if (resultados.length === 0) {
         setResultado({
           tipo: "no-encontrado",
-          mensaje: `No se encontró ningún participante con "${busquedaManual}".`,
+          mensaje: `No se encontro ningun participante con "${busquedaManual}".`,
         })
       } else if (resultados.length === 1) {
         await hacerCheckInDirecto(resultados[0])
       } else {
-        // Múltiples resultados - mostrar lista para elegir
         setResultadosMultiples(resultados)
       }
     } catch (error) {
-      console.error("Error en búsqueda manual:", error)
-      setResultado({ tipo: "error", mensaje: "Error al buscar. Intentá nuevamente." })
+      console.error("Error en busqueda manual:", error)
+      setResultado({ tipo: "error", mensaje: "Error al buscar. Intenta nuevamente." })
     } finally {
       setBuscando(false)
       setBusquedaManual("")
@@ -608,10 +659,12 @@ export default function CheckInPage() {
                       </div>
                     </div>
                     <p className="text-xs text-gray-400 flex-shrink-0 ml-2">
-                      {item.checkedInAt?.toDate?.()?.toLocaleTimeString("es-AR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }) || ""}
+                      {item.checkedInAt
+                        ? new Date(item.checkedInAt).toLocaleTimeString("es-AR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
                     </p>
                   </div>
                 ))}

@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
+import { supabase } from "@/lib/supabase"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,22 +11,48 @@ import { Users, Cake, Heart, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function GrandTeamPage() {
-  const { user } = useFirebaseContext()
+  const { user, userRole, loading: authLoading } = useSupabaseContext()
   const [miembros, setMiembros] = useState<any[]>([])
   const [cumpleañeros, setCumpleañeros] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const isAuthorized = userRole === "admin" || userRole === "grandteam"
 
   useEffect(() => {
-    if (user) {
+    if (!authLoading && !user) {
+      import("next/navigation").then(({ redirect }) => {
+        window.location.href = "/login?returnUrl=/admin/grandteam"
+      })
+    }
+  }, [authLoading, user])
+
+  useEffect(() => {
+    if (user && isAuthorized) {
       loadMiembros()
     }
-  }, [user])
+  }, [user, isAuthorized])
 
   const loadMiembros = async () => {
     try {
       // Cargar miembros de Grand Team
-      const q = query(collection(db, "administrador"), where("role", "in", ["admin", "grandteam"]))
-      const snapshot = await getDocs(q)
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      const { data: rows, error } = await supabase
+        .from("administradores")
+        .select("*")
+        .in("role", ["admin", "grandteam"])
+      if (error) throw error
+      const data = (rows || []).map((row: any) => ({
+        id: row.id,
+        email: row.email,
+        displayName: row.display_name,
+        nombreCompleto: row.display_name,
+        role: row.role,
+        fechaNacimiento: row.fecha_nacimiento,
+        telefono: row.telefono,
+        localidad: row.localidad,
+        grupoSanguineo: row.grupo_sanguineo,
+        datosSalud: row.datos_salud,
+        ...row,
+      }))
       setMiembros(data)
 
       // Filtrar cumpleañeros del mes actual
@@ -42,6 +67,8 @@ export default function GrandTeamPage() {
       setCumpleañeros(cumples)
     } catch (error) {
       console.error("Error cargando miembros:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -70,10 +97,20 @@ export default function GrandTeamPage() {
     link.click()
   }
 
+  if (authLoading || loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-yellow-400 text-xl animate-pulse">Cargando...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) return null
+
   if (miembros.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-yellow-400 text-xl">Cargando...</div>
+        <div className="text-gray-400 text-lg">No se encontraron miembros del equipo</div>
       </div>
     )
   }
@@ -160,7 +197,7 @@ export default function GrandTeamPage() {
                               <Cake className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                              <h3 className="font-bold text-white">{miembro.nombreCompleto || miembro.email}</h3>
+                              <h3 className="font-bold text-white">{miembro.nombreCompleto || miembro.displayName || miembro.email || "Sin nombre"}</h3>
                               <p className="text-sm text-gray-400">
                                 {miembro.fechaNacimiento &&
                                   new Date(miembro.fechaNacimiento).toLocaleDateString("es-AR", {
@@ -205,7 +242,7 @@ export default function GrandTeamPage() {
                         .map((miembro) => (
                           <TableRow key={miembro.id} className="border-gray-700">
                             <TableCell className="text-white font-medium">
-                              {miembro.nombreCompleto || miembro.email}
+                              {miembro.nombreCompleto || miembro.displayName || miembro.email || "Sin nombre"}
                             </TableCell>
                             <TableCell>
                               <Badge className="bg-red-500/20 text-red-400">{miembro.grupoSanguineo || "N/A"}</Badge>
@@ -240,10 +277,10 @@ export default function GrandTeamPage() {
                       {miembros.map((miembro) => (
                         <TableRow key={miembro.id} className="border-gray-700">
                           <TableCell className="text-white font-medium">
-                            {miembro.nombreCompleto || miembro.email.split("@")[0]}
-                            <span className="block text-xs text-gray-500 sm:hidden">{miembro.email}</span>
+                            {miembro.nombreCompleto || miembro.displayName || miembro.email?.split("@")[0] || "Sin nombre"}
+                            <span className="block text-xs text-gray-500 sm:hidden">{miembro.email || ""}</span>
                           </TableCell>
-                          <TableCell className="text-gray-400 hidden sm:table-cell">{miembro.email}</TableCell>
+                          <TableCell className="text-gray-400 hidden sm:table-cell">{miembro.email || "—"}</TableCell>
                           <TableCell className="text-gray-400 hidden md:table-cell">{miembro.telefono || "N/A"}</TableCell>
                           <TableCell className="text-gray-400 hidden lg:table-cell">{miembro.localidad || "N/A"}</TableCell>
                           <TableCell>

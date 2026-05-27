@@ -144,63 +144,65 @@ export default function Sponsors() {
       },
     ],
     bronze: [
-      { 
-        name: "Cafetería Los Ciclistas", 
-        logo: "/logoc.png", 
+      {
+        name: "Diesel Nando",
+        logo: "/sponsor/dieselnando.png",
+        tier: "Bronce",
+        businessName: "Diesel Nando",
+        description: "Inyectores y bombas diesel. Limpieza, reparación, repuestos y calibración.",
+        address: "Valais 824, Villa Elisa, Entre Ríos",
+        phone: "+54 9 3442 621477",
+        whatsapp: "5493442621477",
+      },
+      {
+        name: "Alto Impacto",
+        logo: "/sponsor/altoimpacto.jpeg",
+        tier: "Bronce",
+        businessName: "Alto Impacto",
+        description: "Consultoría ambiental. Asesoramiento y gestión en medio ambiente para empresas y proyectos.",
+        whatsapp: "543447508396",
+      },
+      {
+        name: "Cafetería Los Ciclistas",
+        logo: "/sponsor/logoc.png",
         tier: "Bronce",
         businessName: "Cafetería Los Ciclistas",
         description: "El punto de encuentro de la comunidad ciclista. Café de especialidad, desayunos saludables y ambiente biker friendly.",
         address: "Esquina Ruta 11 y Av. Circunvalación",
         phone: "+54 9 342 888 9900",
-        schedule: "Todos los días: 7:00-22:00",
         instagram: "https://instagram.com/cafeteriaciclistas",
         whatsapp: "5493428889900",
-        category: "Gastronomía",
-        services: ["Café specialty", "Desayunos", "Snacks saludables", "WiFi gratis"]
       },
-      { 
-        name: "LM Seguros", 
-        logo: "/logolm.png", 
+      {
+        name: "LM Seguros",
+        logo: "/sponsor/logolm.png",
         tier: "Bronce",
         businessName: "LM Seguros - Coberturas Deportivas",
         description: "Protección integral para deportistas. Seguros especializados en actividades de riesgo y eventos deportivos.",
         address: "San Jerónimo 1122",
         phone: "+54 9 342 999 0011",
-        email: "asesores@lmseguros.com",
-        website: "https://lmseguros.com",
-        schedule: "Lun a Vie: 9:00-17:00",
         whatsapp: "5493429990011",
-        category: "Seguros",
-        services: ["Seguro de vida", "Cobertura deportiva", "Asistencia 24/7"]
       },
-      { 
-        name: "Yoga & Fitness Center", 
-        logo: "/logoly.png", 
+      {
+        name: "Yoga & Fitness Center",
+        logo: "/sponsor/logoly.png",
         tier: "Bronce",
         businessName: "Yoga & Fitness Center",
         description: "Centro de entrenamiento complementario para ciclistas. Yoga, stretching y fortalecimiento muscular.",
         address: "Av. Pellegrini 3456",
         phone: "+54 9 342 111 2233",
-        schedule: "Lun a Dom: 6:00-22:00",
         instagram: "https://instagram.com/yogafitnesscenter",
         whatsapp: "5493421112233",
-        category: "Fitness & Bienestar",
-        services: ["Clases de yoga", "Pilates", "Entrenamiento funcional", "Masajes deportivos"]
       },
-      { 
-        name: "Local Aventura", 
-        logo: "/logola.png", 
+      {
+        name: "Local Aventura",
+        logo: "/sponsor/logola.png",
         tier: "Bronce",
         businessName: "Local Aventura Outdoor",
         description: "Todo para tus aventuras al aire libre. Camping, trekking y equipamiento para exploradores.",
         address: "Costanera Este 789",
         phone: "+54 9 342 222 3344",
-        email: "info@localaventura.com",
-        schedule: "Mar a Dom: 10:00-19:00",
-        facebook: "https://facebook.com/localaventura",
         whatsapp: "5493422223344",
-        category: "Outdoor & Camping",
-        services: ["Carpas y bolsas", "Mochilas", "Equipamiento técnico", "Alquiler de gear"]
       },
     ],
   }
@@ -221,10 +223,10 @@ export default function Sponsors() {
     <>
       <section ref={sectionRef} id="patrocinadores" className="py-12 sm:py-16 md:py-20 lg:py-24 bg-black relative overflow-hidden">
         {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none hidden lg:block" aria-hidden="true">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(250,204,21,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(250,204,21,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
-          <div className="absolute top-20 right-20 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-yellow-500/10 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-40 left-10 w-[250px] sm:w-[400px] h-[250px] sm:h-[400px] bg-amber-500/10 rounded-full blur-[100px] animate-pulse [animation-delay:1s]" />
+          <div className="absolute top-20 right-20 w-[500px] h-[500px] bg-yellow-500/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-40 left-10 w-[400px] h-[400px] bg-amber-500/10 rounded-full blur-[100px]" />
         </div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -235,11 +237,11 @@ export default function Sponsors() {
             }`}
           >
             <div className="inline-flex items-center justify-center gap-2 mb-3 sm:mb-4 md:mb-6 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gradient-to-r from-yellow-400/20 via-amber-500/20 to-yellow-400/20 border border-yellow-400/40 rounded-full backdrop-blur-sm animate-shimmer bg-[length:200%_100%]">
-              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-yellow-400 animate-pulse" aria-hidden="true" />
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-yellow-400" aria-hidden="true" />
               <span className="text-[10px] sm:text-xs md:text-sm font-bold text-yellow-400 uppercase tracking-widest">
                 Patrocinadores Oficiales
               </span>
-              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-yellow-400 animate-pulse hidden xs:block" aria-hidden="true" />
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-yellow-400 hidden xs:block" aria-hidden="true" />
             </div>
 
             <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 px-2">
@@ -327,15 +329,13 @@ export default function Sponsors() {
                   </h3>
                   <div className="h-px w-4 sm:w-8 md:w-12 bg-gradient-to-l from-transparent to-amber-700" />
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                   {sponsorTiers.bronze.map((sponsor, index) => (
-                    <SponsorCard
+                    <BronzeSponsorCard
                       key={index}
                       sponsor={sponsor}
-                      tier="bronze"
                       delay={(index + 6) * 150}
                       isVisible={isVisible}
-                      onClick={() => openModal(sponsor)}
                     />
                   ))}
                 </div>
@@ -514,11 +514,85 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }: { sponsor
                 fill
                 className="object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105 sm:group-hover:scale-110 md:group-hover:scale-125"
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                loading="lazy"
+                quality={60}
               />
             </div>
           </CardContent>
         </Card>
       </button>
+    </div>
+  )
+}
+
+// Bronze Sponsor Card - Simplificado: logo, nombre, descripción, WhatsApp e Instagram
+function BronzeSponsorCard({ sponsor, delay = 0, isVisible }: { sponsor: any; delay?: number; isVisible: boolean }) {
+  const whatsappMessage = encodeURIComponent(
+    `Hola ${sponsor.businessName}! Los vi en el evento Grand Team Bike 2026 y me gustaría conocer más sobre sus servicios.`
+  )
+  const whatsappUrl = sponsor.whatsapp ? `https://wa.me/${sponsor.whatsapp}?text=${whatsappMessage}` : null
+
+  return (
+    <div
+      className={`transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <Card className="group relative overflow-hidden bg-zinc-900/80 border-zinc-800 hover:border-amber-700/50 backdrop-blur-sm hover:scale-[1.02] transition-all duration-500 group-hover:shadow-[0_0_15px_rgba(180,83,9,0.2)] h-full">
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+        </div>
+
+        <CardContent className="p-3 sm:p-4 flex flex-col items-center text-center h-full">
+          {/* Logo */}
+          <div className="relative w-full h-16 xs:h-20 sm:h-24 mb-2 sm:mb-3">
+            <Image
+              src={sponsor.logo || "/placeholder.svg"}
+              alt={`Logo de ${sponsor.name}`}
+              fill
+              className="object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            />
+          </div>
+
+          {/* Nombre */}
+          <h4 className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5 line-clamp-1">
+            {sponsor.businessName || sponsor.name}
+          </h4>
+
+          {/* Descripción */}
+          <p className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed mb-3 sm:mb-4 line-clamp-3 flex-grow">
+            {sponsor.description}
+          </p>
+
+          {/* Botones WhatsApp e Instagram */}
+          <div className="flex items-center gap-2 w-full mt-auto">
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 bg-green-600 hover:bg-green-500 text-white px-2 py-1.5 sm:py-2 rounded-lg font-semibold transition-all text-[10px] sm:text-xs"
+                aria-label={`WhatsApp de ${sponsor.name}`}
+              >
+                <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                <span>WhatsApp</span>
+              </a>
+            )}
+            {sponsor.instagram && (
+              <a
+                href={sponsor.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white px-2 py-1.5 sm:py-2 rounded-lg font-semibold transition-all text-[10px] sm:text-xs"
+                aria-label={`Instagram de ${sponsor.name}`}
+              >
+                <Instagram className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                <span>Instagram</span>
+              </a>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -575,6 +649,8 @@ function SponsorModal({ sponsor, isOpen, onClose }: { sponsor: any; isOpen: bool
                 fill
                 className="object-contain"
                 sizes="300px"
+                loading="lazy"
+                quality={70}
               />
             </div>
           </div>

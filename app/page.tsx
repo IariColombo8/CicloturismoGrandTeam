@@ -1,14 +1,14 @@
+import dynamic from "next/dynamic"
 import Hero from "@/components/home/HeroSection"
-import AboutTeam from "@/components/home/AboutTeam"
-// import EventDetails from "@/components/home/EventDetails"
-// import StatsCounter from "@/components/home/StatsCounter"
- import RouteMap from "@/components/home/RouteMap"
-// import Testimonials from "@/components/home/Testimonials"
-import Gallery from "@/components/home/Gallery"
-import Sponsors from "@/components/home/Sponsors"
-import CallToAction from "@/components/home/CallToAction"
 import Navbar from "@/components/layout/Navbar"
-import Footer from "@/components/layout/Footer"
+
+// Componentes below-the-fold: carga diferida para no bloquear el render inicial
+const AboutTeam = dynamic(() => import("@/components/home/AboutTeam"), { ssr: true })
+const RouteMap = dynamic(() => import("@/components/home/RouteMap"), { ssr: true })
+const Gallery = dynamic(() => import("@/components/home/Gallery"), { ssr: true })
+const Sponsors = dynamic(() => import("@/components/home/Sponsors"), { ssr: true })
+const CallToAction = dynamic(() => import("@/components/home/CallToAction"), { ssr: true })
+const Footer = dynamic(() => import("@/components/layout/Footer"), { ssr: true })
 
 export default function Home() {
   return (
@@ -16,10 +16,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <AboutTeam />
-      {/* <EventDetails /> */}
-      {/* <StatsCounter /> */}
-       <RouteMap /> 
-      {/* <Testimonials /> */}
+      <RouteMap />
       <Gallery />
       <Sponsors />
       <CallToAction />

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Loader2 } from "lucide-react"
 
 // Rutas que requieren rol "admin" exclusivamente
@@ -15,7 +15,7 @@ interface AdminGuardProps {
 export default function AdminGuard({ children }: AdminGuardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, userRole, loading } = useFirebaseContext()
+  const { user, userRole, loading } = useSupabaseContext()
 
   const isAdminOnlyRoute = ADMIN_ONLY_ROUTES.some((route) => pathname.startsWith(route))
   const allowedRoles = isAdminOnlyRoute ? ["admin"] : ["admin", "grandteam"]

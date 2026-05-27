@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
+import { supabase } from "@/lib/supabase"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,7 +16,7 @@ import { Settings, Save, AlertTriangle, Plus, Calendar, Loader2 } from "lucide-r
 const CURRENT_YEAR = new Date().getFullYear()
 
 export default function ConfiguracionesPage() {
-  const { user } = useFirebaseContext()
+  const { user } = useSupabaseContext()
   const { toast } = useToast()
 
   const [saving, setSaving] = useState(false)
@@ -50,8 +49,8 @@ export default function ConfiguracionesPage() {
     const loadYearsAndConfig = async () => {
       setLoadingConfig(true)
       try {
-        const eventosSnapshot = await getDocs(collection(db, "eventos"))
-        const years = eventosSnapshot.docs.map((d) => d.id).sort()
+        const { data: eventosRows } = await supabase.from("eventos").select("id").order("id")
+        const years = (eventosRows || []).map((d: any) => d.id).sort()
 
         if (years.length === 0) {
           years.push(String(CURRENT_YEAR))
@@ -79,28 +78,30 @@ export default function ConfiguracionesPage() {
   const loadConfigForYear = async (year: string) => {
     setLoadingConfig(true)
     try {
-      const docRef = doc(db, "eventos", year)
-      const docSnap = await getDoc(docRef)
+      const { data, error } = await supabase
+        .from("eventos")
+        .select("*")
+        .eq("id", year)
+        .maybeSingle()
 
-      if (docSnap.exists()) {
-        const data = docSnap.data()
+      if (!error && data) {
         setNombreEvento(data.nombre || "")
         setFechaEvento(data.fecha || "")
         setUbicacion(data.ubicacion || "")
         setRecorrido(data.recorrido || "")
         setCategoria(data.categoria || "")
-        setCostoInscripcion(data.costoInscripcion?.toString() || "")
-        setCupoMaximo(data.cupoMaximo?.toString() || "")
+        setCostoInscripcion(data.costo_inscripcion?.toString() || "")
+        setCupoMaximo(data.cupo_maximo?.toString() || "")
         setQueIncluye(data.incluye?.join(", ") || "")
-        setHoraLargada(data.horaLargada || "")
-        setPuntoEncuentro(data.puntoEncuentro || "")
-        setAliasTransferencia(data.aliasTransferencia || "")
-        setInstagram(data.redesSociales?.instagram || "")
-        setFacebook(data.redesSociales?.facebook || "")
-        setTelefonoContacto(data.telefonoContacto || "")
-        setEmailContacto(data.emailContacto || "")
-        setDatosTransferencia(data.datosTransferencia || "")
-        setInscripcionesAbiertas(data.inscripcionesAbiertas === true)
+        setHoraLargada(data.hora_largada || "")
+        setPuntoEncuentro(data.punto_encuentro || "")
+        setAliasTransferencia(data.alias_transferencia || "")
+        setInstagram((data.redes_sociales as any)?.instagram || "")
+        setFacebook((data.redes_sociales as any)?.facebook || "")
+        setTelefonoContacto(data.telefono_contacto || "")
+        setEmailContacto(data.email_contacto || "")
+        setDatosTransferencia(data.datos_transferencia || "")
+        setInscripcionesAbiertas(data.inscripciones_abiertas === true)
       } else {
         setNombreEvento("")
         setFechaEvento("")
@@ -137,7 +138,7 @@ export default function ConfiguracionesPage() {
   const handleToggleInscripciones = async (value: boolean) => {
     setInscripcionesAbiertas(value)
     try {
-      await setDoc(doc(db, "eventos", selectedYear), { inscripcionesAbiertas: value }, { merge: true })
+      await supabase.from("eventos").upsert({ id: selectedYear, inscripciones_abiertas: value })
       toast({
         title: value ? "Inscripciones habilitadas" : "Inscripciones deshabilitadas",
         description: `Las inscripciones ${selectedYear} están ahora ${value ? "abiertas" : "cerradas"}`,
@@ -167,34 +168,33 @@ export default function ConfiguracionesPage() {
 
     try {
       const eventData = {
-        año: Number.parseInt(selectedYear),
+        id: selectedYear,
         nombre: nombreEvento,
         fecha: fechaEvento,
         ubicacion,
         recorrido,
         categoria,
-        costoInscripcion: Number.parseFloat(costoInscripcion) || 0,
-        cupoMaximo: Number.parseInt(cupoMaximo) || 300,
+        costo_inscripcion: Number.parseFloat(costoInscripcion) || 0,
+        cupo_maximo: Number.parseInt(cupoMaximo) || 300,
         incluye: queIncluye
           .split(",")
-          .map((item) => item.trim())
+          .map((item: string) => item.trim())
           .filter(Boolean),
-        horaLargada,
-        puntoEncuentro,
-        aliasTransferencia,
-        telefonoContacto,
-        emailContacto,
-        datosTransferencia,
-        redesSociales: {
+        hora_largada: horaLargada,
+        punto_encuentro: puntoEncuentro,
+        alias_transferencia: aliasTransferencia,
+        telefono_contacto: telefonoContacto,
+        email_contacto: emailContacto,
+        datos_transferencia: datosTransferencia,
+        redes_sociales: {
           instagram,
           facebook,
         },
-        activo: true,
-        inscripcionesAbiertas,
-        updatedAt: serverTimestamp(),
+        inscripciones_abiertas: inscripcionesAbiertas,
       }
 
-      await setDoc(doc(db, "eventos", selectedYear), eventData, { merge: true })
+      const { error } = await supabase.from("eventos").upsert(eventData)
+      if (error) throw error
 
       toast({
         title: "Configuración guardada",

@@ -4,8 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { auth } from "@/lib/firebase" // Updated import path from @/firebase.config to @/lib/firebase
+import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,12 +20,12 @@ export default function GrandTeamLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
         router.push("/grand-team/dashboard")
       }
     })
-    return () => unsubscribe()
+    return () => subscription.unsubscribe()
   }, [router])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -34,7 +33,8 @@ export default function GrandTeamLoginPage() {
     setIsLoading(true)
 
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
       toast({
         title: "Acceso concedido",
         description: "Bienvenido al panel Grand Team",

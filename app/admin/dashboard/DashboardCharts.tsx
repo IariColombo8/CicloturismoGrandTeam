@@ -26,16 +26,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Activity, Calendar, Award, MapPin, DollarSign } from "lucide-react"
 
 interface DashboardChartsProps {
-  chartData: any[]
-  estadoData: any[]
-  categoriaData: any[]
-  provinciaData: any[]
-  tendenciaData: any[]
-  radarData: any[]
+  inscripciones: any[]
   ingresosConfirmados: number
   ingresosPotenciales: number
-  aprobadasLength: number
-  pendientesLength: number
+  aprobadas: any[]
+  pendientes: any[]
 }
 
 const tooltipStyle = {
@@ -46,18 +41,91 @@ const tooltipStyle = {
   },
 }
 
+const COLORS_ESTADO = [
+  { name: "Confirmadas", color: "#10b981" },
+  { name: "Pendientes", color: "#f59e0b" },
+  { name: "Rechazadas", color: "#ef4444" },
+]
+
+const COLORS_CATEGORIA = ["#fbbf24", "#60a5fa", "#a78bfa", "#f472b6", "#34d399", "#fb923c"]
+
+function processChartData(inscripciones: any[]) {
+  // Inscripciones por fecha
+  const byDate: Record<string, number> = {}
+  inscripciones.forEach((i) => {
+    const fecha = i.fechaInscripcion?.toDate?.()
+      ? i.fechaInscripcion.toDate().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+      : i.fechaInscripcion || "Sin fecha"
+    byDate[fecha] = (byDate[fecha] || 0) + 1
+  })
+  const chartData = Object.entries(byDate)
+    .map(([date, count]) => ({ date, inscripciones: count }))
+    .slice(-14)
+
+  // Estado
+  const confirmadas = inscripciones.filter((i) => i.estado === "confirmada").length
+  const pendientes = inscripciones.filter((i) => i.estado === "pendiente").length
+  const rechazadas = inscripciones.filter((i) => i.estado === "rechazada").length
+  const estadoData = [
+    { name: "Confirmadas", value: confirmadas, color: "#10b981" },
+    { name: "Pendientes", value: pendientes, color: "#f59e0b" },
+    { name: "Rechazadas", value: rechazadas, color: "#ef4444" },
+  ].filter((d) => d.value > 0)
+
+  // Categorías
+  const byCat: Record<string, number> = {}
+  inscripciones.forEach((i) => {
+    const cat = i.categoria || i.experiencia || "Sin categoría"
+    byCat[cat] = (byCat[cat] || 0) + 1
+  })
+  const categoriaData = Object.entries(byCat).map(([name, value], idx) => ({
+    name,
+    value,
+    color: COLORS_CATEGORIA[idx % COLORS_CATEGORIA.length],
+  }))
+
+  // Provincias top 5
+  const byProv: Record<string, number> = {}
+  inscripciones.forEach((i) => {
+    const prov = i.provincia || i.ciudad || "Sin dato"
+    byProv[prov] = (byProv[prov] || 0) + 1
+  })
+  const provinciaData = Object.entries(byProv)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([provincia, count]) => ({ provincia, count }))
+
+  // Tendencia acumulada
+  let acum = 0
+  const tendenciaData = chartData.map((d) => {
+    acum += d.inscripciones
+    return { fecha: d.date, total: acum }
+  })
+
+  // Radar
+  const total = inscripciones.length || 1
+  const radarData = [
+    { metric: "Confirmación", value: Math.round((confirmadas / total) * 100) },
+    { metric: "Ocupación", value: Math.min(100, Math.round((total / 150) * 100)) },
+    { metric: "Pago", value: Math.round((confirmadas / total) * 100) },
+    { metric: "Actividad", value: Math.min(100, chartData.length * 10) },
+    { metric: "Diversidad", value: Math.min(100, Object.keys(byProv).length * 15) },
+  ]
+
+  return { chartData, estadoData, categoriaData, provinciaData, tendenciaData, radarData }
+}
+
 export default function DashboardCharts({
-  chartData,
-  estadoData,
-  categoriaData,
-  provinciaData,
-  tendenciaData,
-  radarData,
+  inscripciones,
   ingresosConfirmados,
   ingresosPotenciales,
-  aprobadasLength,
-  pendientesLength,
+  aprobadas,
+  pendientes,
 }: DashboardChartsProps) {
+  const { chartData, estadoData, categoriaData, provinciaData, tendenciaData, radarData } =
+    processChartData(inscripciones)
+  const aprobadasLength = aprobadas.length
+  const pendientesLength = pendientes.length
   return (
     <>
       {/* Charts Row 1 */}

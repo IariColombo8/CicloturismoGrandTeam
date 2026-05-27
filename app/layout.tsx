@@ -1,141 +1,144 @@
+import type React from "react"
+import type { Metadata } from "next"
+import { Geist } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-import { Inter, Poppins } from "next/font/google"
+import { Toaster } from "@/components/ui/toaster"
+import { SupabaseProvider } from "@/components/providers/SupabaseProvider"
 
-// Configura las fuentes
-const inter = Inter({ 
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  display: "swap",
+  preload: true,
+  variable: "--font-geist",
 })
 
-const poppins = Poppins({
-  weight: ["400", "600", "700", "900"],
-  subsets: ["latin"],
-  variable: "--font-poppins",
-})
+// ────────────────────────────────────────────────────────────────────
+// SEO · usá esta variable para tu dominio real cuando lo conozcas.
+// Si tenés NEXT_PUBLIC_SITE_URL en .env, lo respeta.
+// ────────────────────────────────────────────────────────────────────
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://grandteambike.com.ar"
 
-export const metadata = {
-  // Metadatos básicos
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Grand Team Bike 2026 - Evento de Cicloturismo",
-    template: "%s | Grand Team Bike 2026"
+    default: "Grand Team Bike 2026 · 1er Cicloturismo Ruinas del Viejo Molino",
+    template: "%s · Grand Team Bike",
   },
-  description: "Únete al evento de ciclismo más emocionante de la región. Grand Team Bike 2026 en Ruinas del Viejo Molino. Vive una experiencia única sobre ruedas con rutas espectaculares, premios increíbles y una comunidad apasionada por el ciclismo. ¡Inscríbete ahora!",
+  description:
+    "Inscribite al 1er Cicloturismo Ruinas del Viejo Molino en Concepción del Uruguay. 50 km de aventura, seguro incluido, hidratación y apoyo mecánico. Cupos limitados.",
+  generator: "v0.app",
+  applicationName: "Grand Team Bike",
   keywords: [
-    "ciclismo",
-    "cicloturismo", 
-    "grand team bike",
-    "evento deportivo",
+    "cicloturismo",
+    "Grand Team Bike",
+    "Concepción del Uruguay",
+    "Entre Ríos",
+    "Ruinas del Viejo Molino",
     "bicicleta",
-    "ruinas del viejo molino",
-    "competencia ciclismo",
-    "ciclismo 2026",
-    "evento ciclístico"
+    "evento ciclismo Argentina",
+    "inscripción 2026",
   ],
   authors: [{ name: "Grand Team Bike" }],
-  creator: "Grand Team Bike",
-  publisher: "Grand Team Bike",
-
-  // Metadatos para redes sociales (Open Graph - Facebook, WhatsApp, LinkedIn)
+  alternates: {
+    canonical: "/",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     type: "website",
     locale: "es_AR",
-    url: "https://grandteambike.com",
-    siteName: "Grand Team Bike 2026",
-    title: "Grand Team Bike 2026 - Evento de Cicloturismo",
-    description: "🚴‍♂️ El evento de ciclismo más emocionante de la región. Grand Team Bike 2026 en Ruinas del Viejo Molino. Rutas espectaculares, premios increíbles y una comunidad apasionada. ¡Inscríbete ahora y vive la aventura!",
+    url: SITE_URL,
+    siteName: "Grand Team Bike",
+    title: "Grand Team Bike 2026 · Cicloturismo Ruinas del Viejo Molino",
+    description:
+      "50 km de aventura por Entre Ríos. Inscribite ahora, los cupos son limitados.",
     images: [
       {
-        url: "/og-image.jpg", // Imagen principal para compartir (1200x630px recomendado)
+        url: "/og-cover.jpg",
         width: 1200,
         height: 630,
-        alt: "Grand Team Bike 2026 - Evento de Cicloturismo",
+        alt: "Grand Team Bike 2026 — Cicloturismo Ruinas del Viejo Molino",
       },
-      {
-        url: "/og-image-square.jpg", // Imagen cuadrada alternativa (opcional)
-        width: 800,
-        height: 800,
-        alt: "Grand Team Bike 2026",
-      }
     ],
   },
-
-  // Metadatos para Twitter
   twitter: {
     card: "summary_large_image",
-    title: "Grand Team Bike 2026 - Evento de Cicloturismo",
-    description: "🚴‍♂️ El evento de ciclismo más emocionante de la región. Grand Team Bike 2026 en Ruinas del Viejo Molino. Rutas espectaculares, premios increíbles y una comunidad apasionada. ¡Inscríbete ahora!",
-    images: ["/twitter-image.jpg"], // 1200x600px recomendado
-    creator: "@grandteambike", // Tu usuario de Twitter
-    site: "@grandteambike",
+    title: "Grand Team Bike 2026 · Cicloturismo",
+    description:
+      "50 km de aventura por Entre Ríos. Inscribite al 1er Cicloturismo Ruinas del Viejo Molino.",
+    images: ["/og-cover.jpg"],
   },
-
-  // Metadatos para WhatsApp (usa Open Graph)
-  // WhatsApp tomará automáticamente los datos de openGraph
-
-  // Favicon y iconos - Usando tus archivos existentes
-  icons: {
-    icon: [
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
-      { url: "/favicon-64x64.png", sizes: "64x64", type: "image/png" },
-      { url: "/favicon-128x128.png", sizes: "128x128", type: "image/png" },
-      { url: "/favicon-256x256.png", sizes: "256x256", type: "image/png" },
-      { url: "/favicon-512x512.png", sizes: "512x512", type: "image/png" },
-    ],
-    shortcut: "/favicon.ico",
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-    ],
-  },
-
-  // Verificación de sitio (opcional)
-  verification: {
-    google: "tu-codigo-de-verificacion-google", // Reemplaza con tu código
-    // yandex: "codigo-yandex",
-    // bing: "codigo-bing",
-  },
-
-  // Robots
   robots: {
     index: true,
     follow: true,
     googleBot: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
       "max-image-preview": "large",
       "max-snippet": -1,
     },
   },
-
-  // Información adicional
-  category: "sports",
 }
 
-// Exportación separada de viewport (requerido en Next.js 15+)
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 5,
-  themeColor: "#000000",
+// JSON-LD del evento (SportsEvent). Google lo muestra como tarjeta enriquecida
+// con fecha, lugar y precio. Editá `startDate`/`location` cuando se confirmen.
+const eventJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SportsEvent",
+  name: "1er Cicloturismo Ruinas del Viejo Molino",
+  description:
+    "Cicloturismo de 50 km en Concepción del Uruguay, Entre Ríos. Aventura, comunidad y paisajes únicos.",
+  startDate: "2026-11-15T08:00:00-03:00",
+  eventStatus: "https://schema.org/EventScheduled",
+  eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+  location: {
+    "@type": "Place",
+    name: "Concepción del Uruguay",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Concepción del Uruguay",
+      addressRegion: "Entre Ríos",
+      addressCountry: "AR",
+    },
+  },
+  image: [`${SITE_URL}/og-cover.jpg`],
+  organizer: {
+    "@type": "Organization",
+    name: "Grand Team Bike",
+    url: SITE_URL,
+  },
+  offers: {
+    "@type": "Offer",
+    url: `${SITE_URL}/inscripcion`,
+    availability: "https://schema.org/InStock",
+    priceCurrency: "ARS",
+    validFrom: "2026-01-01",
+  },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
   return (
-    <html lang="es" className={`${inter.variable} ${poppins.variable}`}>
-      <head>
-        {/* Meta tags adicionales que no están en metadata */}
-        <meta name="msapplication-TileColor" content="#000000" />
-        <meta name="format-detection" content="telephone=no" />
-        
-        {/* Favicons adicionales para mejor compatibilidad */}
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-      </head>
-      <body className={inter.className}>{children}</body>
+    <html lang="es">
+      <body className={`${geist.variable} font-sans antialiased`}>
+        <SupabaseProvider>
+          {children}
+          <Toaster />
+        </SupabaseProvider>
+        <Analytics />
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
+        />
+      </body>
     </html>
   )
 }

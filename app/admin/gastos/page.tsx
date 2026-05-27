@@ -1,20 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {
-  collection,
-  query,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  doc,
-  deleteDoc,
-  orderBy,
-  serverTimestamp,
-} from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { db, storage } from "@/lib/firebase"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
+import { supabase } from "@/lib/supabase"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -35,7 +23,7 @@ import { useToast } from "@/hooks/use-toast"
 import { DollarSign, Plus, CheckCircle, XCircle, Eye, Trash2, TrendingDown } from "lucide-react"
 
 export default function GastosPage() {
-  const { user, userRole } = useFirebaseContext()
+  const { user, userRole } = useSupabaseContext()
   const { toast } = useToast()
 
   const [gastos, setGastos] = useState<any[]>([])
@@ -55,16 +43,36 @@ export default function GastosPage() {
   useEffect(() => {
     if (!user) return
 
-    const q = query(collection(db, "gastos_2026"), orderBy("fecha", "desc"))
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-      setGastos(data)
-    })
+    const fetchGastos = async () => {
+      const { data } = await supabase
+        .from("gastos")
+        .select("*")
+        .order("fecha", { ascending: false })
+      setGastos((data || []).map((g: any) => ({
+        id: g.id,
+        descripcion: g.descripcion,
+        monto: g.monto,
+        categoria: g.categoria,
+        estado: g.estado,
+        fecha: g.fecha,
+        comprobante: g.comprobante,
+        creadoPor: g.creado_por,
+        rolCreador: g.rol_creador,
+        aprobadoPor: g.aprobado_por,
+        fechaAprobacion: g.fecha_aprobacion,
+        motivoRechazo: g.motivo_rechazo,
+      })))
+    }
+    fetchGastos()
 
-    return () => unsubscribe()
+    const channel = supabase
+      .channel("gastos-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "gastos" }, () => {
+        fetchGastos()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [user])
 
   const handleCreateGasto = async () => {
@@ -82,28 +90,34 @@ export default function GastosPage() {
 
       // Subir comprobante si existe
       if (comprobante) {
-        const storageRef = ref(storage, `comprobantes/gastos/${Date.now()}_${comprobante.name}`)
-        await uploadBytes(storageRef, comprobante)
-        comprobanteUrl = await getDownloadURL(storageRef)
+        const filePath = `gastos/${Date.now()}_${comprobante.name}`
+        const { error: uploadError } = await supabase.storage
+          .from("comprobantes")
+          .upload(filePath, comprobante)
+        if (uploadError) throw uploadError
+        const { data: urlData } = supabase.storage
+          .from("comprobantes")
+          .getPublicUrl(filePath)
+        comprobanteUrl = urlData.publicUrl
       }
 
+      const now = new Date().toISOString()
       const gastoData = {
-        eventoId: "2026",
+        evento_id: "2026",
         descripcion,
         monto: Number.parseFloat(monto),
         categoria,
-        fecha: serverTimestamp(),
+        fecha: now,
         comprobante: comprobanteUrl,
         estado: userRole === "admin" ? "aprobado" : "pendiente",
-        creadoPor: user?.email || "",
-        rolCreador: userRole,
-        aprobadoPor: userRole === "admin" ? user?.email : null,
-        fechaAprobacion: userRole === "admin" ? serverTimestamp() : null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        creado_por: user?.email || "",
+        rol_creador: userRole,
+        aprobado_por: userRole === "admin" ? user?.email : null,
+        fecha_aprobacion: userRole === "admin" ? now : null,
       }
 
-      await addDoc(collection(db, "gastos_2026"), gastoData)
+      const { error } = await supabase.from("gastos").insert(gastoData)
+      if (error) throw error
 
       toast({
         title: userRole === "admin" ? "Gasto creado" : "Propuesta enviada",
@@ -131,12 +145,12 @@ export default function GastosPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      await updateDoc(doc(db, "gastos_2026", id), {
+      const { error } = await supabase.from("gastos").update({
         estado: "aprobado",
-        aprobadoPor: user?.email,
-        fechaAprobacion: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
+        aprobado_por: user?.email,
+        fecha_aprobacion: new Date().toISOString(),
+      }).eq("id", id)
+      if (error) throw error
 
       toast({
         title: "Gasto aprobado",
@@ -155,13 +169,13 @@ export default function GastosPage() {
 
   const handleReject = async (id: string, motivo: string) => {
     try {
-      await updateDoc(doc(db, "gastos_2026", id), {
+      const { error } = await supabase.from("gastos").update({
         estado: "rechazado",
-        motivoRechazo: motivo,
-        aprobadoPor: user?.email,
-        fechaAprobacion: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
+        motivo_rechazo: motivo,
+        aprobado_por: user?.email,
+        fecha_aprobacion: new Date().toISOString(),
+      }).eq("id", id)
+      if (error) throw error
 
       toast({
         title: "Gasto rechazado",
@@ -181,7 +195,8 @@ export default function GastosPage() {
   const confirmDelete = async () => {
     if (!deleteConfirmId) return
     try {
-      await deleteDoc(doc(db, "gastos_2026", deleteConfirmId))
+      const { error } = await supabase.from("gastos").delete().eq("id", deleteConfirmId)
+      if (error) throw error
       toast({
         title: "Gasto eliminado",
         description: "El gasto ha sido eliminado exitosamente",
@@ -455,8 +470,8 @@ export default function GastosPage() {
                   <div>
                     <Label className="text-gray-400">Fecha</Label>
                     <p className="text-white text-sm">
-                      {selectedGasto.fecha?.seconds
-                        ? new Date(selectedGasto.fecha.seconds * 1000).toLocaleDateString("es-AR")
+                      {selectedGasto.fecha
+                        ? new Date(selectedGasto.fecha).toLocaleDateString("es-AR")
                         : "N/A"}
                     </p>
                   </div>
@@ -573,51 +588,87 @@ export default function GastosPage() {
 }
 
 function GastosTable({ gastos, onView, getStatusBadge }: { gastos: any[]; onView: (g: any) => void; getStatusBadge: (estado: string) => React.ReactNode }) {
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 15
+  const totalPages = Math.ceil(gastos.length / PAGE_SIZE)
+  const pageItems = gastos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   if (gastos.length === 0) {
     return <div className="text-center py-8 text-gray-400">No hay gastos en esta categoría</div>
   }
 
   return (
-    <div className="rounded-lg border border-gray-700 overflow-x-auto mt-4">
-      <Table>
-        <TableHeader className="bg-gray-700">
-          <TableRow>
-            <TableHead className="text-yellow-400">Descripción</TableHead>
-            <TableHead className="text-yellow-400 hidden sm:table-cell">Categoría</TableHead>
-            <TableHead className="text-yellow-400">Monto</TableHead>
-            <TableHead className="text-yellow-400 hidden md:table-cell">Creado por</TableHead>
-            <TableHead className="text-yellow-400">Estado</TableHead>
-            <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {gastos.map((gasto: any) => (
-            <TableRow key={gasto.id} className="border-gray-700">
-              <TableCell className="text-white font-medium">
-                {gasto.descripcion}
-                <span className="block text-xs text-gray-500 capitalize sm:hidden">{gasto.categoria}</span>
-              </TableCell>
-              <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{gasto.categoria}</TableCell>
-              <TableCell className="text-white font-bold">${gasto.monto?.toLocaleString("es-AR")}</TableCell>
-              <TableCell className="text-gray-400 text-sm hidden md:table-cell">
-                {gasto.creadoPor}
-                <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
-              </TableCell>
-              <TableCell>{getStatusBadge(gasto.estado)}</TableCell>
-              <TableCell className="text-right">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-blue-500/50 text-blue-400 bg-transparent"
-                  onClick={() => onView(gasto)}
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </TableCell>
+    <div className="mt-4 space-y-3">
+      <div className="rounded-lg border border-gray-700 overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-gray-700">
+            <TableRow>
+              <TableHead className="text-yellow-400">Descripción</TableHead>
+              <TableHead className="text-yellow-400 hidden sm:table-cell">Categoría</TableHead>
+              <TableHead className="text-yellow-400">Monto</TableHead>
+              <TableHead className="text-yellow-400 hidden md:table-cell">Creado por</TableHead>
+              <TableHead className="text-yellow-400">Estado</TableHead>
+              <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {pageItems.map((gasto: any) => (
+              <TableRow key={gasto.id} className="border-gray-700">
+                <TableCell className="text-white font-medium">
+                  {gasto.descripcion}
+                  <span className="block text-xs text-gray-500 capitalize sm:hidden">{gasto.categoria}</span>
+                </TableCell>
+                <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{gasto.categoria}</TableCell>
+                <TableCell className="text-white font-bold">${gasto.monto?.toLocaleString("es-AR")}</TableCell>
+                <TableCell className="text-gray-400 text-sm hidden md:table-cell">
+                  {gasto.creadoPor}
+                  <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
+                </TableCell>
+                <TableCell>{getStatusBadge(gasto.estado)}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-500/50 text-blue-400 bg-transparent"
+                    onClick={() => onView(gasto)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs text-gray-400">
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, gastos.length)} de {gastos.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-gray-600 text-gray-300 h-7 w-7 p-0"
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              ‹
+            </Button>
+            <span className="text-xs text-gray-400 px-2">{page} / {totalPages}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-gray-600 text-gray-300 h-7 w-7 p-0"
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              ›
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

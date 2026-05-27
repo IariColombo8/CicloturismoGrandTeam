@@ -3,17 +3,16 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, X, User, LayoutDashboard, LogOut, DollarSign, Settings, Home, ChevronDown } from "lucide-react"
-import { signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
+import { Menu, X, User, LayoutDashboard, LogOut, DollarSign, Settings, Home, ChevronDown, Shirt } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { usePathname, useRouter } from "next/navigation"
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const { user, userRole } = useFirebaseContext()
+  const { user, userRole } = useSupabaseContext()
   const pathname = usePathname()
   const router = useRouter()
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -56,7 +55,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth)
+      await supabase.auth.signOut()
       setIsMobileMenuOpen(false)
       router.push("/")
     } catch (error) {
@@ -226,12 +225,21 @@ export default function Navbar() {
             {/* CTA Buttons Desktop */}
             <div className="hidden md:flex items-center space-x-4">
               {!isAdminOrGrandTeam && (
-                <Link
-                  href="/inscripcion"
-                  className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50"
-                >
-                  Inscribirse
-                </Link>
+                <>
+                  <Link
+                    href="/pedir-remera"
+                    className="flex items-center gap-1.5 text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium text-sm"
+                  >
+                    <Shirt size={16} />
+                    Remera
+                  </Link>
+                  <Link
+                    href="/inscripcion"
+                    className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50"
+                  >
+                    Inscribirse
+                  </Link>
+                </>
               )}
 
               {user ? (
@@ -376,12 +384,21 @@ export default function Navbar() {
 
             <div className="pt-6 space-y-3">
               {!isAdminOrGrandTeam && (
-                <Link
-                  href="/inscripcion"
-                  className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
-                >
-                  Inscribirse
-                </Link>
+                <>
+                  <Link
+                    href="/pedir-remera"
+                    className="flex items-center justify-center gap-2 w-full px-6 py-3 border border-yellow-400/40 text-yellow-400 rounded-lg hover:bg-yellow-400/10 transition-all font-medium"
+                  >
+                    <Shirt size={18} />
+                    Pedir Remera
+                  </Link>
+                  <Link
+                    href="/inscripcion"
+                    className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
+                  >
+                    Inscribirse
+                  </Link>
+                </>
               )}
 
               {user ? (

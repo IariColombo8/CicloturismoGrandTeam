@@ -1,14 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { collection, query, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
-import { motion } from "framer-motion"
-import { emailService } from "@/lib/emailService"
-import { useToast } from "@/hooks/use-toast"
-import Navbar from "@/components/layout/Navbar"
+import { supabase } from "@/lib/supabase"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
+import { useIsMobile } from "@/components/ui/use-mobile"
+import { exportToCSV } from "@/lib/exportUtils"
 import {
   Users,
   CheckCircle,
@@ -28,95 +25,224 @@ import {
   FilterX,
   Mail,
   Phone,
-  MapPin,
-  Calendar,
-  FileText,
-  Edit,
   User,
-  Stethoscope,
   ClipboardList,
+  Edit,
   XCircle as XCircleIcon,
-  Loader2
+  Loader2,
+  AlertTriangle,
 } from "lucide-react"
+
+// Columnas que pedimos a Supabase (sin comprobante_base64 que es pesado)
+const INSCRIPCIONES_COLUMNS =
+  "id, estado, nombres, apellidos, email, cedula, ciudad, metodo_pago, numero_referencia, fecha_nacimiento, talla_camiseta, tipo_sangre, telefono, nota_estado, numero_inscripcion, fecha_inscripcion"
+
+interface Stats {
+  total: number
+  confirmadas: number
+  pendientes: number
+  rechazadas: number
+}
 
 export default function RegistroInscripciones() {
   const router = useRouter()
-  const { user } = useFirebaseContext()
-  const { toast } = useToast()
+  const { user, userRole, loading: authLoading } = useSupabaseContext()
+  const isMobile = useIsMobile()
+
+  // Datos paginados
   const [inscripciones, setInscripciones] = useState<any[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Filtros
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [loading, setLoading] = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
+
+  // Paginacion server-side
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  // Stats (consulta separada, ligera)
+  const [stats, setStats] = useState<Stats>({ total: 0, confirmadas: 0, pendientes: 0, rechazadas: 0 })
+
+  // Modal
   const [selectedInscripcion, setSelectedInscripcion] = useState<any>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(50)
-  const [showFilters, setShowFilters] = useState(false)
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
   const [updatingStatus, setUpdatingStatus] = useState(false)
-  const topRef = useRef<HTMLDivElement>(null)
 
-  // Cargar inscripciones de Firebase
+  // Debounce timer para busqueda
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const topRef = useRef(null)
+
+  const isAuthorized = userRole === "admin" || userRole === "grandteam"
+
+  // Redirigir si no autorizado
   useEffect(() => {
-    if (!user) return
-    
-    const q = query(collection(db, "Participantes"), orderBy("fechaInscripcion", "desc"))
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-      setInscripciones(data)
-      setLoading(false)
-    })
+    if (!authLoading && !user) {
+      router.push("/login?returnUrl=/admin/registro-inscripciones")
+    } else if (!authLoading && user && !isAuthorized) {
+      router.push("/")
+    }
+  }, [authLoading, user, isAuthorized, router])
 
-    return () => unsubscribe()
-  }, [user])
+  // Ajustar items por pagina segun dispositivo (solo al montar)
+  const hasAdjusted = useRef(false)
+  useEffect(() => {
+    if (hasAdjusted.current) return
+    setItemsPerPage(isMobile ? 10 : 25)
+    hasAdjusted.current = true
+  }, [isMobile])
+
+  // --- Fetch paginado server-side ---
+  const fetchPage = useCallback(
+    async (page: number, perPage: number, search: string, status: string) => {
+      const from = (page - 1) * perPage
+      const to = from + perPage - 1
+
+      let query = supabase
+        .from("inscripciones")
+        .select(INSCRIPCIONES_COLUMNS, { count: "exact" })
+        .order("fecha_inscripcion", { ascending: false })
+
+      // Filtro de estado
+      if (status !== "all") {
+        query = query.eq("estado", status)
+      }
+
+      // Busqueda server-side con ilike
+      if (search.trim()) {
+        const term = `%${search.trim()}%`
+        query = query.or(
+          `nombres.ilike.${term},apellidos.ilike.${term},email.ilike.${term},cedula.ilike.${term}`
+        )
+      }
+
+      // Paginacion
+      query = query.range(from, to)
+
+      const { data, count, error: fetchError } = await query
+
+      if (fetchError) {
+        console.error("Error al cargar inscripciones:", fetchError)
+        setError(`Error al cargar datos: ${fetchError.message}`)
+        setInscripciones([])
+        setTotalCount(0)
+        return
+      }
+
+      setError(null)
+      setTotalCount(count ?? 0)
+      setInscripciones(
+        (data || []).map((d: any) => ({
+          id: d.id,
+          nombres: d.nombres,
+          apellidos: d.apellidos,
+          email: d.email,
+          dni: d.cedula,
+          ciudad: d.ciudad,
+          estado: d.estado,
+          metodoPago: d.metodo_pago,
+          numeroReferencia: d.numero_referencia,
+          fechaNacimiento: d.fecha_nacimiento,
+          tallaCamiseta: d.talla_camiseta,
+          tipoSangre: d.tipo_sangre,
+          telefono: d.telefono,
+          nota: d.nota_estado,
+          numeroInscripcion: d.numero_inscripcion,
+          fechaInscripcion: d.fecha_inscripcion,
+        }))
+      )
+    },
+    []
+  )
+
+  // --- Fetch stats (solo conteos, sin datos) ---
+  const fetchStats = useCallback(async () => {
+    const [totalRes, confirmRes, pendRes, rechRes] = await Promise.all([
+      supabase.from("inscripciones").select("*", { count: "exact", head: true }),
+      supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "confirmada"),
+      supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "pendiente"),
+      supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "rechazada"),
+    ])
+
+    setStats({
+      total: totalRes.count ?? 0,
+      confirmadas: confirmRes.count ?? 0,
+      pendientes: pendRes.count ?? 0,
+      rechazadas: rechRes.count ?? 0,
+    })
+  }, [])
+
+  // Carga inicial
+  useEffect(() => {
+    if (!isAuthorized || !user) return
+
+    const loadData = async () => {
+      setLoading(true)
+      await Promise.all([
+        fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter),
+        fetchStats(),
+      ])
+      setLoading(false)
+    }
+    loadData()
+
+    // Realtime: re-fetch pagina actual cuando cambia la tabla
+    const channel = supabase
+      .channel("registro-inscripciones")
+      .on("postgres_changes", { event: "*", schema: "public", table: "inscripciones" }, () => {
+        fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter)
+        fetchStats()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [isAuthorized, user, currentPage, itemsPerPage, statusFilter])
+  // searchTerm se maneja via debounce, no como dependencia directa
+
+  // Debounce de busqueda (400ms)
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+
+    searchTimerRef.current = setTimeout(() => {
+      setCurrentPage(1)
+      fetchPage(1, itemsPerPage, searchTerm, statusFilter)
+    }, 400)
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
+  }, [searchTerm, fetchPage, itemsPerPage, statusFilter])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    // Los datos se actualizarán automáticamente por onSnapshot
-    setTimeout(() => setRefreshing(false), 1000)
+    await Promise.all([
+      fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter),
+      fetchStats(),
+    ])
+    setRefreshing(false)
   }
 
   const scrollToTop = () => {
-    topRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (typeof window === "undefined") return
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const pendientes = inscripciones.filter((i) => i.estado === "pendiente" || !i.estado)
-  const confirmadas = inscripciones.filter((i) => i.estado === "confirmada")
-  const rechazadas = inscripciones.filter((i) => i.estado === "rechazada")
-
-  const ingresos = confirmadas.reduce((sum, insc) => {
-    const precio = insc.precio || "0"
-    const numero = typeof precio === "string" 
-      ? parseFloat(precio.replace(/[^0-9.]/g, "")) || 0 
-      : precio
-    return sum + numero
-  }, 0)
-
-  const filteredInscripciones = inscripciones.filter((insc) => {
-    const matchesSearch = 
-      insc.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insc.apellido?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insc.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insc.dni?.includes(searchTerm)
-    
-    const matchesStatus = statusFilter === "all" || insc.estado === statusFilter
-    
-    return matchesSearch && matchesStatus
-  })
-
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredInscripciones.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredInscripciones.length / itemsPerPage)
+  const totalPages = Math.ceil(totalCount / itemsPerPage)
+  const indexOfFirst = (currentPage - 1) * itemsPerPage + 1
+  const indexOfLast = Math.min(currentPage * itemsPerPage, totalCount)
 
   const paginate = (pageNumber: number) => {
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber)
+      scrollToTop()
     }
   }
 
@@ -127,13 +253,6 @@ export default function RegistroInscripciones() {
           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
             <CheckCircle className="w-3 h-3 inline mr-1" />
             Confirmada
-          </span>
-        )
-      case "pendiente":
-        return (
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-            <Clock className="w-3 h-3 inline mr-1" />
-            Pendiente
           </span>
         )
       case "rechazada":
@@ -170,29 +289,25 @@ export default function RegistroInscripciones() {
 
     setUpdatingStatus(true)
     try {
-      const registrationRef = doc(db, "Participantes", selectedInscripcion.id)
-      await updateDoc(registrationRef, {
-        estado: newStatus,
-        nota: statusNote,
-        fechaActualizacion: new Date(),
-      })
+      const { error: updateError } = await supabase
+        .from("inscripciones")
+        .update({
+          estado: newStatus,
+          nota_estado: statusNote,
+        })
+        .eq("id", selectedInscripcion.id)
 
-      // Enviar email de confirmación con QR cuando se confirma la inscripción
-      if (newStatus === "confirmada" && selectedInscripcion.email) {
-        try {
-          await emailService.sendConfirmationEmail({
-            email: selectedInscripcion.email,
-            nombreCompleto: `${selectedInscripcion.nombre || ""} ${selectedInscripcion.apellido || ""}`.trim(),
-            numeroInscripcion: String(selectedInscripcion.numeroInscripcion || "").padStart(3, "0"),
-            talleRemera: selectedInscripcion.talleRemera || "",
-            tokenQR: selectedInscripcion.tokenQR || "",
-          })
-        } catch (emailError) {
-          console.error("Error enviando email de confirmación:", emailError)
-          // No bloquear la actualización si el email falla
-        }
+      if (updateError) throw updateError
+
+      // Sincronizar estado en participantes (por DNI)
+      if (selectedInscripcion.cedula) {
+        await supabase
+          .from("participantes")
+          .update({ estado: newStatus })
+          .eq("dni", selectedInscripcion.cedula)
       }
 
+      // Actualizar optimistamente en la lista local
       setInscripciones((prev) =>
         prev.map((insc) =>
           insc.id === selectedInscripcion.id
@@ -200,24 +315,56 @@ export default function RegistroInscripciones() {
             : insc
         )
       )
-
+      fetchStats()
       closeDetailsModal()
-    } catch (error) {
-      console.error("Error updating registration:", error)
-      toast({ title: "Error", description: "Error al actualizar el estado", variant: "destructive" })
+    } catch (err: any) {
+      console.error("Error updating registration:", err)
+      alert("Error al actualizar el estado: " + (err?.message || ""))
     } finally {
       setUpdatingStatus(false)
     }
   }
 
-  const exportApprovedToPDF = () => {
-    const approvedRegistrations = inscripciones.filter((reg) => reg.estado === "confirmada")
-    toast({ title: "Exportación", description: `Exportando ${approvedRegistrations.length} inscripciones confirmadas` })
+  // Exportar CSV: descarga TODAS las inscripciones filtradas (no solo la pagina actual)
+  const exportarCSV = async () => {
+    let query = supabase
+      .from("inscripciones")
+      .select(INSCRIPCIONES_COLUMNS)
+      .order("fecha_inscripcion", { ascending: false })
+
+    if (statusFilter !== "all") query = query.eq("estado", statusFilter)
+    if (searchTerm.trim()) {
+      const term = `%${searchTerm.trim()}%`
+      query = query.or(
+        `nombres.ilike.${term},apellidos.ilike.${term},email.ilike.${term},cedula.ilike.${term}`
+      )
+    }
+
+    const { data } = await query
+    const datos = (data || []).map((d: any) => ({
+      "N Inscripcion": d.numero_inscripcion || "",
+      Nombres: d.nombres || "",
+      Apellidos: d.apellidos || "",
+      DNI: d.cedula || "",
+      Email: d.email || "",
+      Telefono: d.telefono || "",
+      Ciudad: d.ciudad || "",
+      "Talle Remera": d.talla_camiseta || "",
+      "Tipo Sangre": d.tipo_sangre || "",
+      "Metodo Pago": d.metodo_pago || "",
+      "N Referencia": d.numero_referencia || "",
+      Estado: d.estado || "pendiente",
+      Nota: d.nota_estado || "",
+      "Fecha Inscripcion": d.fecha_inscripcion
+        ? new Date(d.fecha_inscripcion).toLocaleDateString("es-AR")
+        : "",
+    }))
+    exportToCSV(datos, `inscripciones_${new Date().toISOString().slice(0, 10)}`)
   }
 
-  if (loading) {
+  if (loading || !isAuthorized) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-yellow-400 animate-spin" />
           <div className="text-yellow-400 text-lg">Cargando inscripciones...</div>
@@ -227,14 +374,12 @@ export default function RegistroInscripciones() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black text-white px-3 py-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black text-white p-2 md:p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <motion.div
+        <div
           ref={topRef}
-          className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-yellow-400/20 pb-4 gap-4"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-yellow-400/20 pb-4 gap-4 animate-fadeIn"
         >
           <div className="text-center md:text-left">
             <h1 className="text-2xl md:text-4xl font-black text-yellow-400 tracking-tight">
@@ -245,53 +390,52 @@ export default function RegistroInscripciones() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm ${refreshing ? 'opacity-70' : ''}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm ${refreshing ? "opacity-70" : ""}`}
               disabled={refreshing}
             >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{refreshing ? 'Actualizando...' : 'Actualizar'}</span>
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{refreshing ? "Actualizando..." : "Actualizar"}</span>
             </button>
           </div>
-        </motion.div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3 animate-fadeIn">
+            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-red-400 font-medium text-sm">Error al cargar datos</p>
+              <p className="text-red-400/70 text-xs mt-1">{error}</p>
+              <p className="text-gray-500 text-xs mt-2">
+                Verifica que las tablas y politicas RLS esten configuradas en Supabase.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
-        <motion.div 
-          className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-6 animate-fadeIn">
           {[
-            { title: "Total", value: inscripciones.length, icon: Users, color: "blue" },
-            { title: "Confirmadas", value: confirmadas.length, icon: CheckCircle, color: "green" },
-            { title: "Pendientes", value: pendientes.length, icon: Clock, color: "yellow" },
-            { title: "Ingresos", value: `$${ingresos.toLocaleString("es-AR")}`, icon: DollarSign, color: "purple" }
+            { title: "Total", value: stats.total, icon: Users, color: "blue" },
+            { title: "Confirmadas", value: stats.confirmadas, icon: CheckCircle, color: "green" },
+            { title: "Pendientes", value: stats.pendientes, icon: Clock, color: "yellow" },
+            { title: "Rechazadas", value: stats.rechazadas, icon: XCircleIcon, color: "red" },
           ].map((stat) => {
             const Icon = stat.icon
             return (
-              <div key={stat.title} className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-yellow-400/40 transition-all">
-                <div className="flex justify-between items-start mb-1 sm:mb-2">
+              <div key={stat.title} className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-4 hover:border-yellow-400/40 transition-all">
+                <div className="flex justify-between items-start mb-2">
                   <div className="text-xs text-gray-400">{stat.title}</div>
-                  <Icon className={`w-4 h-4 text-${stat.color}-400 flex-shrink-0`} />
+                  <Icon className={`w-4 h-4 text-${stat.color}-400`} />
                 </div>
-                <div className="text-xl sm:text-2xl font-bold text-white truncate">{stat.value}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {stat.title === "Ingresos" ? "Total recaudado" : 
-                   stat.title === "Total" ? "Inscripciones" : 
-                   stat.title === "Confirmadas" ? "Aprobadas" : "En revisión"}
-                </div>
+                <div className="text-2xl font-bold text-white">{stat.value}</div>
               </div>
             )
           })}
-        </motion.div>
+        </div>
 
         {/* Main Content */}
-        <motion.div
-          className="bg-black/60 border border-yellow-400/20 rounded-lg backdrop-blur-sm"
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-        >
+        <div className="bg-black/60 border border-yellow-400/20 rounded-lg backdrop-blur-sm animate-fadeIn">
           <div className="p-4 border-b border-yellow-400/20">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
               <div>
@@ -299,16 +443,19 @@ export default function RegistroInscripciones() {
                   <Users className="w-5 h-5 text-yellow-400" />
                   Listado de Inscripciones
                 </h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  Mostrando {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredInscripciones.length)} de {filteredInscripciones.length}
-                </p>
+                {totalCount > 0 && (
+                  <p className="text-sm text-gray-400 mt-1">
+                    Mostrando {indexOfFirst}-{indexOfLast} de {totalCount}
+                  </p>
+                )}
               </div>
               <button
-                onClick={exportApprovedToPDF}
+                onClick={exportarCSV}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
+                title={`Exportar inscripciones a CSV`}
               >
                 <Download className="w-4 h-4" />
-                Exportar PDF
+                Exportar CSV
               </button>
             </div>
 
@@ -339,11 +486,14 @@ export default function RegistroInscripciones() {
             </div>
 
             {/* Filters */}
-            <div className={`${showFilters ? 'block' : 'hidden'} md:block`}>
+            <div className={`${showFilters ? "block" : "hidden"} md:block`}>
               <div className="flex flex-col md:flex-row gap-2">
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
                   className="px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
                 >
                   <option value="all">Todos los estados</option>
@@ -356,6 +506,7 @@ export default function RegistroInscripciones() {
                     onClick={() => {
                       setSearchTerm("")
                       setStatusFilter("all")
+                      setCurrentPage(1)
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
                   >
@@ -369,7 +520,7 @@ export default function RegistroInscripciones() {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            {filteredInscripciones.length > 0 ? (
+            {inscripciones.length > 0 ? (
               <table className="w-full">
                 <thead className="bg-zinc-800/50 border-b border-yellow-400/20">
                   <tr>
@@ -382,17 +533,19 @@ export default function RegistroInscripciones() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-yellow-400/10">
-                  {currentItems.map((insc, index) => (
+                  {inscripciones.map((insc, index) => (
                     <tr key={insc.id} className="hover:bg-zinc-800/30 transition-colors">
-                      <td className="px-4 py-3 text-sm text-gray-400">{indexOfFirstItem + index + 1}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400">
+                        {insc.numeroInscripcion || (indexOfFirst + index)}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="font-semibold text-yellow-400 text-sm">
-                          {insc.nombre} {insc.apellido}
+                          {insc.nombres} {insc.apellidos}
                         </div>
                         <div className="text-xs text-gray-500 md:hidden">{insc.email}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.email}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.localidad}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.ciudad}</td>
                       <td className="px-4 py-3">{getStatusBadge(insc.estado)}</td>
                       <td className="px-4 py-3 text-right">
                         <button
@@ -411,19 +564,19 @@ export default function RegistroInscripciones() {
               <div className="flex flex-col items-center justify-center py-12">
                 <Users className="w-12 h-12 text-gray-600 mb-3" />
                 <p className="text-gray-400 text-center">
-                  {searchTerm || statusFilter !== "all" 
+                  {searchTerm || statusFilter !== "all"
                     ? "No se encontraron inscripciones con los filtros aplicados"
-                    : "No hay inscripciones registradas"}
+                    : "No hay inscripciones registradas en la tabla 'inscripciones'"}
                 </p>
               </div>
             )}
           </div>
 
           {/* Pagination */}
-          {filteredInscripciones.length > itemsPerPage && (
+          {totalPages > 1 && (
             <div className="p-4 border-t border-yellow-400/20 flex flex-col sm:flex-row justify-between items-center gap-3">
               <div className="text-xs text-gray-400">
-                Página {currentPage} de {totalPages}
+                Pagina {currentPage} de {totalPages}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -433,21 +586,20 @@ export default function RegistroInscripciones() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 3) {
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number
+                  if (totalPages <= 5) {
                     pageNum = i + 1
-                  } else if (currentPage <= 2) {
+                  } else if (currentPage <= 3) {
                     pageNum = i + 1
-                  } else if (currentPage >= totalPages - 1) {
-                    pageNum = totalPages - 2 + i
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
                   } else {
-                    pageNum = currentPage - 1 + i
+                    pageNum = currentPage - 2 + i
                   }
-
                   return (
                     <button
-                      key={i}
+                      key={pageNum}
                       onClick={() => paginate(pageNum)}
                       className={`px-3 py-1 rounded-lg text-sm transition-all ${
                         currentPage === pageNum
@@ -475,54 +627,50 @@ export default function RegistroInscripciones() {
                 }}
                 className="px-3 py-1 bg-zinc-800 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
               >
+                <option value="10">10</option>
+                <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="100">100</option>
-                <option value="150">150</option>
               </select>
             </div>
           )}
-        </motion.div>
+        </div>
 
-        {/* Scroll to top button */}
+        {/* Scroll to top */}
         <button
+          type="button"
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg hover:shadow-xl transition-all z-50"
+          aria-label="Volver arriba"
+          className="fixed right-4 z-40 p-3 rounded-full bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg hover:shadow-xl transition-all bottom-[max(1rem,env(safe-area-inset-bottom))]"
         >
-          <ArrowUp className="w-5 h-5" />
+          <ArrowUp className="w-5 h-5" aria-hidden="true" />
         </button>
 
         {/* Details Modal */}
         {isDetailsModalOpen && selectedInscripcion && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              className="bg-zinc-900 border border-yellow-400/20 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
-              <div className="sticky top-0 bg-zinc-900 border-b border-yellow-400/20 p-3 sm:p-4 flex justify-between items-center z-10">
-                <h2 className="text-base sm:text-xl font-bold text-yellow-400 flex items-center gap-2">
+            <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fadeIn">
+              <div className="sticky top-0 bg-zinc-900 border-b border-yellow-400/20 p-4 flex justify-between items-center z-10">
+                <h2 className="text-xl font-bold text-yellow-400 flex items-center gap-2">
                   <Users className="w-5 h-5" />
-                  Detalles de Inscripción
+                  Detalles de Inscripcion
                 </h2>
-                <button
-                  onClick={closeDetailsModal}
-                  className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
-                >
+                <button onClick={closeDetailsModal} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
                   <X className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
 
-              <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
+              <div className="p-6 space-y-4">
                 {/* Personal Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <User className="w-4 h-4" />
-                    Información Personal
+                    Informacion Personal
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Nombre Completo</div>
-                      <div className="text-sm font-medium text-white">{selectedInscripcion.nombre} {selectedInscripcion.apellido}</div>
+                      <div className="text-sm font-medium text-white">{selectedInscripcion.nombres} {selectedInscripcion.apellidos}</div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-400">DNI</div>
@@ -536,124 +684,74 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Contact Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Mail className="w-4 h-4" />
-                    Información de Contacto
+                    Informacion de Contacto
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Email</div>
                       <div className="text-sm text-white break-words">{selectedInscripcion.email}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400">Teléfono</div>
+                      <div className="text-xs text-gray-400">Telefono</div>
                       <div className="text-sm text-white">{selectedInscripcion.telefono || "-"}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400">Localidad</div>
-                      <div className="text-sm text-white">{selectedInscripcion.localidad || "-"}</div>
+                      <div className="text-xs text-gray-400">Ciudad</div>
+                      <div className="text-sm text-white">{selectedInscripcion.ciudad || "-"}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Event Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <ClipboardList className="w-4 h-4" />
-                    Información del Evento
+                    Informacion del Evento
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <div className="text-xs text-gray-400">Talle de Remera</div>
-                      <div className="text-sm text-white uppercase">{selectedInscripcion.talleRemera || "-"}</div>
+                      <div className="text-sm text-white uppercase">{selectedInscripcion.tallaCamiseta || "-"}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400">Grupo Sanguíneo</div>
-                      <div className="text-sm text-white">{selectedInscripcion.grupoSanguineo || "-"}</div>
+                      <div className="text-xs text-gray-400">Tipo Sangre</div>
+                      <div className="text-sm text-white">{selectedInscripcion.tipoSangre || "-"}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400">Ha recorrido distancia</div>
-                      <div className="text-sm text-white">{selectedInscripcion.haRecorridoDistancia || "-"}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Health Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
-                  <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
-                    <Stethoscope className="w-4 h-4" />
-                    Información de Salud
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    <div>
-                      <div className="text-xs text-gray-400">Alergias</div>
-                      <div className="text-sm text-white">{selectedInscripcion.tieneAlergias === "si" ? selectedInscripcion.alergias : "No"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-400">Condición de Salud</div>
-                      <div className="text-sm text-white">{selectedInscripcion.tieneProblemasSalud === "si" ? selectedInscripcion.condicionSalud : "No"}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Emergency Contact */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
-                  <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
-                    <Phone className="w-4 h-4" />
-                    Contacto de Emergencia
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                    <div>
-                      <div className="text-xs text-gray-400">Nombre</div>
-                      <div className="text-sm text-white">{selectedInscripcion.nombreEmergencia || "-"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-400">Teléfono</div>
-                      <div className="text-sm text-white">{selectedInscripcion.telefonoEmergencia || "-"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-400">Relación</div>
-                      <div className="text-sm text-white">{selectedInscripcion.relacionEmergencia || "-"}</div>
+                      <div className="text-xs text-gray-400">Ciudad</div>
+                      <div className="text-sm text-white">{selectedInscripcion.ciudad || "-"}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <DollarSign className="w-4 h-4" />
-                    Información de Pago
+                    Informacion de Pago
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <div className="text-xs text-gray-400">Método de Pago</div>
+                      <div className="text-xs text-gray-400">Metodo de Pago</div>
                       <div className="text-sm text-white capitalize">{selectedInscripcion.metodoPago?.replace("_", " ") || "-"}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400">N° de Referencia</div>
+                      <div className="text-xs text-gray-400">N de Referencia</div>
                       <div className="text-sm text-white font-mono">{selectedInscripcion.numeroReferencia || "-"}</div>
                     </div>
                   </div>
-                  {selectedInscripcion.imagenBase64 && (
-                    <div className="mt-3">
-                      <div className="text-xs text-gray-400 mb-2">Comprobante de Pago</div>
-                      <img
-                        src={selectedInscripcion.imagenBase64}
-                        alt="Comprobante de pago"
-                        className="max-w-full max-h-64 rounded-lg border border-yellow-400/20"
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* Status and Notes */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Edit className="w-4 h-4" />
                     Estado y Notas
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Estado</label>
                       <select
@@ -680,7 +778,7 @@ export default function RegistroInscripciones() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-3 sm:p-4 flex justify-between items-center gap-2">
+              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-4 flex justify-between items-center">
                 <button
                   onClick={closeDetailsModal}
                   className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-white hover:bg-zinc-700 transition-all text-sm"
@@ -705,7 +803,7 @@ export default function RegistroInscripciones() {
                   )}
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
       </div>

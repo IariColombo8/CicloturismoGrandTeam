@@ -1,338 +1,294 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { useFirebaseContext } from "@/components/providers/FirebaseProvider"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Users, Clock, CheckCircle, DollarSign, TrendingUp,
-  Activity, Award, Mail
+  Award, Activity, Mail
 } from "lucide-react"
 import dynamic from "next/dynamic"
+import { formatCurrency, formatCurrencyShort } from "@/lib/format"
 
-const DashboardCharts = dynamic(() => import("./DashboardCharts"), {
+// Lazy load recharts - es una librería pesada
+const LazyCharts = dynamic(() => import("@/app/admin/dashboard/DashboardCharts"), {
   ssr: false,
   loading: () => (
-    <div className="text-center py-20 text-gray-400 animate-pulse">
-      Cargando gráficos...
+    <div className="flex items-center justify-center py-20">
+      <div className="text-yellow-400 text-sm animate-pulse">Cargando gráficos...</div>
     </div>
   ),
 })
 
 export default function AdminDashboard() {
-  const { user, eventSettings } = useFirebaseContext()
-  const [inscripciones, setInscripciones] = useState<any[]>([])
+  const router = useRouter()
+  const { user, userRole, loading: authLoading } = useSupabaseContext()
+  // Stats ligeros (solo conteos, no descarga filas)
+  const [stats, setStats] = useState({ total: 0, pendientes: 0, confirmadas: 0, rechazadas: 0 })
+  const [ultimas, setUltimas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [chartData, setChartData] = useState<any[]>([])
-  const [estadoData, setEstadoData] = useState<any[]>([])
-  const [categoriaData, setCategoriaData] = useState<any[]>([])
-  const [provinciaData, setProvinciaData] = useState<any[]>([])
-  const [tendenciaData, setTendenciaData] = useState<any[]>([])
-  const [radarData, setRadarData] = useState<any[]>([])
 
+  const isAuthorized = userRole === "admin" || userRole === "grandteam"
+
+  // Redirigir si no esta autorizado
   useEffect(() => {
-  if (!user) return
-
-  const q = query(collection(db, "Participantes"), orderBy("fechaInscripcion", "desc"))
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }))
-    setInscripciones(data)
-    
-    // Procesar datos para gráficos
-    procesarDatosGraficos(data)
-    
-    setLoading(false)
-  })
-
-  return () => unsubscribe()
-}, [user])
-
-  const procesarDatosGraficos = (data: any[]) => {
-    // Inscripciones por fecha
-    const dateCount: { [key: string]: number } = {}
-    data.forEach((inscripcion) => {
-      if (inscripcion.fechaInscripcion) {
-        const date = new Date(inscripcion.fechaInscripcion).toLocaleDateString("es-AR")
-        dateCount[date] = (dateCount[date] || 0) + 1
-      }
-    })
-
-    const chartData = Object.entries(dateCount)
-      .map(([date, count]) => ({
-        date,
-        inscripciones: count,
-      }))
-      .sort((a, b) => new Date(a.date.split('/').reverse().join('-')).getTime() - new Date(b.date.split('/').reverse().join('-')).getTime())
-    setChartData(chartData)
-
-    // Estado de inscripciones
-    const estadoCount = {
-      pendiente: data.filter((i) => i.estado === "pendiente").length,
-      confirmada: data.filter((i) => i.estado === "confirmada").length,
-      rechazada: data.filter((i) => i.estado === "rechazada").length,
+    if (!authLoading && !user) {
+      router.push("/login?returnUrl=/admin/dashboard")
+    } else if (!authLoading && user && !isAuthorized) {
+      router.push("/")
     }
-    setEstadoData([
-      { name: "Pendiente", value: estadoCount.pendiente, color: "#f59e0b" },
-      { name: "Confirmada", value: estadoCount.confirmada, color: "#10b981" },
-      { name: "Rechazada", value: estadoCount.rechazada, color: "#ef4444" },
-    ])
+  }, [authLoading, user, isAuthorized, router])
 
-    // Categorías
-    const categoriaCount: { [key: string]: number } = {}
-    data.forEach((inscripcion) => {
-      const categoria = inscripcion.categoria || "Sin categoría"
-      categoriaCount[categoria] = (categoriaCount[categoria] || 0) + 1
-    })
-    const categoriaArray = Object.entries(categoriaCount).map(([name, value]) => ({
-      name,
-      value,
-      color: ['#fbbf24', '#f59e0b', '#d97706', '#b45309'][Object.keys(categoriaCount).indexOf(name) % 4]
-    }))
-    setCategoriaData(categoriaArray)
+  // Cargar datos ligeros: conteos + ultimas 5
+  useEffect(() => {
+    if (!isAuthorized || !user) return
 
-    // Top 5 Provincias
-    const provinciaCount: { [key: string]: number } = {}
-    data.forEach((inscripcion) => {
-      const provincia = inscripcion.provincia || "Sin especificar"
-      provinciaCount[provincia] = (provinciaCount[provincia] || 0) + 1
-    })
-    const provinciaArray = Object.entries(provinciaCount)
-      .map(([provincia, count]) => ({ provincia, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-    setProvinciaData(provinciaArray)
+    const fetchData = async () => {
+      const [totalRes, pendRes, confRes, rechRes, ultimasRes] = await Promise.all([
+        supabase.from("inscripciones").select("*", { count: "exact", head: true }),
+        supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "pendiente"),
+        supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "confirmada"),
+        supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "rechazada"),
+        supabase
+          .from("inscripciones")
+          .select("id, estado, nombres, apellidos, email, talla_camiseta, fecha_inscripcion")
+          .order("fecha_inscripcion", { ascending: false })
+          .limit(5),
+      ])
 
-    // Tendencia acumulada
-    const sortedByDate = [...data].sort((a, b) => 
-      new Date(a.fechaInscripcion).getTime() - new Date(b.fechaInscripcion).getTime()
-    )
-    let acumulado = 0
-    const tendencia = sortedByDate.map((inscripcion, index) => {
-      acumulado++
-      return {
-        fecha: new Date(inscripcion.fechaInscripcion).toLocaleDateString("es-AR"),
-        total: acumulado,
-      }
-    })
-    // Agrupar por fecha
-    const tendenciaAgrupada: { [key: string]: number } = {}
-    tendencia.forEach(item => {
-      tendenciaAgrupada[item.fecha] = item.total
-    })
-    const tendenciaFinal = Object.entries(tendenciaAgrupada).map(([fecha, total]) => ({
-      fecha,
-      total
-    }))
-    setTendenciaData(tendenciaFinal)
+      setStats({
+        total: totalRes.count ?? 0,
+        pendientes: pendRes.count ?? 0,
+        confirmadas: confRes.count ?? 0,
+        rechazadas: rechRes.count ?? 0,
+      })
 
-    // Radar Chart - Métricas
-    const confirmadas = data.filter(i => i.estado === "confirmada").length
-    const pendientes = data.filter(i => i.estado === "pendiente").length
-    const total = data.length
-    
-    setRadarData([
-      { metric: "Confirmadas", value: (confirmadas / total) * 100 },
-      { metric: "Pendientes", value: (pendientes / total) * 100 },
-      { metric: "Tasa Conv.", value: (confirmadas / total) * 100 },
-      { metric: "Participación", value: (total / (eventSettings?.cupoMaximo || 300)) * 100 },
-      { metric: "Engagement", value: Math.min(((confirmadas + pendientes) / total) * 100, 100) },
-    ])
-  }
+      setUltimas(
+        (ultimasRes.data || []).map((d: any) => ({
+          id: d.id,
+          nombre: d.nombres,
+          apellido: d.apellidos,
+          email: d.email,
+          estado: d.estado,
+          categoria: d.talla_camiseta || "",
+        }))
+      )
+      setLoading(false)
+    }
+    fetchData()
 
-  const pendientes = inscripciones.filter((i) => i.estado === "pendiente")
-  const aprobadas = inscripciones.filter((i) => i.estado === "confirmada")
-  const rechazadas = inscripciones.filter((i) => i.estado === "rechazada")
-  const precioInscripcion = eventSettings?.precio || eventSettings?.costoInscripcion || 40000
-  const ingresosConfirmados = aprobadas.length * precioInscripcion
-  const ingresosPotenciales = pendientes.length * precioInscripcion
+    const channel = supabase
+      .channel("dashboard-inscripciones")
+      .on("postgres_changes", { event: "*", schema: "public", table: "inscripciones" }, () => {
+        fetchData()
+      })
+      .subscribe()
 
-  if (loading) {
+    return () => { supabase.removeChannel(channel) }
+  }, [isAuthorized, user])
+
+  const ingresosConfirmados = stats.confirmadas * 40000
+  const ingresosPotenciales = stats.pendientes * 40000
+
+  if (authLoading || (!userRole && loading)) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black flex items-center justify-center">
         <div className="text-yellow-400 text-lg animate-pulse">Cargando Dashboard...</div>
       </div>
     )
   }
 
+  if (!isAuthorized) return null
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
+    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black pt-20">
       {/* Header */}
-      <div className="border-b border-yellow-400/20 bg-black/50 backdrop-blur-sm sticky top-20 z-30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6">
+      <div className="border-b border-yellow-400/20 bg-black/50 backdrop-blur-sm sticky top-20 z-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-3xl font-black text-white truncate">
-                Dashboard <span className="gradient-text hidden sm:inline">Grand Team Bike 2026</span>
+            <div>
+              <h1 className="text-xl sm:text-3xl font-black text-white leading-tight">
+                Dashboard <span className="gradient-text">Grand Team Bike</span>
               </h1>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1">Análisis completo y métricas en tiempo real</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Métricas en tiempo real</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards - Principales */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
-          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-900/20 border-yellow-400/30 hover:border-yellow-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Total Inscripciones</CardTitle>
+          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-900/20 border-yellow-400/30 hover:border-yellow-400/60 transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Total</CardTitle>
               <Users className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-2xl sm:text-4xl font-black text-white">{inscripciones.length}</div>
-              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Participantes registrados</p>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              {loading ? <div className="h-8 w-12 bg-zinc-800 rounded animate-pulse" /> : <div className="text-2xl sm:text-4xl font-black text-white">{stats.total}</div>}
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Participantes</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-900/20 border-amber-400/30 hover:border-amber-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
+          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-900/20 border-amber-400/30 hover:border-amber-400/60 transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Pendientes</CardTitle>
               <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-2xl sm:text-4xl font-black text-amber-400">{pendientes.length}</div>
-              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Esperando confirmación</p>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              {loading ? <div className="h-8 w-12 bg-zinc-800 rounded animate-pulse" /> : <div className="text-2xl sm:text-4xl font-black text-amber-400">{stats.pendientes}</div>}
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">En espera</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-green-900/20 border-green-400/30 hover:border-green-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
+          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-green-900/20 border-green-400/30 hover:border-green-400/60 transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Confirmadas</CardTitle>
               <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-2xl sm:text-4xl font-black text-green-500">{aprobadas.length}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {inscripciones.length > 0 ? ((aprobadas.length / inscripciones.length) * 100).toFixed(1) : 0}% del total
+            <CardContent className="p-3 sm:p-6 pt-0">
+              {loading ? <div className="h-8 w-12 bg-zinc-800 rounded animate-pulse" /> : <div className="text-2xl sm:text-4xl font-black text-green-500">{stats.confirmadas}</div>}
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">
+                {!loading && stats.total > 0 ? ((stats.confirmadas / stats.total) * 100).toFixed(1) : 0}% del total
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-900/20 border-emerald-400/30 hover:border-emerald-400/60 transition-all duration-300 hover:scale-105">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-6 sm:pb-2">
+          <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-900/20 border-emerald-400/30 hover:border-emerald-400/60 transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Ingresos</CardTitle>
               <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
             </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-2xl sm:text-4xl font-black text-emerald-500">
-                ${(ingresosConfirmados / 1000).toFixed(0)}k
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                +${(ingresosPotenciales / 1000).toFixed(0)}k potenciales
+            <CardContent className="p-3 sm:p-6 pt-0">
+              {loading ? (
+                <div className="h-8 w-12 bg-zinc-800 rounded animate-pulse" />
+              ) : (
+                <div
+                  className="text-2xl sm:text-4xl font-black text-emerald-500 tabular-nums truncate"
+                  title={formatCurrency(ingresosConfirmados)}
+                >
+                  {formatCurrencyShort(ingresosConfirmados)}
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">
+                {!loading
+                  ? `+${formatCurrencyShort(ingresosPotenciales)} potenciales`
+                  : ""}
               </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Stats Cards - Secundarias */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Tasa de Conversión</CardTitle>
-              <TrendingUp className="w-4 h-4 text-yellow-400" />
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Conversión</CardTitle>
+              <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-yellow-400">
-                {inscripciones.length > 0 ? ((aprobadas.length / inscripciones.length) * 100).toFixed(1) : 0}%
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-gradient-to-r from-yellow-400 to-amber-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${inscripciones.length > 0 ? (aprobadas.length / inscripciones.length) * 100 : 0}%` }}
-                ></div>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              {loading ? <div className="h-7 w-14 bg-zinc-800 rounded animate-pulse" /> : (
+                <div className="text-xl sm:text-3xl font-black text-yellow-400">
+                  {stats.total > 0 ? ((stats.confirmadas / stats.total) * 100).toFixed(1) : 0}%
+                </div>
+              )}
+              <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-2">
+                <div
+                  className="bg-gradient-to-r from-yellow-400 to-amber-600 h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${!loading && stats.total > 0 ? (stats.confirmadas / stats.total) * 100 : 0}%` }}
+                />
               </div>
             </CardContent>
           </Card>
 
           <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Rechazadas</CardTitle>
-              <Activity className="w-4 h-4 text-red-400" />
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Rechazadas</CardTitle>
+              <Activity className="w-3 h-3 sm:w-4 sm:h-4 text-red-400" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-red-400">{rechazadas.length}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {inscripciones.length > 0 ? ((rechazadas.length / inscripciones.length) * 100).toFixed(1) : 0}% del total
+            <CardContent className="p-3 sm:p-6 pt-0">
+              {loading ? <div className="h-7 w-10 bg-zinc-800 rounded animate-pulse" /> : <div className="text-xl sm:text-3xl font-black text-red-400">{stats.rechazadas}</div>}
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">
+                {!loading && stats.total > 0 ? ((stats.rechazadas / stats.total) * 100).toFixed(1) : 0}% del total
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Ingreso Promedio</CardTitle>
-              <Award className="w-4 h-4 text-green-400" />
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Promedio</CardTitle>
+              <Award className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-green-400">${(precioInscripcion / 1000).toFixed(0)}k</div>
-              <p className="text-xs text-gray-500 mt-1">Por participante confirmado</p>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-xl sm:text-3xl font-black text-green-400">$40k</div>
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Por confirmado</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Charts — lazy loaded */}
-        <DashboardCharts
-          chartData={chartData}
-          estadoData={estadoData}
-          categoriaData={categoriaData}
-          provinciaData={provinciaData}
-          tendenciaData={tendenciaData}
-          radarData={radarData}
+        {/* Charts - lazy loaded */}
+        <LazyCharts
+          inscripciones={ultimas}
           ingresosConfirmados={ingresosConfirmados}
           ingresosPotenciales={ingresosPotenciales}
-          aprobadasLength={aprobadas.length}
-          pendientesLength={pendientes.length}
+          aprobadas={ultimas.filter((i: any) => i.estado === "confirmada")}
+          pendientes={ultimas.filter((i: any) => i.estado === "pendiente")}
         />
 
         {/* Últimas Inscripciones */}
         <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-yellow-400" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-white flex items-center gap-2 text-base sm:text-lg">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
               Últimas 5 Inscripciones
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {inscripciones.slice(0, 5).map((inscripcion, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 sm:p-4 bg-zinc-900 rounded-lg border border-yellow-400/10 hover:border-yellow-400/30 transition-all gap-3"
-                >
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-black font-bold text-sm sm:text-base flex-shrink-0">
-                      {inscripcion.nombre?.charAt(0)}{inscripcion.apellido?.charAt(0)}
+          <CardContent className="p-3 sm:p-6 pt-0">
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-14 bg-zinc-800 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2 sm:space-y-4">
+                {ultimas.map((inscripcion, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 sm:p-4 bg-zinc-900 rounded-lg border border-yellow-400/10 hover:border-yellow-400/30 transition-all gap-2"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                      <div className="w-8 h-8 sm:w-12 sm:h-12 flex-shrink-0 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-black font-bold text-xs sm:text-base">
+                        {inscripcion.nombre?.charAt(0)}{inscripcion.apellido?.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-white font-semibold text-xs sm:text-base truncate">
+                          {inscripcion.nombre} {inscripcion.apellido}
+                        </p>
+                        <p className="text-gray-400 text-xs hidden sm:flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {inscripcion.email}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-white font-semibold text-sm sm:text-base truncate">
-                        {inscripcion.nombre} {inscripcion.apellido}
-                      </p>
-                      <p className="text-gray-400 text-xs sm:text-sm flex items-center gap-2 truncate">
-                        <Mail className="w-3 h-3 flex-shrink-0" />
-                        {inscripcion.email}
-                      </p>
+                    <div className="text-right flex-shrink-0">
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
+                        inscripcion.estado === "confirmada"
+                          ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                          : inscripcion.estado === "pendiente"
+                          ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                          : "bg-red-500/20 text-red-400 border border-red-500/30"
+                      }`}>
+                        {inscripcion.estado?.toUpperCase()}
+                      </span>
+                      <p className="text-gray-500 text-xs mt-1 hidden sm:block">{inscripcion.categoria}</p>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
-                      inscripcion.estado === "confirmada" 
-                        ? "bg-green-500/20 text-green-400 border border-green-500/30" 
-                        : inscripcion.estado === "pendiente"
-                        ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                        : "bg-red-500/20 text-red-400 border border-red-500/30"
-                    }`}>
-                      {inscripcion.estado?.toUpperCase()}
-                    </span>
-                    <p className="text-gray-500 text-xs mt-1">
-                      {inscripcion.categoria}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

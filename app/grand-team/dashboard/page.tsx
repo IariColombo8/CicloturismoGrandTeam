@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { collection, query, onSnapshot, orderBy, where } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, CheckCircle, LogOut, Download, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { signOut } from "firebase/auth"
 import ParticipantsList from "@/components/grand-team/ParticipantsList"
 import EventSummary from "@/components/grand-team/EventSummary"
 import CategoryBreakdown from "@/components/grand-team/CategoryBreakdown"
@@ -21,40 +19,53 @@ export default function GrandTeamDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (!user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session?.user) {
         router.push("/grand-team")
       } else {
-        setUser(user)
+        setUser(session.user)
       }
     })
-    return () => unsubscribe()
+    return () => subscription.unsubscribe()
   }, [router])
 
   useEffect(() => {
     if (!user) return
 
-    // Get only approved inscriptions
-    const q = query(
-      collection(db, "Participantes"),
-      where("estado", "==", "aprobado"),
-      orderBy("fechaInscripcion", "desc"),
-    )
+    const fetchParticipantes = async () => {
+      const { data } = await supabase
+        .from("participantes")
+        .select("*")
+        .eq("estado", "aprobado")
+        .order("fecha_inscripcion", { ascending: false })
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-      setInscripciones(data)
+      setInscripciones((data || []).map((d: any) => ({
+        id: d.id,
+        nombre: d.nombre,
+        apellido: d.apellido,
+        dni: d.dni,
+        email: d.email,
+        telefono: d.telefono,
+        categoria: d.categoria,
+        grupoSanguineo: d.grupo_sanguineo,
+        estado: d.estado,
+      })))
       setLoading(false)
-    })
+    }
+    fetchParticipantes()
 
-    return () => unsubscribe()
+    const channel = supabase
+      .channel("grandteam-participantes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "participantes" }, () => {
+        fetchParticipantes()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [user])
 
   const handleLogout = async () => {
-    await signOut(auth)
+    await supabase.auth.signOut()
     router.push("/grand-team")
   }
 
