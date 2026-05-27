@@ -20,6 +20,9 @@ export default function Navbar() {
   const isAdminOrGrandTeam = userRole === "admin" || userRole === "grandteam"
   const isInAdminPages = pathname?.startsWith("/admin")
 
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || ""
+
   // Scroll listener optimizado con requestAnimationFrame
   useEffect(() => {
     let ticking = false
@@ -243,14 +246,28 @@ export default function Navbar() {
               )}
 
               {user ? (
-                <button
-                  onClick={handleLogout}
-                  className="p-2.5 border-2 border-red-400 text-red-400 rounded-lg hover:bg-red-400 hover:text-white transition-all duration-200"
-                  title="Cerrar Sesión"
-                  aria-label="Cerrar sesión"
-                >
-                  <LogOut size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={displayName}
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 rounded-full border border-yellow-400/30 object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full border border-yellow-400/30 bg-yellow-400/10 grid place-items-center text-yellow-400 text-xs font-bold">
+                      {displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="p-2.5 border-2 border-red-400 text-red-400 rounded-lg hover:bg-red-400 hover:text-white transition-all duration-200"
+                    title="Cerrar Sesión"
+                    aria-label="Cerrar sesión"
+                  >
+                    <LogOut size={20} />
+                  </button>
+                </div>
               ) : (
                 <Link
                   href="/login"
@@ -402,13 +419,33 @@ export default function Navbar() {
               )}
 
               {user ? (
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center justify-center gap-2 w-full px-6 py-3 border-2 border-red-400 text-red-400 rounded-lg hover:bg-red-400 hover:text-white transition-all"
-                >
-                  <LogOut size={20} />
-                  Cerrar Sesión
-                </button>
+                <>
+                  <div className="flex items-center gap-3 px-2 py-3 border-b border-zinc-800">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName}
+                        referrerPolicy="no-referrer"
+                        className="w-10 h-10 rounded-full border border-yellow-400/30 object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full border border-yellow-400/30 bg-yellow-400/10 grid place-items-center text-yellow-400 text-sm font-bold">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{displayName}</p>
+                      <p className="text-[11px] text-zinc-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-2 w-full px-6 py-3 border-2 border-red-400 text-red-400 rounded-lg hover:bg-red-400 hover:text-white transition-all"
+                  >
+                    <LogOut size={20} />
+                    Cerrar Sesión
+                  </button>
+                </>
               ) : (
                 <Link
                   href="/login"
