@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Menu, X, User, LayoutDashboard, LogOut, DollarSign, Settings, Home, ChevronDown, Shirt } from "lucide-react"
@@ -88,23 +88,23 @@ export default function Navbar() {
     }
   }
 
-  const navLinks = [
+  const navLinks = useMemo(() => [
     { id: "inicio", label: "Inicio" },
     { id: "nosotros", label: "Sobre Nosotros" },
     { id: "detalles", label: "Detalles" },
     { id: "contacto", label: "Contacto" },
-  ]
+  ], [])
 
-  const adminLinks = [
+  const adminLinks = useMemo(() => [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
     { href: "/admin/grandteam", label: "Grand Team", icon: User },
     { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
-  ]
+  ], [])
 
-  const toggleDropdown = (dropdown: string) => {
-    setOpenDropdown(openDropdown === dropdown ? null : dropdown)
-  }
+  const toggleDropdown = useCallback((dropdown: string) => {
+    setOpenDropdown((prev) => prev === dropdown ? null : dropdown)
+  }, [])
 
   return (
     <>

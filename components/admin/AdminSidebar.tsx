@@ -19,6 +19,7 @@ import {
   Shirt,
   LayoutTemplate,
   QrCode,
+  Handshake,
   LucideIcon,
 } from "lucide-react"
 import { useAdminLayout } from "./AdminLayoutContext"
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
   { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
   { href: "/admin/grandteam", label: "Grand Team", icon: Users },
+  { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
   { href: "/admin/content", label: "Contenido", icon: LayoutTemplate },
   { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
 ]

@@ -7,7 +7,7 @@ import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Users, Clock, CheckCircle, DollarSign, TrendingUp,
-  Award, Activity, Mail
+  Award, Activity, Mail, Pencil, Check, X
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { formatCurrency, formatCurrencyShort } from "@/lib/format"
@@ -24,9 +24,12 @@ const LazyCharts = dynamic(() => import("@/app/admin/dashboard/DashboardCharts")
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const { user, userRole, loading: authLoading } = useSupabaseContext()
+  const { user, userRole, loading: authLoading, eventSettings } = useSupabaseContext()
   // Stats ligeros (solo conteos, no descarga filas)
   const [stats, setStats] = useState({ total: 0, pendientes: 0, confirmadas: 0, rechazadas: 0 })
+  const [precioEntrada, setPrecioEntrada] = useState(0)
+  const [editandoPrecio, setEditandoPrecio] = useState(false)
+  const [precioTemp, setPrecioTemp] = useState("")
   const [ultimas, setUltimas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -89,8 +92,32 @@ export default function AdminDashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [isAuthorized, user])
 
-  const ingresosConfirmados = stats.confirmadas * 40000
-  const ingresosPotenciales = stats.pendientes * 40000
+  // Cargar precio desde eventSettings
+  useEffect(() => {
+    if (eventSettings?.precio) {
+      setPrecioEntrada(eventSettings.precio)
+    }
+  }, [eventSettings])
+
+  const guardarPrecio = async () => {
+    const nuevo = parseInt(precioTemp) || 0
+    if (nuevo <= 0) return
+    setPrecioEntrada(nuevo)
+    setEditandoPrecio(false)
+
+    await supabase
+      .from("event_settings")
+      .update({ precio: nuevo })
+      .eq("id", "eventSettings")
+
+    // Actualizar cache
+    try {
+      sessionStorage.removeItem("event_settings_cache")
+    } catch {}
+  }
+
+  const ingresosConfirmados = stats.confirmadas * precioEntrada
+  const ingresosPotenciales = stats.pendientes * precioEntrada
 
   if (authLoading || (!userRole && loading)) {
     return (
@@ -218,12 +245,41 @@ export default function AdminDashboard() {
 
           <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Promedio</CardTitle>
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">Precio Entrada</CardTitle>
               <Award className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
             </CardHeader>
             <CardContent className="p-3 sm:p-6 pt-0">
-              <div className="text-xl sm:text-3xl font-black text-green-400">$40k</div>
-              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Por confirmado</p>
+              {editandoPrecio ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-green-400 font-black text-lg">$</span>
+                  <input
+                    type="number"
+                    value={precioTemp}
+                    onChange={(e) => setPrecioTemp(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && guardarPrecio()}
+                    autoFocus
+                    className="w-20 bg-zinc-800 border border-zinc-600 rounded px-1.5 py-0.5 text-white text-lg font-black focus:outline-none focus:border-green-400"
+                  />
+                  <button onClick={guardarPrecio} className="text-green-400 hover:text-green-300 p-0.5">
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setEditandoPrecio(false)} className="text-zinc-500 hover:text-zinc-300 p-0.5">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setPrecioTemp(String(precioEntrada)); setEditandoPrecio(true) }}
+                  className="flex items-center gap-1.5 group"
+                  title="Click para editar precio"
+                >
+                  <div className="text-xl sm:text-3xl font-black text-green-400">
+                    {formatCurrencyShort(precioEntrada)}
+                  </div>
+                  <Pencil className="w-3 h-3 text-zinc-600 group-hover:text-yellow-400 transition-colors" />
+                </button>
+              )}
+              <p className="text-xs text-gray-500 mt-1 hidden sm:block">Por inscripto</p>
             </CardContent>
           </Card>
         </div>

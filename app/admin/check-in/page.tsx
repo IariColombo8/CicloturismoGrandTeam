@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
-import { Html5Qrcode } from "html5-qrcode"
+import type { Html5Qrcode as Html5QrcodeType } from "html5-qrcode"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -64,7 +64,7 @@ export default function CheckInPage() {
   // Historial reciente de check-ins
   const [historial, setHistorial] = useState<CheckInRecord[]>([])
 
-  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const scannerRef = useRef<Html5QrcodeType | null>(null)
   const scannerContainerRef = useRef<HTMLDivElement>(null)
 
   // Estadisticas en tiempo real (solo conteos, no descarga toda la tabla)
@@ -230,6 +230,7 @@ export default function CheckInPage() {
     await new Promise((r) => setTimeout(r, 100))
 
     try {
+      const { Html5Qrcode } = await import("html5-qrcode")
       const html5QrCode = new Html5Qrcode("qr-reader")
       scannerRef.current = html5QrCode
 

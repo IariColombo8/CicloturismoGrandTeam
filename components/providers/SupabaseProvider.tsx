@@ -133,22 +133,37 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false)
   }
 
-  // Cargar configuracion del evento
+  // Cargar configuracion del evento (con cache en sessionStorage)
   useEffect(() => {
+    const SETTINGS_CACHE_KEY = "event_settings_cache"
+    const SETTINGS_CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+
+    const defaultSettings: EventSettings = {
+      cupoMaximo: 300,
+      precio: 35000,
+      metodoPago: "Transferencia bancaria",
+      inscripcionesAbiertas: true,
+      currentYear: new Date().getFullYear(),
+    }
+
+    // Intentar cargar del cache primero
+    try {
+      const cached = sessionStorage.getItem(SETTINGS_CACHE_KEY)
+      if (cached) {
+        const { data: cachedData, ts } = JSON.parse(cached)
+        if (Date.now() - ts < SETTINGS_CACHE_TTL) {
+          setEventSettings(cachedData)
+          return // Cache valido, no refetchear
+        }
+      }
+    } catch {}
+
+    if (!isSupabaseAvailable) {
+      setEventSettings(defaultSettings)
+      return
+    }
+
     const fetchEventSettings = async () => {
-      const defaultSettings: EventSettings = {
-        cupoMaximo: 300,
-        precio: 35000,
-        metodoPago: "Transferencia bancaria",
-        inscripcionesAbiertas: true,
-        currentYear: new Date().getFullYear(),
-      }
-
-      if (!isSupabaseAvailable) {
-        setEventSettings(defaultSettings)
-        return
-      }
-
       try {
         const { data, error } = await supabase
           .from("event_settings")
@@ -159,14 +174,18 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
         if (error || !data) {
           setEventSettings(defaultSettings)
         } else {
-          setEventSettings({
+          const settings = {
             cupoMaximo: data.cupo_maximo,
             precio: data.precio,
             costoInscripcion: data.costo_inscripcion ?? undefined,
             metodoPago: data.metodo_pago,
             inscripcionesAbiertas: data.inscripciones_abiertas,
             currentYear: data.current_year,
-          })
+          }
+          setEventSettings(settings)
+          try {
+            sessionStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ data: settings, ts: Date.now() }))
+          } catch {}
         }
       } catch (error) {
         console.error("Error al obtener event settings:", error)

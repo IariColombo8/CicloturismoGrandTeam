@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
+import { supabase } from "@/lib/supabase"
 import { Card, CardContent } from "@/components/ui/card"
-import { 
-  Award, Heart, MessageCircle, Handshake, Star, Sparkles, Trophy, 
+import {
+  Award, Heart, MessageCircle, Handshake, Star, Sparkles, Trophy,
   X, MapPin, Phone, Instagram, Facebook, Mail, ExternalLink, Clock, Globe
 } from "lucide-react"
 
@@ -12,6 +13,7 @@ export default function Sponsors() {
   const [isVisible, setIsVisible] = useState(false)
   const [selectedSponsor, setSelectedSponsor] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [dbSponsors, setDbSponsors] = useState<any[] | null>(null)
   const sectionRef = useRef(null)
 
   useEffect(() => {
@@ -49,6 +51,45 @@ export default function Sponsors() {
     }
   }, [isModalOpen])
 
+  // Cargar sponsors desde Supabase
+  useEffect(() => {
+    const fetchSponsors = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("sponsors")
+          .select("*")
+          .eq("activo", true)
+          .order("orden", { ascending: true })
+
+        if (!error && data && data.length > 0) {
+          setDbSponsors(
+            data.map((s: any) => ({
+              name: s.nombre,
+              logo: s.logo_url,
+              tier: s.tier === "oro" ? "Oro" : s.tier === "plata" ? "Plata" : "Bronce",
+              businessName: s.nombre_comercial || s.nombre,
+              description: s.descripcion,
+              address: s.direccion,
+              phone: s.telefono,
+              email: s.email,
+              website: s.website,
+              schedule: s.horario,
+              instagram: s.instagram,
+              facebook: s.facebook,
+              whatsapp: s.whatsapp,
+              category: s.categoria,
+              services: s.servicios,
+              _tier: s.tier,
+            }))
+          )
+        }
+      } catch {
+        // Si falla, se usan los datos hardcodeados como fallback
+      }
+    }
+    fetchSponsors()
+  }, [])
+
   const openModal = (sponsor: any) => {
     setSelectedSponsor(sponsor)
     setIsModalOpen(true)
@@ -59,7 +100,7 @@ export default function Sponsors() {
     setTimeout(() => setSelectedSponsor(null), 300)
   }
 
-  const sponsorTiers = {
+  const hardcodedTiers = {
     gold: [
       { 
         name: "Sponsor Premium 1", 
@@ -206,6 +247,15 @@ export default function Sponsors() {
       },
     ],
   }
+
+  // Usar datos de Supabase si estan disponibles, sino fallback a hardcodeados
+  const sponsorTiers = dbSponsors
+    ? {
+        gold: dbSponsors.filter((s) => s._tier === "oro"),
+        silver: dbSponsors.filter((s) => s._tier === "plata"),
+        bronze: dbSponsors.filter((s) => s._tier === "bronce"),
+      }
+    : hardcodedTiers
 
   const benefits = [
     { icon: Award, text: "Visibilidad en el evento", description: "Tu marca en todos los materiales" },
