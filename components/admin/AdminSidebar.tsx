@@ -23,6 +23,7 @@ import {
   LucideIcon,
 } from "lucide-react"
 import { useAdminLayout } from "./AdminLayoutContext"
+import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 
 interface NavItem {
   href: string
@@ -48,6 +49,15 @@ export default function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useAdminLayout()
+  const { user } = useSupabaseContext()
+
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || ""
+  const initials = displayName
+    .split(" ")
+    .slice(0, 2)
+    .map((w: string) => w[0]?.toUpperCase())
+    .join("")
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"
@@ -175,8 +185,38 @@ export default function AdminSidebar() {
           })}
         </nav>
 
-        {/* Footer: logout + branding */}
+        {/* Footer: usuario + logout + branding */}
         <div className="border-t border-yellow-400/20 bg-zinc-900/50">
+          {/* Info del usuario */}
+          <div
+            className={[
+              "flex items-center gap-3 px-3 py-3 md:px-4",
+              collapsed ? "md:justify-center md:px-0" : "",
+            ].join(" ")}
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                referrerPolicy="no-referrer"
+                className="w-8 h-8 rounded-full border border-yellow-400/30 flex-shrink-0 object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full border border-yellow-400/30 flex-shrink-0 bg-yellow-400/10 grid place-items-center text-yellow-400 text-xs font-bold">
+                {initials || "?"}
+              </div>
+            )}
+            <div
+              className={[
+                "min-w-0",
+                collapsed ? "md:hidden" : "",
+              ].join(" ")}
+            >
+              <p className="text-sm font-medium text-white truncate">{displayName}</p>
+              <p className="text-[10px] text-zinc-500 truncate">{user?.email}</p>
+            </div>
+          </div>
+
           <button
             type="button"
             onClick={handleLogout}
