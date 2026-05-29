@@ -13,6 +13,7 @@ export default function Sponsors() {
   const [isVisible, setIsVisible] = useState(false)
   const [selectedSponsor, setSelectedSponsor] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [bronzeSponsor, setBronzeSponsor] = useState<any>(null)
   const [dbSponsors, setDbSponsors] = useState<any[] | null>(null)
   const sectionRef = useRef(null)
 
@@ -36,20 +37,23 @@ export default function Sponsors() {
   // Cerrar modal con ESC
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeModal()
+      if (e.key === 'Escape') {
+        closeModal()
+        setBronzeSponsor(null)
+      }
     }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
   }, [])
 
-  // Prevenir scroll cuando el modal está abierto
+  // Prevenir scroll cuando algún modal está abierto
   useEffect(() => {
-    if (isModalOpen) {
+    if (isModalOpen || bronzeSponsor) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
     }
-  }, [isModalOpen])
+  }, [isModalOpen, bronzeSponsor])
 
   // Cargar sponsors desde Supabase
   useEffect(() => {
@@ -271,7 +275,7 @@ export default function Sponsors() {
 
   return (
     <>
-      <section ref={sectionRef} id="patrocinadores" className="py-12 sm:py-16 md:py-20 lg:py-24 bg-black relative overflow-hidden">
+      <section ref={sectionRef} id="patrocinadores" className="py-12 sm:py-16 md:py-20 lg:py-24 bg-earth grain relative overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none hidden lg:block" aria-hidden="true">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(250,204,21,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(250,204,21,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
@@ -294,10 +298,10 @@ export default function Sponsors() {
               <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-yellow-400 hidden xs:block" aria-hidden="true" />
             </div>
 
-            <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 px-2">
+            <h2 className="font-display uppercase text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-sand mb-2 sm:mb-3 md:mb-4 lg:mb-6 px-2">
               Nuestros{" "}
               <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+                <span className="text-earth-gold">
                   Aliados
                 </span>
                 <span className="absolute -bottom-0.5 sm:-bottom-1 md:-bottom-2 left-0 right-0 h-0.5 sm:h-0.5 md:h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
@@ -379,13 +383,14 @@ export default function Sponsors() {
                   </h3>
                   <div className="h-px w-4 sm:w-8 md:w-12 bg-gradient-to-l from-transparent to-amber-700" />
                 </div>
-                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                   {sponsorTiers.bronze.map((sponsor, index) => (
                     <BronzeSponsorCard
                       key={index}
                       sponsor={sponsor}
                       delay={(index + 6) * 150}
                       isVisible={isVisible}
+                      onClick={() => setBronzeSponsor(sponsor)}
                     />
                   ))}
                 </div>
@@ -486,12 +491,17 @@ export default function Sponsors() {
         `}</style>
       </section>
 
-      {/* Modal */}
-      <SponsorModal 
-        sponsor={selectedSponsor} 
-        isOpen={isModalOpen} 
-        onClose={closeModal} 
+      {/* Modal completo (oro/plata) */}
+      <SponsorModal
+        sponsor={selectedSponsor}
+        isOpen={isModalOpen}
+        onClose={closeModal}
       />
+
+      {/* Popup de contacto (bronce) */}
+      {bronzeSponsor && (
+        <BronzeActionModal sponsor={bronzeSponsor} onClose={() => setBronzeSponsor(null)} />
+      )}
     </>
   )
 }
@@ -575,74 +585,128 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }: { sponsor
   )
 }
 
-// Bronze Sponsor Card - Simplificado: logo, nombre, descripción, WhatsApp e Instagram
-function BronzeSponsorCard({ sponsor, delay = 0, isVisible }: { sponsor: any; delay?: number; isVisible: boolean }) {
-  const whatsappMessage = encodeURIComponent(
-    `Hola ${sponsor.businessName}! Los vi en el evento Grand Team Bike 2026 y me gustaría conocer más sobre sus servicios.`
-  )
-  const whatsappUrl = sponsor.whatsapp ? `https://wa.me/${sponsor.whatsapp}?text=${whatsappMessage}` : null
-
+// Bronze Sponsor Card - Solo logo. Al hacer click abre popup con WhatsApp/Instagram.
+function BronzeSponsorCard({
+  sponsor,
+  delay = 0,
+  isVisible,
+  onClick,
+}: {
+  sponsor: any
+  delay?: number
+  isVisible: boolean
+  onClick: () => void
+}) {
   return (
     <div
       className={`transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <Card className="group relative overflow-hidden bg-zinc-900/80 border-zinc-800 hover:border-amber-700/50 backdrop-blur-sm hover:scale-[1.02] transition-all duration-500 group-hover:shadow-[0_0_15px_rgba(180,83,9,0.2)] h-full">
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+      <button
+        onClick={onClick}
+        className="block w-full text-left"
+        aria-label={`Ver contacto de ${sponsor.businessName || sponsor.name}`}
+      >
+        <Card className="group relative overflow-hidden bg-warm-black-soft border-sand/10 hover:border-gold/40 backdrop-blur-sm hover:scale-[1.02] transition-all duration-500 cursor-pointer">
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+          </div>
+
+          <CardContent className="p-4 sm:p-6 flex items-center justify-center">
+            <div className="relative w-full h-20 sm:h-24">
+              <Image
+                src={sponsor.logo || "/placeholder.svg"}
+                alt={`Logo de ${sponsor.name}`}
+                fill
+                className="object-contain transition-all duration-500 opacity-85 group-hover:opacity-100 group-hover:scale-105"
+                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </button>
+    </div>
+  )
+}
+
+// Popup minimalista para bronce: logo + acciones de contacto (WhatsApp/Instagram)
+function BronzeActionModal({ sponsor, onClose }: { sponsor: any; onClose: () => void }) {
+  if (!sponsor) return null
+
+  const whatsappMessage = encodeURIComponent(
+    `Hola ${sponsor.businessName || sponsor.name}! Los vi en el evento Grand Team Bike 2026 y me gustaría conocer más sobre sus servicios.`
+  )
+  const whatsappUrl = sponsor.whatsapp ? `https://wa.me/${sponsor.whatsapp}?text=${whatsappMessage}` : null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-warm-black/85 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Contacto de ${sponsor.businessName || sponsor.name}`}
+    >
+      <div
+        className="relative w-full max-w-xs bg-warm-black-soft border border-sand/10 rounded-2xl p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-9 h-9 grid place-items-center bg-sand/5 hover:bg-sand/10 rounded-full transition-colors"
+          aria-label="Cerrar"
+        >
+          <X className="w-4 h-4 text-sand" />
+        </button>
+
+        {/* Logo */}
+        <div className="relative w-full h-24 mb-4">
+          <Image
+            src={sponsor.logo || "/placeholder.svg"}
+            alt={`Logo de ${sponsor.name}`}
+            fill
+            className="object-contain"
+            sizes="240px"
+          />
         </div>
 
-        <CardContent className="p-3 sm:p-4 flex flex-col items-center text-center h-full">
-          {/* Logo */}
-          <div className="relative w-full h-16 xs:h-20 sm:h-24 mb-2 sm:mb-3">
-            <Image
-              src={sponsor.logo || "/placeholder.svg"}
-              alt={`Logo de ${sponsor.name}`}
-              fill
-              className="object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            />
-          </div>
-
-          {/* Nombre */}
-          <h4 className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5 line-clamp-1">
-            {sponsor.businessName || sponsor.name}
-          </h4>
-
-          {/* Descripción */}
-          <p className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed mb-3 sm:mb-4 line-clamp-3 flex-grow">
+        <h4 className="font-display uppercase text-center text-lg font-semibold text-sand mb-1">
+          {sponsor.businessName || sponsor.name}
+        </h4>
+        {sponsor.description && (
+          <p className="text-xs text-sand-muted text-center leading-relaxed mb-5 line-clamp-3">
             {sponsor.description}
           </p>
+        )}
 
-          {/* Botones WhatsApp e Instagram */}
-          <div className="flex items-center gap-2 w-full mt-auto">
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 bg-green-600 hover:bg-green-500 text-white px-2 py-1.5 sm:py-2 rounded-lg font-semibold transition-all text-[10px] sm:text-xs"
-                aria-label={`WhatsApp de ${sponsor.name}`}
-              >
-                <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
-                <span>WhatsApp</span>
-              </a>
-            )}
-            {sponsor.instagram && (
-              <a
-                href={sponsor.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white px-2 py-1.5 sm:py-2 rounded-lg font-semibold transition-all text-[10px] sm:text-xs"
-                aria-label={`Instagram de ${sponsor.name}`}
-              >
-                <Instagram className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
-                <span>Instagram</span>
-              </a>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        {/* Acciones */}
+        <div className="flex flex-col gap-2.5">
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-semibold transition-all text-sm"
+            >
+              <MessageCircle className="w-4 h-4" />
+              WhatsApp
+            </a>
+          )}
+          {sponsor.instagram && (
+            <a
+              href={sponsor.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white px-4 py-3 rounded-lg font-semibold transition-all text-sm"
+            >
+              <Instagram className="w-4 h-4" />
+              Instagram
+            </a>
+          )}
+          {!whatsappUrl && !sponsor.instagram && (
+            <p className="text-xs text-sand-muted text-center">Sin datos de contacto disponibles.</p>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist } from "next/font/google"
+import { Geist, Oswald } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
@@ -11,6 +11,14 @@ const geist = Geist({
   display: "swap",
   preload: true,
   variable: "--font-geist",
+})
+
+// Display condensada para titulares: identidad deportiva/outdoor.
+const oswald = Oswald({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-oswald",
 })
 
 // ────────────────────────────────────────────────────────────────────
@@ -127,7 +135,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${geist.variable} font-sans antialiased`}>
+      <body className={`${geist.variable} ${oswald.variable} font-sans antialiased`}>
         <SupabaseProvider>
           {children}
           <Toaster />

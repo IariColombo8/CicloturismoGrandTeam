@@ -14,6 +14,11 @@ interface EventSettings {
   [key: string]: unknown
 }
 
+interface AdminProfile {
+  displayName: string | null
+  photoUrl: string | null
+}
+
 interface SupabaseContextType {
   user: User | null
   session: Session | null
@@ -21,6 +26,7 @@ interface SupabaseContextType {
   eventSettings: EventSettings | null
   isSupabaseAvailable: boolean
   userRole: string | null
+  adminProfile: AdminProfile | null
 }
 
 const SupabaseContext = createContext<SupabaseContextType>({
@@ -30,6 +36,7 @@ const SupabaseContext = createContext<SupabaseContextType>({
   eventSettings: null,
   isSupabaseAvailable: false,
   userRole: null,
+  adminProfile: null,
 })
 
 export const useSupabaseContext = () => useContext(SupabaseContext)
@@ -205,6 +212,7 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
       isSupabaseAvailable,
       isFirebaseAvailable: isSupabaseAvailable, // Alias de compatibilidad
       userRole,
+      adminProfile: null,
     }),
     [user, session, loading, eventSettings, isSupabaseAvailable, userRole]
   )

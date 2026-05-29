@@ -114,8 +114,8 @@ export default function Navbar() {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? "bg-gradient-to-r from-black via-zinc-900 to-yellow-900/20 backdrop-blur-lg shadow-lg shadow-yellow-500/10"
-            : "bg-transparent"
+            ? "bg-warm-black/85 backdrop-blur-lg border-b border-gold/15 shadow-lg shadow-black/40"
+            : "bg-gradient-to-b from-warm-black/60 to-transparent"
         }`}
       >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -131,7 +131,9 @@ export default function Navbar() {
                   priority
                 />
               </div>
-              <span className="hidden sm:block text-xl font-bold gradient-text">Grand Team Bike</span>
+              <span className="hidden sm:block font-display text-2xl font-bold uppercase tracking-wide text-sand">
+                Grand Team <span className="text-gold">Bike</span>
+              </span>
             </Link>
 
             {/* Desktop Navigation */}

@@ -38,7 +38,7 @@ export default function Footer() {
   ]
 
   return (
-    <footer id="contacto" className="bg-gradient-to-b from-zinc-900 to-black border-t border-yellow-400/20 relative overflow-hidden">
+    <footer className="bg-earth grain border-t border-gold/20 relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-20 left-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
@@ -58,7 +58,9 @@ export default function Footer() {
                   className="object-contain" 
                 />
               </div>
-              <span className="text-xl font-bold gradient-text">Grand Team Bike</span>
+              <span className="font-display text-2xl font-bold uppercase tracking-wide text-sand">
+                Grand Team <span className="text-gold">Bike</span>
+              </span>
             </Link>
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
               La aventura de cicloturismo más desafiante y emocionante del año. Únete a nuestra comunidad de ciclistas apasionados en Concepción del Uruguay.

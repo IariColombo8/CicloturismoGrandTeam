@@ -1,141 +1,111 @@
 "use client"
 
 import Link from "next/link"
+import { ChevronRight, Instagram, Mail, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Sparkles, Instagram, Mail, Phone } from "lucide-react"
+import { ParallaxImage, Reveal } from "@/components/home/motion-primitives"
+import { EVENTO } from "@/lib/constants"
 
 export default function CallToAction() {
+  const contacts = [
+    {
+      icon: Mail,
+      label: "Email",
+      value: EVENTO.contacto.email,
+      href: `mailto:${EVENTO.contacto.email}`,
+    },
+    {
+      icon: Phone,
+      label: "WhatsApp",
+      value: "+54 9 3442 654257",
+      href: `https://wa.me/${EVENTO.contacto.whatsapp}`,
+    },
+    {
+      icon: Instagram,
+      label: "Instagram",
+      value: "@cicloturismo_grandteam",
+      href: "https://www.instagram.com/cicloturismo_grandteam?igsh=NTZqaGpiZG4ydmU0",
+    },
+  ]
+
   return (
-    <section id="contacto" className="py-12 sm:py-20 bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.15),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(255,193,7,0.15),transparent_50%)]" />
+    <section id="contacto" className="relative overflow-hidden bg-warm-black grain">
+      {/* Bloque CTA con foto + parallax */}
+      <div className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+        <ParallaxImage
+          src="/ciclistas-celebrando-evento-team.jpg"
+          alt=""
+          strength={120}
+          overlayClassName="veil-warm"
+        />
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 text-center">
+          <Reveal>
+            <div className="inline-flex items-center gap-2 px-4 py-2 mb-7 border border-gold/40 rounded-full backdrop-blur-sm">
+              <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" />
+              <span className="kicker text-[11px] text-gold">Cupos limitados</span>
+            </div>
+          </Reveal>
+          <Reveal delay={0.05}>
+            <h2 className="font-display font-bold uppercase leading-[0.92] text-sand text-4xl sm:text-7xl lg:text-8xl">
+              Tu lugar en la
+              <span className="block text-earth-gold">ruta te espera</span>
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <p className="mt-6 max-w-xl mx-auto text-base sm:text-lg text-sand-muted leading-relaxed">
+              Sumate a cientos de ciclistas que ya dijeron presente. Inscripción simple, pago
+              protegido y la aventura asegurada.
+            </p>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <div className="mt-9 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+              <Link href="/inscripcion" className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  className="group w-full sm:w-auto px-8 py-6 text-base font-bold uppercase tracking-wide font-display bg-gold text-warm-black hover:bg-gold-soft transition-all duration-300 rounded-none shadow-[0_8px_30px_rgba(255,215,0,0.25)] hover:shadow-[0_8px_40px_rgba(255,215,0,0.45)] hover:-translate-y-0.5"
+                >
+                  Inscribirme ahora
+                  <ChevronRight className="ml-1 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              <a href={`mailto:${EVENTO.contacto.email}`} className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto px-8 py-6 text-base font-semibold uppercase tracking-wide font-display border-2 border-sand/30 text-sand hover:border-gold hover:text-gold transition-all duration-300 rounded-none bg-transparent"
+                >
+                  Tengo dudas
+                </Button>
+              </a>
+            </div>
+          </Reveal>
+        </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="max-w-4xl mx-auto">
-          {/* Main CTA Card - COMPACTO EN MÓVIL */}
-          <div className="glass p-6 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl border-2 border-yellow-400/30 relative overflow-hidden group">
-            {/* Glow effect on hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/0 via-yellow-400/5 to-yellow-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-            <div className="relative z-10 text-center">
-              {/* Badge - COMPACTO EN MÓVIL */}
-              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 mb-4 sm:mb-6 bg-yellow-400/10 border border-yellow-400/30 rounded-full">
-                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400" />
-                <span className="text-xs sm:text-sm font-semibold text-yellow-400">Cupos Limitados</span>
-              </div>
-
-              {/* Title - COMPACTO EN MÓVIL */}
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black text-white mb-4 sm:mb-6 leading-tight px-2">
-                ¿Listo para el{" "}
-                <span className="gradient-text-intense">
-                  Desafío
-                  <br className="hidden sm:block" /> de tu Vida?
-                </span>
-              </h2>
-
-              {/* Description - COMPACTO EN MÓVIL */}
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto leading-relaxed px-2">
-                No dejes pasar esta oportunidad única. Únete a cientos de ciclistas que ya confirmaron su participación
-                en la aventura más emocionante del 2026.
-              </p>
-
-              {/* CTA Buttons - STACK EN MÓVIL */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
-                <Link href="/inscripcion" className="w-full sm:w-auto">
-                  <Button
-                    size="lg"
-                    className="group w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-6 text-base sm:text-lg font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black hover:scale-105 transition-all duration-300 btn-glow rounded-xl shadow-lg shadow-yellow-400/20"
-                  >
-                    Inscribirme Ahora
-                    <ChevronRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
-                <a href="mailto:grandteamcdelu@gmail.com" className="w-full sm:w-auto">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full sm:w-auto px-6 sm:px-8 py-4 sm:py-6 text-base sm:text-lg font-semibold border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition-all duration-300 rounded-xl bg-transparent"
-                  >
-                    Contactar
-                  </Button>
+      {/* Contactos */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-sand/10 rounded-xl overflow-hidden max-w-4xl mx-auto">
+          {contacts.map((c, i) => {
+            const Icon = c.icon
+            return (
+              <Reveal key={i} delay={i * 0.07} className="h-full">
+                <a
+                  href={c.href}
+                  target={c.href.startsWith("http") ? "_blank" : undefined}
+                  rel={c.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                  className="group flex flex-col items-center text-center h-full bg-warm-black-soft p-8 hover:bg-olive-deep/30 transition-colors duration-300"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gold/10 grid place-items-center mb-4 group-hover:bg-gold/20 transition-colors">
+                    <Icon className="w-6 h-6 text-gold" aria-hidden="true" />
+                  </div>
+                  <span className="kicker text-[10px] text-gold mb-2">{c.label}</span>
+                  <span className="text-sm text-sand-muted group-hover:text-sand transition-colors break-all">
+                    {c.value}
+                  </span>
                 </a>
-              </div>
-
-              {/* Trust badges - COMPACTO EN MÓVIL */}
-              <div className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-400">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0" />
-                  <span>Inscripción segura</span>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0" />
-                  <span>Pago protegido</span>
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0" />
-                  <span>Soporte 24/7</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact info - COMPACTO EN MÓVIL */}
-          <div className="mt-8 sm:mt-12 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            {/* Email */}
-            <a 
-              href="mailto:grandteamcdelu@gmail.com"
-              className="block p-4 sm:p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 hover:border-yellow-400/30 transition-all duration-300 group hover:scale-105"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-400/10 rounded-full flex items-center justify-center mb-2 sm:mb-3 group-hover:bg-yellow-400/20 transition-colors">
-                  <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" />
-                </div>
-                <div className="text-yellow-400 font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Email</div>
-                <span className="text-gray-400 group-hover:text-yellow-400 transition-colors text-xs sm:text-sm break-all">
-                  grandteamcdelu@gmail.com
-                </span>
-              </div>
-            </a>
-
-            {/* Phone */}
-            <a 
-              href="https://wa.me/5493442654257"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-4 sm:p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 hover:border-yellow-400/30 transition-all duration-300 group hover:scale-105"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-400/10 rounded-full flex items-center justify-center mb-2 sm:mb-3 group-hover:bg-yellow-400/20 transition-colors">
-                  <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" />
-                </div>
-                <div className="text-yellow-400 font-semibold mb-1 sm:mb-2 text-sm sm:text-base">WhatsApp</div>
-                <span className="text-gray-400 group-hover:text-yellow-400 transition-colors text-xs sm:text-sm">
-                  +54 9 3442 654257
-                </span>
-              </div>
-            </a>
-
-            {/* Instagram */}
-            <a 
-              href="https://www.instagram.com/cicloturismo_grandteam?igsh=NTZqaGpiZG4ydmU0"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-4 sm:p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 hover:border-yellow-400/30 transition-all duration-300 group hover:scale-105 md:col-span-1 col-span-1"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-400/10 rounded-full flex items-center justify-center mb-2 sm:mb-3 group-hover:bg-yellow-400/20 transition-colors">
-                  <Instagram className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" />
-                </div>
-                <div className="text-yellow-400 font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Instagram</div>
-                <span className="text-gray-400 group-hover:text-yellow-400 transition-colors text-xs sm:text-sm">
-                  @cicloturismo_grandteam
-                </span>
-              </div>
-            </a>
-          </div>
+              </Reveal>
+            )
+          })}
         </div>
       </div>
     </section>

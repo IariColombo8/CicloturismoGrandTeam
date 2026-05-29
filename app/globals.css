@@ -5,6 +5,19 @@
 
 /* Tema personalizado negro-amarillo para cicloturismo */
 :root {
+  /* ── Paleta Aventura Outdoor ──────────────────────────────
+     Negro cálido de base + dorado de marca + tonos tierra
+     (oliva, ocre, arena) para la dirección naturaleza/ruta. */
+  --warm-black: #0c0b08;       /* negro con tinte cálido (base) */
+  --warm-black-soft: #14120d;  /* superficies elevadas */
+  --sand: #e8e0d0;             /* texto principal cálido */
+  --sand-muted: #a89e8a;       /* texto secundario */
+  --olive: #6b7339;            /* verde oliva (naturaleza) */
+  --olive-deep: #424a22;       /* oliva profundo */
+  --ochre: #c2772f;            /* ocre/terracota (tierra/ripio) */
+  --gold: #ffd700;             /* dorado de marca (acento) */
+  --gold-soft: #f5c542;
+
   /* Colores principales negro-amarillo */
   --background: #000000;
   --foreground: #ffd700;
@@ -89,6 +102,16 @@
 @theme inline {
   --font-sans: "Geist", "Geist Fallback";
   --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-display: var(--font-oswald), "Oswald", "Geist", sans-serif;
+  --color-warm-black: var(--warm-black);
+  --color-sand: var(--sand);
+  --color-sand-muted: var(--sand-muted);
+  --color-olive: var(--olive);
+  --color-ochre: var(--ochre);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-warm-black-soft: var(--warm-black-soft);
+  --color-olive-deep: var(--olive-deep);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -323,6 +346,80 @@
   background: rgba(26, 26, 26, 0.7);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+/* ──────────────────────────────────────────────────────────
+   Dirección "Aventura Outdoor": tipografía display, texturas
+   de tierra y atmósfera natural. Coexiste con el tema dorado.
+   ────────────────────────────────────────────────────────── */
+
+/* Titulares con la display condensada (Oswald) */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Título tipo "kicker" con tracking ancho */
+.kicker {
+  font-family: var(--font-display);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+/* Texto con relleno de gradiente tierra→dorado (titulares hero) */
+.text-earth-gold {
+  background: linear-gradient(100deg, var(--ochre) 0%, var(--gold-soft) 55%, var(--gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Grano sutil para dar textura "outdoor" (no plástico) */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Velo de lectura cálido sobre fotos (de abajo hacia arriba) */
+.veil-warm {
+  background: linear-gradient(
+    to top,
+    rgba(12, 11, 8, 0.96) 0%,
+    rgba(12, 11, 8, 0.7) 35%,
+    rgba(12, 11, 8, 0.25) 65%,
+    rgba(12, 11, 8, 0.45) 100%
+  );
+}
+
+/* Fondo de sección con tinte tierra (alterna con el negro puro) */
+.bg-earth {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(107, 115, 57, 0.12), transparent 55%),
+    radial-gradient(ellipse at 90% 100%, rgba(194, 119, 47, 0.1), transparent 55%),
+    var(--warm-black);
+}
+
+/* Línea/sendero punteado estilo mapa de ruta */
+.trail-line {
+  background-image: linear-gradient(to right, var(--gold) 55%, transparent 0%);
+  background-size: 14px 2px;
+  background-repeat: repeat-x;
+}
+
+/* Reveal base por si se usa sin framer-motion */
+.reveal-up {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), transform 0.7s var(--ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.reveal-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Efectos de líneas dinámicas */

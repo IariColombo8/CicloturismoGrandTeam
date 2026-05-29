@@ -1,177 +1,156 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Award, Heart, Mountain, Shield, Clock, Calendar, Users, TrendingUp } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Mountain, Heart, Shield, Compass, Clock } from "lucide-react"
 import { EVENTO } from "@/lib/constants"
+import { ParallaxImage, Reveal } from "@/components/home/motion-primitives"
 
 export default function AboutTeam() {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  })
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [isClient, setIsClient] = useState(false)
 
   const eventDate = new Date(EVENTO.fecha).getTime()
 
   useEffect(() => {
     setIsClient(true)
-
-    const calculateTimeLeft = () => {
-      const now = new Date().getTime()
-      const difference = eventDate - now
-
-      if (difference > 0) {
+    const calc = () => {
+      const diff = eventDate - new Date().getTime()
+      if (diff > 0) {
         setTimeLeft({
-          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
-          seconds: Math.floor((difference % (1000 * 60)) / 1000),
+          days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((diff % (1000 * 60)) / 1000),
         })
       } else {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
       }
     }
-
-    calculateTimeLeft()
-    const interval = setInterval(calculateTimeLeft, 1000)
-
+    calc()
+    const interval = setInterval(calc, 1000)
     return () => clearInterval(interval)
   }, [eventDate])
 
   const values = [
     {
-      icon: Mountain,
-      title: "Aventura Extrema",
-      description: "Desafiá tus límites recorriendo rutas de ripio en Entre Ríos.",
-      gradient: "from-yellow-500/10 to-orange-500/10",
-      iconColor: "text-yellow-400",
-      hoverGradient: "group-hover:from-yellow-500/20 group-hover:to-orange-500/20",
+      icon: Compass,
+      title: "Aventura real",
+      description: "Rutas de ripio y monte entrerriano. Naturaleza pura, sin vueltas.",
     },
     {
       icon: Heart,
-      title: "Comunidad Unida",
-      description: "Unite a una comunidad de ciclistas apasionados.",
-      gradient: "from-red-500/10 to-pink-500/10",
-      iconColor: "text-red-400",
-      hoverGradient: "group-hover:from-red-500/20 group-hover:to-pink-500/20",
+      title: "Comunidad",
+      description: "Una tribu de ciclistas que pedalea junta y se banca en cada curva.",
     },
     {
       icon: Shield,
-      title: "Seguridad Primero",
-      description: "Equipo de apoyo y asistencia durante todo el recorrido.",
-      gradient: "from-blue-500/10 to-cyan-500/10",
-      iconColor: "text-blue-400",
-      hoverGradient: "group-hover:from-blue-500/20 group-hover:to-cyan-500/20",
+      title: "Vas seguro",
+      description: "Apoyo mecánico, hidratación y asistencia en todo el recorrido.",
     },
     {
-      icon: Award,
-      title: "Experiencia Inolvidable",
-      description: "Medalla, kit de bienvenida y experiencias memorables.",
-      gradient: "from-purple-500/10 to-violet-500/10",
-      iconColor: "text-purple-400",
-      hoverGradient: "group-hover:from-purple-500/20 group-hover:to-violet-500/20",
+      icon: Mountain,
+      title: "Paisaje único",
+      description: "Río Uruguay, campos y las Ruinas del Viejo Molino de fondo.",
     },
   ]
 
-  const stats = [
-    { value: "5+", label: "Años de Experiencia", icon: TrendingUp },
-    { value: "1000+", label: "Ciclistas", icon: Users },
-    { value: "300km", label: "Recorrido Total", icon: Mountain },
-    { value: "100%", label: "Satisfacción", icon: Award },
-  ]
-
-  const countdownItems = [
+  const countdown = [
     { value: timeLeft.days, label: "Días" },
     { value: timeLeft.hours, label: "Horas" },
-    { value: timeLeft.minutes, label: "Minutos" },
-    { value: timeLeft.seconds, label: "Segundos" },
+    { value: timeLeft.minutes, label: "Min" },
+    { value: timeLeft.seconds, label: "Seg" },
   ]
 
   return (
-    <section id="nosotros" className="py-12 sm:py-20 bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute top-40 right-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-yellow-400/5 rounded-full blur-3xl" />
-      </div>
-
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Section header - COMPACTO EN MÓVIL */}
-        <div className="text-center mb-8 sm:mb-16 animate-fadeInUp">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4">
-            <span className="gradient-text">Cicloturismo</span> Concepción del Uruguay
-          </h2>
-          <p className="text-xs sm:text-base md:text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed px-2">
-            Únete a la aventura más desafiante del año. <span className="text-yellow-400 font-semibold">50km de pura adrenalina</span> a través de paisajes inolvidables.
-          </p>
+    <section id="nosotros" className="relative bg-earth grain overflow-hidden">
+      {/* ── Manifiesto ── */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-28">
+        <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-end">
+          <div className="lg:col-span-7">
+            <Reveal>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="h-px w-10 bg-ochre" />
+                <span className="kicker text-[11px] text-ochre">El evento</span>
+              </div>
+            </Reveal>
+            <Reveal delay={0.05}>
+              <h2 className="font-display font-bold uppercase leading-[0.95] text-sand text-3xl sm:text-6xl lg:text-7xl">
+                No es una carrera.
+                <span className="block text-earth-gold">Es una travesía.</span>
+              </h2>
+            </Reveal>
+          </div>
+          <div className="lg:col-span-5">
+            <Reveal delay={0.1}>
+              <p className="text-base sm:text-lg text-sand-muted leading-relaxed">
+                El <span className="text-sand font-semibold">1er Cicloturismo Ruinas del Viejo Molino</span>{" "}
+                te invita a recorrer 50 km por los caminos más lindos de Concepción del Uruguay.
+                Sin cronómetro, a tu ritmo, rodeado de paisaje y buena gente.
+              </p>
+            </Reveal>
+          </div>
         </div>
 
-        {/* Values grid - 2 COLUMNAS EN MÓVIL */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mb-12 sm:mb-20">
-          {values.map((value, index) => {
-            const IconComponent = value.icon
+        {/* Valores en formato editorial (lista, no cards iguales) */}
+        <div className="mt-14 sm:mt-20 grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-sand/10 rounded-xl overflow-hidden">
+          {values.map((v, i) => {
+            const Icon = v.icon
             return (
-              <Card
-                key={index}
-                className="bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 hover:border-yellow-400/50 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-yellow-500/10 group"
-              >
-                <CardContent className="p-3 sm:p-6 text-center">
-                  <div
-                    className={`w-10 h-10 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 bg-gradient-to-br ${value.gradient} ${value.hoverGradient} rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110`}
-                  >
-                    <IconComponent className={`w-5 h-5 sm:w-8 sm:h-8 ${value.iconColor}`} aria-hidden="true" />
-                  </div>
-                  <h3 className="text-xs sm:text-base md:text-xl font-bold text-white mb-1 sm:mb-3 group-hover:text-yellow-400 transition-colors">
-                    {value.title}
+              <Reveal key={i} delay={i * 0.08} className="h-full">
+                <div className="group h-full bg-warm-black-soft p-6 sm:p-8 hover:bg-olive-deep/30 transition-colors duration-300">
+                  <Icon
+                    className="w-8 h-8 text-gold mb-5 group-hover:scale-110 group-hover:text-gold-soft transition-transform duration-300"
+                    aria-hidden="true"
+                  />
+                  <h3 className="font-display text-xl sm:text-2xl uppercase font-semibold text-sand mb-2">
+                    {v.title}
                   </h3>
-                  <p className="text-gray-400 leading-relaxed text-[10px] sm:text-sm hidden sm:block">{value.description}</p>
-                </CardContent>
-              </Card>
+                  <p className="text-sm text-sand-muted leading-relaxed">{v.description}</p>
+                </div>
+              </Reveal>
             )
           })}
         </div>
+      </div>
 
-        {/* Countdown Timer - COMPACTO EN MÓVIL */}
-        <div className="mb-12 sm:mb-20 py-6 sm:py-12">
-          <div className="text-center mb-6 sm:mb-12">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm mb-3 sm:mb-6">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 animate-pulse" aria-hidden="true" />
-              <span className="text-xs sm:text-base md:text-lg font-semibold text-yellow-400">Cuenta Regresiva</span>
+      {/* ── Franja de foto con parallax + Countdown superpuesto ── */}
+      <div className="relative h-[60vh] min-h-[460px] flex items-center justify-center overflow-hidden">
+        <ParallaxImage
+          src="/ciclistas-en-grupo-pedaleando-en-carretera.jpg"
+          alt=""
+          strength={110}
+          overlayClassName="bg-warm-black/75"
+        />
+        <div className="relative z-10 container mx-auto px-4 text-center">
+          <Reveal>
+            <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 border border-gold/40 rounded-full backdrop-blur-sm">
+              <Clock className="w-4 h-4 text-gold animate-pulse" aria-hidden="true" />
+              <span className="kicker text-[11px] text-gold">Cuenta regresiva</span>
             </div>
-            <h3 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4 leading-tight px-2">
-              Faltan para el <span className="gradient-text">Gran Evento</span>
+          </Reveal>
+          <Reveal delay={0.05}>
+            <h3 className="font-display font-bold uppercase text-sand text-xl sm:text-4xl mb-8 sm:mb-10">
+              Falta cada vez menos
             </h3>
-            <p className="text-xs sm:text-base md:text-lg text-gray-400 flex items-center justify-center gap-2">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
-              {EVENTO.fechaTexto}
-            </p>
-          </div>
-
-          {/* Countdown display - COMPACTO EN MÓVIL */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-6xl mx-auto">
-            {countdownItems.map((item, index) => (
-              <div
-                key={index}
-                className="glass relative overflow-visible rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-6 md:p-8 hover:scale-105 transition-all duration-300 group border border-yellow-400/20 hover:border-yellow-400/50 hover:shadow-2xl hover:shadow-yellow-500/20"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl sm:rounded-2xl md:rounded-3xl" />
-                <div className="relative z-10 flex flex-col items-center">
-                  <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black gradient-text mb-1 sm:mb-2 tabular-nums leading-none w-full text-center">
-                    {isClient ? String(item.value).padStart(2, "0") : "00"}
-                  </div>
-                  <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 uppercase tracking-wider font-semibold text-center">
-                    {item.label}
-                  </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div className="flex justify-center gap-3 sm:gap-6 md:gap-10">
+              {countdown.map((c, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  <span className="font-display font-bold text-earth-gold text-4xl sm:text-7xl md:text-8xl tabular-nums leading-none">
+                    {isClient ? String(c.value).padStart(2, "0") : "00"}
+                  </span>
+                  <span className="kicker text-[9px] sm:text-[11px] text-sand-muted mt-2 sm:mt-3">
+                    {c.label}
+                  </span>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <p className="mt-8 text-sm text-sand-muted">{EVENTO.fechaTexto}</p>
+          </Reveal>
         </div>
-
-      
       </div>
     </section>
   )

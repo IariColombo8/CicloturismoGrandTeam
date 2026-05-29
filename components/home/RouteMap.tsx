@@ -1,225 +1,176 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { MapPin, Navigation, Flag, Droplet, Mountain, Clock, Bike, Heart } from "lucide-react"
+import { Flag, Droplet, MapPin, Mountain, Clock, Bike, Wrench, ShieldCheck } from "lucide-react"
+import { ParallaxImage, Reveal } from "@/components/home/motion-primitives"
 
 export default function RouteMap() {
-  const mapRef = useRef(null)
-  const [isVisible, setIsVisible] = useState(false)
+  const routeStats = [
+    { icon: Mountain, value: "50", unit: "km", label: "Distancia" },
+    { icon: Clock, value: "3-4", unit: "hs", label: "Duración" },
+    { icon: Bike, value: "Media", unit: "", label: "Dificultad" },
+    { icon: Droplet, value: "5", unit: "", label: "Postas" },
+  ]
 
-  useEffect(() => {
-    setIsVisible(true)
-    
-    // Initialize map when component mounts
-    if (mapRef.current && typeof window !== "undefined") {
-    }
-  }, [])
-
-  const routeDetails = [
+  const stops = [
     {
       icon: Flag,
-      color: "bg-green-500",
-      title: "Punto de Salida",
-      description: "Camping El Molino",
-      time: "08:00 AM",
-      gradient: "from-green-500/20 to-green-600/5"
+      time: "08:00",
+      title: "Largada",
+      place: "Camping El Molino",
+      desc: "Concentración, acreditación y salida en grupo.",
+      tone: "text-olive",
     },
     {
       icon: Droplet,
-      color: "bg-blue-500",
-      title: "Hidratación",
-      description: "Km 15, 30 y 40",
-      time: "Cada 15km",
-      gradient: "from-blue-500/20 to-blue-600/5"
+      time: "Km 15 · 30 · 40",
+      title: "Postas de hidratación",
+      place: "En ruta",
+      desc: "Agua, fruta y un respiro cada 15 km.",
+      tone: "text-sky-400",
+    },
+    {
+      icon: Mountain,
+      time: "Km 25",
+      title: "Mirador del río",
+      place: "Costa del Uruguay",
+      desc: "El punto más lindo del trazado. Foto obligada.",
+      tone: "text-ochre",
     },
     {
       icon: Flag,
-      color: "bg-red-500",
-      title: "Meta Final",
-      description: "Camping El Molino",
-      time: "~12:00 PM",
-      gradient: "from-red-500/20 to-red-600/5"
-    }
+      time: "~12:00",
+      title: "Llegada",
+      place: "Camping El Molino",
+      desc: "Almuerzo, música y festejo entre todos.",
+      tone: "text-gold",
+    },
   ]
 
-  const routeStats = [
-    {
-      icon: Mountain,
-      label: "Distancia Total",
-      value: "50 km",
-      color: "text-yellow-400"
-    },
-    {
-      icon: Clock,
-      label: "Tiempo Estimado",
-      value: "3-4 hrs",
-      color: "text-blue-400"
-    },
-    {
-      icon: Bike,
-      label: "Dificultad",
-      value: "Media",
-      color: "text-green-400"
-    },
-    {
-      icon: Heart,
-      label: "Puntos de Apoyo",
-      value: "5 estaciones",
-      color: "text-red-400"
-    }
+  const services = [
+    { icon: Droplet, text: "Hidratación cada 15 km" },
+    { icon: ShieldCheck, text: "Asistencia médica en ruta" },
+    { icon: Wrench, text: "Apoyo mecánico móvil" },
+    { icon: MapPin, text: "Señalización completa" },
+    { icon: Bike, text: "Vehículo de escoba" },
+    { icon: ShieldCheck, text: "Seguro de accidentes" },
   ]
 
   return (
-    <section id="detalles" className="py-12 sm:py-20 bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute top-40 right-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-blue-400/5 rounded-full blur-3xl" />
-      </div>
-
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Section header - COMPACTO EN MÓVIL */}
-        <div
-          className={`text-center mb-8 sm:mb-16 transition-all duration-1000 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-          }`}
-        >
-          <div className="inline-flex items-center justify-center gap-2 mb-3 sm:mb-4 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
-            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" aria-hidden="true" />
-            <span className="text-xs sm:text-sm font-semibold text-yellow-400">Recorrido</span>
+    <section id="detalles" className="relative bg-warm-black grain overflow-hidden">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-28">
+        {/* Header */}
+        <Reveal>
+          <div className="flex items-center gap-3 mb-5">
+            <span className="h-px w-10 bg-gold" />
+            <span className="kicker text-[11px] text-gold">El recorrido</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4">
-            Ruta del <span className="gradient-text">Evento</span>
+        </Reveal>
+        <Reveal delay={0.05}>
+          <h2 className="font-display font-bold uppercase leading-[0.95] text-sand text-3xl sm:text-6xl lg:text-7xl max-w-3xl">
+            50 kilómetros que <span className="text-earth-gold">no vas a olvidar</span>
           </h2>
-          <p className="text-xs sm:text-base md:text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed px-2">
-            Conoce el trazado completo de los <span className="text-yellow-400 font-semibold">50 kilómetros</span> por las rutas más hermosas de Concepción del Uruguay
-          </p>
-        </div>
+        </Reveal>
 
-        {/* Route stats grid - 2 COLUMNAS EN MÓVIL */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-8 sm:mb-12 max-w-5xl mx-auto">
-          {routeStats.map((stat, index) => {
-            const IconComponent = stat.icon
+        {/* Stats grandes */}
+        <div className="mt-12 sm:mt-16 grid grid-cols-2 md:grid-cols-4 gap-px bg-sand/10 rounded-xl overflow-hidden">
+          {routeStats.map((s, i) => {
+            const Icon = s.icon
             return (
-              <div
-                key={index}
-                className="bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 rounded-xl p-3 sm:p-6 text-center hover:border-yellow-400/30 transition-all duration-300 hover:scale-105 group"
-              >
-                <IconComponent className={`w-6 h-6 sm:w-8 sm:h-8 ${stat.color} mx-auto mb-2 sm:mb-3 group-hover:scale-110 transition-transform`} aria-hidden="true" />
-                <p className="text-xl sm:text-2xl md:text-3xl font-black text-white mb-0.5 sm:mb-1">{stat.value}</p>
-                <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 font-medium">{stat.label}</p>
-              </div>
+              <Reveal key={i} delay={i * 0.07}>
+                <div className="bg-warm-black-soft p-6 sm:p-8">
+                  <Icon className="w-6 h-6 text-gold mb-4" aria-hidden="true" />
+                  <p className="font-display font-bold text-sand text-4xl sm:text-5xl leading-none">
+                    {s.value}
+                    {s.unit && <span className="text-2xl sm:text-3xl text-sand-muted ml-1">{s.unit}</span>}
+                  </p>
+                  <p className="kicker text-[10px] text-sand-muted mt-3">{s.label}</p>
+                </div>
+              </Reveal>
             )
           })}
         </div>
+      </div>
 
-        <div className="max-w-6xl mx-auto">
-          <Card className="bg-gradient-to-b from-zinc-900 to-black border border-zinc-800 backdrop-blur-sm hover:border-yellow-400/30 transition-all duration-300">
-            <CardHeader className="space-y-1 p-4 sm:p-6">
-              <CardTitle className="text-white flex items-center gap-2 text-lg sm:text-xl md:text-2xl">
-                <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" aria-hidden="true" />
-                Mapa del Recorrido
-              </CardTitle>
-              <CardDescription className="text-gray-400 text-xs sm:text-sm md:text-base">
-                Explora la ruta completa con puntos de hidratación y zonas de apoyo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-              {/* Map placeholder - COMPACTO EN MÓVIL */}
-              <div
-                ref={mapRef}
-                className="w-full h-64 sm:h-96 md:h-[500px] bg-zinc-900 rounded-xl border-2 border-yellow-400/20 flex items-center justify-center relative overflow-hidden group hover:border-yellow-400/40 transition-all"
-              >
-                <div className="text-center z-10 relative px-4">
-                  <div className="mb-4 sm:mb-6 relative">
-                    <Navigation className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-yellow-400 mx-auto animate-pulse" aria-hidden="true" />
-                    <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 mx-auto bg-yellow-400/20 rounded-full blur-xl animate-pulse" />
-                  </div>
-                  <p className="text-white font-bold text-lg sm:text-xl md:text-2xl mb-1 sm:mb-2">Mapa Interactivo</p>
-                  <p className="text-gray-400 text-sm sm:text-base md:text-lg mb-2 sm:mb-4">Disponible próximamente</p>
-                  <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full">
-                    <span className="text-xs sm:text-sm text-yellow-400">Estamos preparando algo increíble</span>
-                  </div>
-                </div>
+      {/* Timeline del recorrido sobre paisaje con parallax */}
+      <div className="relative py-20 sm:py-28 overflow-hidden">
+        <ParallaxImage
+          src="/ciclista-en-monta-a-con-paisaje-argentino.jpg"
+          alt=""
+          strength={100}
+          overlayClassName="bg-warm-black/85"
+        />
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <h3 className="font-display font-bold uppercase text-sand text-xl sm:text-4xl mb-12 text-center">
+              Tu día, kilómetro a kilómetro
+            </h3>
+          </Reveal>
 
-                {/* Decorative background */}
-                <div className="absolute inset-0 opacity-10" aria-hidden="true">
-                  <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-yellow-400 rounded-full blur-3xl animate-float" />
-                  <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-amber-500 rounded-full blur-3xl animate-float-delayed" />
-                  <div className="absolute top-1/2 right-1/3 w-36 h-36 bg-blue-400 rounded-full blur-3xl" style={{ animationDelay: "2s" }} />
-                </div>
-
-                {/* Grid pattern overlay */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,215,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,215,0,0.03)_1px,transparent_1px)] bg-[size:50px_50px] opacity-20" aria-hidden="true" />
-              </div>
-
-              {/* Route details cards - COMPACTO EN MÓVIL */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                {routeDetails.map((detail, index) => {
-                  const IconComponent = detail.icon
-                  return (
+          <div className="relative max-w-3xl mx-auto">
+            {/* Línea/sendero vertical */}
+            <div
+              className="absolute left-[19px] sm:left-1/2 top-2 bottom-2 w-0.5 bg-gradient-to-b from-olive via-ochre to-gold sm:-translate-x-1/2"
+              aria-hidden="true"
+            />
+            <div className="space-y-8 sm:space-y-12">
+              {stops.map((stop, i) => {
+                const Icon = stop.icon
+                const isLeft = i % 2 === 0
+                return (
+                  <Reveal key={i} delay={i * 0.08} from={isLeft ? "right" : "left"}>
                     <div
-                      key={index}
-                      className={`bg-gradient-to-br ${detail.gradient} border border-zinc-800 rounded-xl p-4 sm:p-6 hover:border-yellow-400/30 transition-all duration-300 hover:scale-105 group`}
+                      className={`relative flex items-start gap-5 sm:gap-0 ${
+                        isLeft ? "sm:flex-row" : "sm:flex-row-reverse"
+                      }`}
                     >
-                      <div className="flex items-start gap-3 sm:gap-4 mb-2 sm:mb-3">
-                        <div className={`${detail.color} w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-1 group-hover:scale-125 transition-transform flex-shrink-0`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 flex-shrink-0" aria-hidden="true" />
-                            <h4 className="text-white font-bold text-sm sm:text-base md:text-lg">{detail.title}</h4>
-                          </div>
-                          <p className="text-gray-300 text-xs sm:text-sm mb-1">{detail.description}</p>
-                          <p className="text-gray-500 text-[10px] sm:text-xs flex items-center gap-1">
-                            <Clock className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
-                            {detail.time}
-                          </p>
+                      {/* Nodo */}
+                      <div className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 z-10 mt-1">
+                        <div className="w-10 h-10 rounded-full bg-warm-black border-2 border-gold flex items-center justify-center">
+                          <Icon className={`w-4 h-4 ${stop.tone}`} aria-hidden="true" />
                         </div>
                       </div>
+                      {/* Card */}
+                      <div className={`flex-1 pl-14 sm:pl-0 ${isLeft ? "sm:pr-12 sm:text-right" : "sm:pl-12"}`}>
+                        <div className="bg-warm-black-soft/90 backdrop-blur-sm border border-sand/10 rounded-xl p-5 hover:border-gold/40 transition-colors duration-300">
+                          <p className="kicker text-[10px] text-gold mb-1">{stop.time}</p>
+                          <h4 className="font-display text-xl sm:text-2xl uppercase font-semibold text-sand">
+                            {stop.title}
+                          </h4>
+                          <p className="text-xs text-sand-muted mt-0.5">{stop.place}</p>
+                          <p className="text-sm text-sand-muted/90 mt-2 leading-relaxed">{stop.desc}</p>
+                        </div>
+                      </div>
+                      <div className="hidden sm:block flex-1" aria-hidden="true" />
                     </div>
-                  )
-                })}
-              </div>
-
-              {/* Additional info - COMPACTO EN MÓVIL */}
-              <div className="bg-zinc-900/50 border border-yellow-400/20 rounded-xl p-4 sm:p-6">
-                <h4 className="text-white font-bold text-base sm:text-lg mb-2 sm:mb-3 flex items-center gap-2">
-                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 flex-shrink-0" aria-hidden="true" />
-                  Servicios Incluidos
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-gray-300 text-xs sm:text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0" />
-                    <span>Hidratación cada 15km</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0" />
-                    <span>Asistencia médica en ruta</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0" />
-                    <span>Apoyo mecánico móvil</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0" />
-                    <span>Señalización completa</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0" />
-                    <span>Vehículo de escoba</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0" />
-                    <span>Seguro de accidentes</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  </Reveal>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Servicios incluidos */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        <Reveal>
+          <h3 className="font-display font-bold uppercase text-sand text-2xl sm:text-3xl mb-8 text-center">
+            Todo incluido en tu inscripción
+          </h3>
+        </Reveal>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 max-w-4xl mx-auto">
+          {services.map((s, i) => {
+            const Icon = s.icon
+            return (
+              <Reveal key={i} delay={i * 0.05}>
+                <div className="flex items-center gap-3 bg-warm-black-soft border border-sand/10 rounded-lg p-4 hover:border-gold/30 transition-colors duration-300">
+                  <Icon className="w-5 h-5 text-gold shrink-0" aria-hidden="true" />
+                  <span className="text-sm text-sand">{s.text}</span>
+                </div>
+              </Reveal>
+            )
+          })}
+        </div>
+      </div>
     </section>
   )
 }
