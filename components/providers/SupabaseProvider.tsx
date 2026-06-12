@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useMemo, useRef, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User, Session } from "@supabase/supabase-js"
 
@@ -37,6 +37,30 @@ export const useSupabaseContext = () => useContext(SupabaseContext)
 // Alias de compatibilidad con el nombre anterior
 export const useFirebaseContext = useSupabaseContext
 
+// Cache del rol en sessionStorage: evita que cada carga del admin espere
+// el viaje a la base solo para saber el rol (es solo un hint de UI; la
+// autorizacion real la aplica RLS en el servidor).
+const ROLE_CACHE_KEY = "user_role_cache"
+const ROLE_CACHE_TTL = 10 * 60 * 1000 // 10 minutos
+
+const readRoleCache = (email: string): string | null => {
+  try {
+    const raw = sessionStorage.getItem(ROLE_CACHE_KEY)
+    if (!raw) return null
+    const { email: cachedEmail, role, ts } = JSON.parse(raw)
+    if (cachedEmail !== email || Date.now() - ts > ROLE_CACHE_TTL) return null
+    return role || null
+  } catch {
+    return null
+  }
+}
+
+const writeRoleCache = (email: string, role: string) => {
+  try {
+    sessionStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ email, role, ts: Date.now() }))
+  } catch {}
+}
+
 export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -44,6 +68,9 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
   const [eventSettings, setEventSettings] = useState<EventSettings | null>(null)
   const [isSupabaseAvailable, setIsSupabaseAvailable] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  // Evita consultas duplicadas del rol (getSession + INITIAL_SESSION
+  // disparan ambos al iniciar, y TOKEN_REFRESHED cada ~1 hora)
+  const lastRoleEmail = useRef<string | null>(null)
 
   // Verificar disponibilidad de Supabase
   useEffect(() => {
@@ -68,7 +95,7 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
       setUser(currentSession?.user ?? null)
 
       if (currentSession?.user) {
-        fetchUserRole(currentSession.user.email)
+        resolveUserRole(currentSession.user.email)
       } else {
         setUserRole(null)
         setLoading(false)
@@ -88,8 +115,9 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
 
         if (newSession?.user) {
           const email = newSession.user.email
-          setTimeout(() => fetchUserRole(email), 0)
+          setTimeout(() => resolveUserRole(email), 0)
         } else {
+          lastRoleEmail.current = null
           setUserRole(null)
           setLoading(false)
         }
@@ -100,6 +128,29 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe()
     }
   }, [isSupabaseAvailable])
+
+  // Resolver el rol: usa cache de sessionStorage si esta fresco (el admin
+  // no espera el viaje a la base) y evita consultas duplicadas por email.
+  // Si hay cache se revalida en segundo plano sin bloquear la UI.
+  const resolveUserRole = (email: string | undefined) => {
+    if (!email) {
+      setUserRole("usuario")
+      setLoading(false)
+      return
+    }
+
+    if (lastRoleEmail.current === email) return
+    lastRoleEmail.current = email
+
+    const cached = readRoleCache(email)
+    if (cached) {
+      setUserRole(cached)
+      setLoading(false)
+    }
+
+    // Con cache: revalidacion en segundo plano. Sin cache: fetch normal.
+    fetchUserRole(email)
+  }
 
   // Obtener rol del usuario desde tabla administradores
   const fetchUserRole = async (email: string | undefined, retryCount = 0) => {
@@ -120,7 +171,9 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error al obtener rol:", error)
         setUserRole("usuario")
       } else if (data) {
-        setUserRole((data as any).role || "usuario")
+        const role = (data as any).role || "usuario"
+        setUserRole(role)
+        writeRoleCache(email, role)
       } else {
         // No se encontro registro. Puede que link_auth_user aun no termino.
         // Reintentar una vez despues de un breve delay.
@@ -129,6 +182,7 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
           return
         }
         setUserRole("usuario")
+        writeRoleCache(email, "usuario")
       }
     } catch (error) {
       console.error("Error al obtener rol:", error)
