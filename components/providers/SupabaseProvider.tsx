@@ -76,18 +76,23 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
     })
 
     // Suscribirse a cambios de auth
+    // IMPORTANTE: el callback NO debe ser async ni hacer await de llamadas a
+    // Supabase. El callback retiene el lock interno de auth y cualquier
+    // consulta .from()/.rpc() adentro espera ese mismo lock => deadlock
+    // (la app queda colgada y el rol nunca se resuelve). Se difiere con
+    // setTimeout para ejecutar fuera del lock.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
+      (_event, newSession) => {
         setSession(newSession)
         setUser(newSession?.user ?? null)
 
         if (newSession?.user) {
-          await fetchUserRole(newSession.user.email)
+          const email = newSession.user.email
+          setTimeout(() => fetchUserRole(email), 0)
         } else {
           setUserRole(null)
+          setLoading(false)
         }
-
-        setLoading(false)
       }
     )
 
