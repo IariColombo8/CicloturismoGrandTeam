@@ -12,10 +12,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Validar tipo de archivo
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"]
+    const allowedTypes = ["image/jpeg", "image/png"]
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: "Formato no permitido. Usa JPG, PNG, WebP, SVG o GIF." },
+        { error: "Formato no permitido. Solo se aceptan archivos JPG o PNG." },
         { status: 400 }
       )
     }

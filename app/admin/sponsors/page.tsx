@@ -619,18 +619,15 @@ export default function AdminSponsorsPage() {
                         )}
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
+                          accept="image/jpeg,image/png"
                           onChange={handleLogoUpload}
                           disabled={uploadingLogo}
                           className="hidden"
                         />
                       </label>
-                      <Input
-                        value={editingSponsor.logo_url || ""}
-                        onChange={(e) => setEditingSponsor({ ...editingSponsor, logo_url: e.target.value })}
-                        className="bg-zinc-800 border-zinc-700 text-white text-xs"
-                        placeholder="O pegar URL directamente"
-                      />
+                      <p className="text-[11px] text-zinc-500">
+                        Solo archivos JPG o PNG (max 2MB)
+                      </p>
                     </div>
                   </div>
                 </div>
