@@ -285,6 +285,28 @@
   animation-delay: 1s;
 }
 
+/* Variante lenta y de mayor amplitud para los blobs grandes del Hero.
+   Reemplaza el <style jsx global> que antes vivia en HeroSection y chocaba
+   con .animate-float. Fuente unica de verdad: este archivo. */
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.animate-float-slow-delayed {
+  animation: floatSlow 6s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

@@ -60,9 +60,9 @@ export default function HeroSection() {
 
       {/* Floating elements for visual interest */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-500/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-500/10 rounded-full blur-3xl animate-float-slow" />
         <div
-          className="absolute bottom-20 right-10 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl animate-float-delayed"
+          className="absolute bottom-20 right-10 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl animate-float-slow-delayed"
         />
       </div>
 
@@ -78,6 +78,13 @@ export default function HeroSection() {
           sizes="100vw"
         />
       </div>
+
+      {/* Overlay de proteccion de texto: garantiza contraste AA del titulo/subtitulo
+          sobre la imagen y los gradientes de fondo. */}
+      <div
+        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/60"
+        aria-hidden="true"
+      />
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
@@ -95,7 +102,7 @@ export default function HeroSection() {
           </h1>
 
           {/* Subtitle - MÁS PEQUEÑO */}
-          <p className="text-xs sm:text-base md:text-lg lg:text-xl text-gray-300 mb-4 sm:mb-8 max-w-3xl mx-auto leading-relaxed px-2">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-100 mb-4 sm:mb-8 max-w-3xl mx-auto leading-relaxed px-2">
             Únete a la aventura más desafiante del año.{" "}
             <span className="text-yellow-400 font-semibold">50km de pura adrenalina</span> a través de paisajes
             inolvidables.
@@ -110,9 +117,9 @@ export default function HeroSection() {
                   key={index}
                   className="glass p-1.5 sm:p-4 rounded-md sm:rounded-xl hover:scale-105 transition-all duration-300 hover:bg-yellow-400/5"
                 >
-                  <IconComponent className={`w-3 h-3 sm:w-6 sm:h-6 ${card.color} mx-auto mb-0.5 sm:mb-2`} aria-hidden="true" />
-                  <p className="text-[10px] sm:text-sm text-gray-400 leading-tight">{card.label}</p>
-                  <p className="text-[10px] sm:text-base text-white font-bold leading-tight">{card.value}</p>
+                  <IconComponent className={`w-3.5 h-3.5 sm:w-6 sm:h-6 ${card.color} mx-auto mb-0.5 sm:mb-2`} aria-hidden="true" />
+                  <p className="text-[11px] sm:text-sm text-gray-300 leading-tight">{card.label}</p>
+                  <p className="text-xs sm:text-base text-white font-bold leading-tight">{card.value}</p>
                 </div>
               )
             })}
@@ -169,26 +176,6 @@ export default function HeroSection() {
           <div className="w-1 h-2 bg-yellow-400 rounded-full" />
         </div>
       </a>
-
-      <style jsx global>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-        
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        
-        .animate-float-delayed {
-          animation: float 6s ease-in-out infinite;
-          animation-delay: 1s;
-        }
-      `}</style>
     </section>
   )
 }

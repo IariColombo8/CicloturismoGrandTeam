@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Menu, X, User, LayoutDashboard, LogOut, DollarSign, Settings, Home, ChevronDown, Shirt } from "lucide-react"
@@ -12,6 +12,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [activeSection, setActiveSection] = useState("inicio")
   const { user, userRole } = useSupabaseContext()
   const pathname = usePathname()
   const router = useRouter()
@@ -54,6 +55,25 @@ export default function Navbar() {
   useEffect(() => {
     setIsMobileMenuOpen(false)
     setOpenDropdown(null)
+  }, [pathname])
+
+  // Scroll spy: resalta el link de la seccion visible (solo en la landing).
+  // Banda central del viewport para decidir la seccion "activa".
+  useEffect(() => {
+    if (pathname !== "/") return
+    const sectionIds = ["inicio", "nosotros", "detalles", "contacto"]
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActiveSection(entry.target.id)
+        }
+      },
+      { rootMargin: "-45% 0px -55% 0px", threshold: 0 }
+    )
+    sectionIds.forEach((id) => {
+      document.querySelectorAll(`#${id}`).forEach((el) => observer.observe(el))
+    })
+    return () => observer.disconnect()
   }, [pathname])
 
   const handleLogout = async () => {
@@ -108,6 +128,43 @@ export default function Navbar() {
   const toggleDropdown = useCallback((dropdown: string) => {
     setOpenDropdown((prev) => prev === dropdown ? null : dropdown)
   }, [])
+
+  // Helpers de render para los links de la landing: unica fuente de markup
+  // (desktop y mobile) con resaltado de la seccion activa via scroll spy.
+  const isLinkActive = (id: string) => pathname === "/" && activeSection === id
+
+  const renderDesktopLink = (link: { id: string; label: string }) => {
+    const active = isLinkActive(link.id)
+    return (
+      <a
+        key={link.id}
+        href={`/#${link.id}`}
+        onClick={(e) => handleSectionClick(e, link.id)}
+        aria-current={active ? "true" : undefined}
+        className={`${active ? "text-yellow-400" : "text-gray-300"} hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer`}
+      >
+        {link.label}
+        <span
+          className={`absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 transition-all duration-300 ${active ? "w-full" : "w-0 group-hover:w-full"}`}
+        ></span>
+      </a>
+    )
+  }
+
+  const renderMobileLink = (link: { id: string; label: string }) => {
+    const active = isLinkActive(link.id)
+    return (
+      <a
+        key={link.id}
+        href={`/#${link.id}`}
+        onClick={(e) => handleSectionClick(e, link.id)}
+        aria-current={active ? "true" : undefined}
+        className={`block ${active ? "text-yellow-400" : "text-gray-300"} hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800`}
+      >
+        {link.label}
+      </a>
+    )
+  }
 
   return (
     <>
@@ -175,17 +232,7 @@ export default function Navbar() {
               ) : isAdminOrGrandTeam ? (
                 // Vista admin en página principal
                 <>
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
-                    >
-                      {link.label}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
-                    </a>
-                  ))}
+                  {navLinks.map(renderDesktopLink)}
 
                   <DropdownMenu
                     label="Admin"
@@ -210,17 +257,7 @@ export default function Navbar() {
               ) : (
                 // Vista usuarios normales
                 <>
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group cursor-pointer"
-                    >
-                      {link.label}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
-                    </a>
-                  ))}
+                  {navLinks.map(renderDesktopLink)}
                 </>
               )}
             </div>
@@ -352,16 +389,7 @@ export default function Navbar() {
             ) : isAdminOrGrandTeam ? (
               // Mobile admin en página principal
               <>
-                {navLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={`/#${link.id}`}
-                    onClick={(e) => handleSectionClick(e, link.id)}
-                    className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {navLinks.map(renderMobileLink)}
 
                 <MobileDropdown
                   label="Admin"
@@ -386,16 +414,7 @@ export default function Navbar() {
             ) : (
               // Mobile usuarios normales
               <>
-                {navLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={`/#${link.id}`}
-                    onClick={(e) => handleSectionClick(e, link.id)}
-                    className="block text-gray-300 hover:text-yellow-400 py-3 transition-colors border-b border-zinc-800"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {navLinks.map(renderMobileLink)}
               </>
             )}
 
@@ -462,8 +481,17 @@ export default function Navbar() {
   )
 }
 
+// Props compartidas por los dropdowns de desktop y mobile
+interface DropdownProps {
+  label: string
+  icon?: ReactNode
+  isOpen: boolean
+  onToggle: () => void
+  children: ReactNode
+}
+
 // Componente reutilizable para Dropdown Desktop
-function DropdownMenu({ label, icon, isOpen, onToggle, children }: { label: any; icon?: any; isOpen: any; onToggle: any; children: any }) {
+function DropdownMenu({ label, icon, isOpen, onToggle, children }: DropdownProps) {
   return (
     <div className="relative">
       <button
@@ -485,7 +513,7 @@ function DropdownMenu({ label, icon, isOpen, onToggle, children }: { label: any;
 }
 
 // Componente reutilizable para Dropdown Mobile
-function MobileDropdown({ label, icon, isOpen, onToggle, children }: { label: any; icon?: any; isOpen: any; onToggle: any; children: any }) {
+function MobileDropdown({ label, icon, isOpen, onToggle, children }: DropdownProps) {
   return (
     <div className="border-b border-zinc-800">
       <button
