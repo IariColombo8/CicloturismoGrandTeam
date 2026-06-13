@@ -9,6 +9,29 @@ import {
   X, MapPin, Phone, Instagram, Facebook, Mail, ExternalLink, Clock, Globe
 } from "lucide-react"
 
+function normalizeLogoUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  // Convertir links de Google Drive /file/d/ID/view a thumbnail directo
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/)
+  if (driveMatch) {
+    return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w400-h400`
+  }
+  return url
+}
+
+function normalizeWhatsapp(n: string | null | undefined): string | null {
+  if (!n) return null
+  const digits = n.replace(/[^0-9]/g, '')
+  return digits || null
+}
+
+function normalizeInstagram(ig: string | null | undefined): string | null {
+  if (!ig) return null
+  if (ig.startsWith('http')) return ig
+  const username = ig.replace(/^@/, '').trim()
+  return username ? `https://www.instagram.com/${username}/` : null
+}
+
 export default function Sponsors() {
   const [isVisible, setIsVisible] = useState(false)
   const [selectedSponsor, setSelectedSponsor] = useState<any>(null)
@@ -65,7 +88,7 @@ export default function Sponsors() {
           setDbSponsors(
             data.map((s: any) => ({
               name: s.nombre,
-              logo: s.logo_url,
+              logo: normalizeLogoUrl(s.logo_url),
               tier: s.tier === "oro" ? "Oro" : s.tier === "plata" ? "Plata" : "Bronce",
               businessName: s.nombre_comercial || s.nombre,
               description: s.descripcion,
@@ -74,9 +97,9 @@ export default function Sponsors() {
               email: s.email,
               website: s.website,
               schedule: s.horario,
-              instagram: s.instagram,
+              instagram: normalizeInstagram(s.instagram),
               facebook: s.facebook,
-              whatsapp: s.whatsapp,
+              whatsapp: normalizeWhatsapp(s.whatsapp),
               category: s.categoria,
               services: s.servicios,
               _tier: s.tier,

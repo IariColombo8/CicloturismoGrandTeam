@@ -29,19 +29,25 @@ function AuthCallbackContent() {
 
         if (session?.user) {
           // Vincular auth_user_id en administradores via RPC
+          let role = "usuario"
           try {
-            await supabase.rpc("link_auth_user", {
+            const { data: rpcData } = await supabase.rpc("link_auth_user", {
               p_email: session.user.email,
               p_auth_user_id: session.user.id,
               p_display_name: session.user.user_metadata?.full_name || null,
               p_photo_url: session.user.user_metadata?.avatar_url || null,
               p_login_method: session.user.app_metadata?.provider === "google" ? "google" : "email",
             })
+            if (rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+              role = rpcData[0].role || "usuario"
+            }
           } catch (rpcError) {
             console.error("Error en link_auth_user:", rpcError)
           }
 
-          router.replace(returnUrl)
+          const isAdmin = role === "admin" || role === "grandteam"
+          const destination = isAdmin && returnUrl === "/" ? "/admin/dashboard" : returnUrl
+          router.replace(destination)
         } else {
           // Si no hay sesion, puede que el hash aun no se proceso.
           // Escuchar cambios de auth por si llega despues.
@@ -56,19 +62,25 @@ function AuthCallbackContent() {
 
                 const sessionUser = newSession.user
                 setTimeout(async () => {
+                  let role = "usuario"
                   try {
-                    await supabase.rpc("link_auth_user", {
+                    const { data: rpcData } = await supabase.rpc("link_auth_user", {
                       p_email: sessionUser.email,
                       p_auth_user_id: sessionUser.id,
                       p_display_name: sessionUser.user_metadata?.full_name || null,
                       p_photo_url: sessionUser.user_metadata?.avatar_url || null,
                       p_login_method: sessionUser.app_metadata?.provider === "google" ? "google" : "email",
                     })
+                    if (rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+                      role = rpcData[0].role || "usuario"
+                    }
                   } catch (rpcError) {
                     console.error("Error en link_auth_user:", rpcError)
                   }
 
-                  router.replace(returnUrl)
+                  const isAdmin = role === "admin" || role === "grandteam"
+                  const destination = isAdmin && returnUrl === "/" ? "/admin/dashboard" : returnUrl
+                  router.replace(destination)
                 }, 0)
               }
             }
