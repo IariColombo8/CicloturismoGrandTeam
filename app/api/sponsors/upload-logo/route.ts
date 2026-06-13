@@ -30,18 +30,19 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Generar nombre unico
+    // Generar nombre unico. Los logos van al bucket publico "sponsors"
+    // (separado de "comprobantes" que es privado y guarda datos sensibles).
     const ext = file.name.split(".").pop() || "png"
     const slug = (sponsorName || "sponsor")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "")
-    const path = `sponsors/${slug}-${Date.now()}.${ext}`
+    const path = `${slug}-${Date.now()}.${ext}`
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
     const { error: uploadError } = await supabase.storage
-      .from("comprobantes")
+      .from("sponsors")
       .upload(path, buffer, {
         contentType: file.type,
         upsert: true,
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: urlData } = supabase.storage
-      .from("comprobantes")
+      .from("sponsors")
       .getPublicUrl(path)
 
     return NextResponse.json({ url: urlData.publicUrl })
