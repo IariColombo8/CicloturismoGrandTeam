@@ -39,16 +39,33 @@ function normalizeLogoUrl(url: string | null | undefined): string | null {
   return url
 }
 
+// Normaliza numeros de WhatsApp al formato internacional argentino que
+// espera wa.me: 54 9 <area> <numero> (ej. 5493442543387).
+// Maneja datos cargados sin codigo de pais o sin el 9 de celular.
 function normalizeWhatsapp(n: string | null | undefined): string | null {
   if (!n) return null
-  const digits = n.replace(/[^0-9]/g, '')
-  return digits || null
+  let digits = n.replace(/[^0-9]/g, '')
+  if (!digits) return null
+  // Quitar 00 internacional inicial si lo tuviera
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (digits.startsWith('549')) {
+    // Ya tiene formato correcto
+    return digits
+  }
+  if (digits.startsWith('54')) {
+    // Tiene codigo de pais pero le falta el 9 de celular
+    return '549' + digits.slice(2)
+  }
+  // Numero local sin codigo de pais -> asumir Argentina movil
+  return '549' + digits
 }
 
 function normalizeInstagram(ig: string | null | undefined): string | null {
   if (!ig) return null
-  if (ig.startsWith('http')) return ig
-  const username = ig.replace(/^@/, '').trim()
+  const value = ig.trim()
+  if (!value) return null
+  if (value.startsWith('http')) return value
+  const username = value.replace(/^@/, '').trim()
   return username ? `https://www.instagram.com/${username}/` : null
 }
 
