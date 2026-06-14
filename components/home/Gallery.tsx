@@ -4,9 +4,49 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
 import { Camera, X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react"
+import type { GalleryImage } from "@/lib/teamPhotos"
 
-export default function Gallery() {
-  const [selectedImage, setSelectedImage] = useState<any>(null)
+// Respaldo: si no hay fotos del equipo en public/fotos equipo, se muestran
+// estas imágenes genéricas del evento.
+const FALLBACK_IMAGES: GalleryImage[] = [
+  {
+    url: "/ciclistas-en-grupo-pedaleando-en-carretera.jpg",
+    alt: "Ciclistas en grupo pedaleando",
+    title: "Espíritu de Equipo",
+  },
+  {
+    url: "/ciclista-en-monta-a-con-paisaje-argentino.jpg",
+    alt: "Ciclismo de montaña",
+    title: "Desafío Extremo",
+  },
+  {
+    url: "/competencia-ciclismo-llegada-a-meta.jpg",
+    alt: "Llegada a la meta",
+    title: "Meta Alcanzada",
+  },
+  {
+    url: "/bicicletas-estacionadas-evento-deportivo.jpg",
+    alt: "Bicicletas en evento deportivo",
+    title: "Preparación",
+  },
+  {
+    url: "/ciclistas-celebrando-evento-team.jpg",
+    alt: "Celebración del equipo",
+    title: "Momento de Victoria",
+  },
+  {
+    url: "/ruta-ciclismo-paisaje-entre-rios.jpg",
+    alt: "Ruta del evento en Entre Ríos",
+    title: "Paisajes Únicos",
+  },
+]
+
+interface GalleryProps {
+  images?: GalleryImage[]
+}
+
+export default function Gallery({ images }: GalleryProps) {
+  const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
 
@@ -14,38 +54,7 @@ export default function Gallery() {
     setIsVisible(true)
   }, [])
 
-  const galleryImages = [
-    {
-      url: "/ciclistas-en-grupo-pedaleando-en-carretera.jpg",
-      alt: "Ciclistas en grupo pedaleando",
-      title: "Espíritu de Equipo",
-    },
-    {
-      url: "/ciclista-en-monta-a-con-paisaje-argentino.jpg",
-      alt: "Ciclismo de montaña",
-      title: "Desafío Extremo",
-    },
-    {
-      url: "/competencia-ciclismo-llegada-a-meta.jpg",
-      alt: "Llegada a la meta",
-      title: "Meta Alcanzada",
-    },
-    {
-      url: "/bicicletas-estacionadas-evento-deportivo.jpg",
-      alt: "Bicicletas en evento deportivo",
-      title: "Preparación",
-    },
-    {
-      url: "/ciclistas-celebrando-evento-team.jpg",
-      alt: "Celebración del equipo",
-      title: "Momento de Victoria",
-    },
-    {
-      url: "/ruta-ciclismo-paisaje-entre-rios.jpg",
-      alt: "Ruta del evento en Entre Ríos",
-      title: "Paisajes Únicos",
-    },
-  ]
+  const galleryImages = images && images.length > 0 ? images : FALLBACK_IMAGES
 
   // Cerrar modal con ESC
   useEffect(() => {
@@ -62,7 +71,7 @@ export default function Gallery() {
     }
   }, [selectedImage])
 
-  const openImage = (image: any, index: number) => {
+  const openImage = (image: GalleryImage, index: number) => {
     setSelectedImage(image)
     setCurrentIndex(index)
   }
@@ -122,7 +131,7 @@ export default function Gallery() {
                   src={image.url}
                   alt={image.alt}
                   fill
-                  className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="object-cover object-center group-hover:scale-110 transition-transform duration-500"
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
                 />
                 
