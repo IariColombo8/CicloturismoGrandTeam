@@ -1,37 +1,70 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase-admin"
-import type { RemeraItem } from "@/types/database"
+import { TALLES_DISPONIBLES } from "@/types/database"
 
-interface SubmitBody {
-  dni: string
-  nombre: string
-  telefono: string
-  items: RemeraItem[]
-  envio_tipo: "retiro" | "envio"
-  direccion?: string
-  estaRegistrado: boolean
-  comprobante_base64?: string
-  comprobante_mime?: string
-  comprobante_extension?: string
-}
+// Límite del comprobante en base64. Una imagen de ~3MB ≈ 4M caracteres en
+// base64; acotamos para evitar payloads gigantes (DoS de memoria).
+const MAX_BASE64_LENGTH = 5_000_000
+const MIME_PERMITIDOS = ["image/jpeg", "image/png", "image/webp"] as const
+
+// Validación de entrada en el borde: nunca confiar en el cliente.
+const submitSchema = z.object({
+  dni: z.string().trim().regex(/^\d{7,8}$/, "DNI inválido"),
+  nombre: z.string().trim().min(1).max(120),
+  telefono: z.string().trim().max(40).optional().default(""),
+  items: z
+    .array(
+      z.object({
+        talle: z.enum(TALLES_DISPONIBLES),
+        cantidad: z.number().int().min(1).max(50),
+      })
+    )
+    .min(1, "Seleccioná al menos un talle")
+    .max(20),
+  envio_tipo: z.enum(["retiro", "envio"]),
+  direccion: z.string().trim().max(300).optional().default(""),
+  estaRegistrado: z.boolean().optional().default(false),
+  comprobante_base64: z.string().max(MAX_BASE64_LENGTH).optional(),
+  comprobante_mime: z.enum(MIME_PERMITIDOS).optional(),
+  comprobante_extension: z
+    .string()
+    .regex(/^[a-z0-9]{1,5}$/i, "Extensión inválida")
+    .optional(),
+})
 
 // POST /api/remera/submit
 // Guarda o actualiza un pedido de remera (UPSERT por DNI).
 // Sube el comprobante a Supabase Storage si viene adjunto.
 export async function POST(req: NextRequest) {
-  let body: SubmitBody
+  let raw: unknown
 
   try {
-    body = await req.json()
+    raw = await req.json()
   } catch {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 })
   }
 
-  const { dni, nombre, telefono, items, envio_tipo, direccion, estaRegistrado, comprobante_base64, comprobante_mime, comprobante_extension } = body
-
-  if (!dni || !nombre || !items || items.length === 0) {
-    return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 })
+  const parsed = submitSchema.safeParse(raw)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Datos inválidos" },
+      { status: 400 }
+    )
   }
+
+  const {
+    dni,
+    nombre,
+    telefono,
+    items,
+    envio_tipo,
+    direccion,
+    estaRegistrado,
+    comprobante_base64,
+    comprobante_mime,
+    comprobante_extension,
+  } = parsed.data
 
   const supabase = createAdminClient()
   let comprobante_url: string | null = null
