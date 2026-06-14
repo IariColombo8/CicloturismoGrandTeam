@@ -3,8 +3,15 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ChevronRight, Sparkles, Instagram, Mail, Phone } from "lucide-react"
+import { useCuposRestantes } from "@/hooks/useCuposRestantes"
 
 export default function CallToAction() {
+  const { disponibles, hayDatos } = useCuposRestantes()
+  const cuposLabel =
+    hayDatos && disponibles && disponibles > 0
+      ? `¡Solo quedan ${disponibles} cupos!`
+      : "Cupos Limitados"
+
   return (
     <section id="contacto" className="py-section bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden section-divider-top">
       {/* Animated background */}
@@ -24,7 +31,7 @@ export default function CallToAction() {
               {/* Badge - COMPACTO EN MÓVIL */}
               <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 mb-4 sm:mb-6 bg-yellow-400/10 border border-yellow-400/30 rounded-full">
                 <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400" />
-                <span className="text-xs sm:text-sm font-semibold text-yellow-400">Cupos Limitados</span>
+                <span className="text-xs sm:text-sm font-semibold text-yellow-400">{cuposLabel}</span>
               </div>
 
               {/* Title - COMPACTO EN MÓVIL */}

@@ -25,3 +25,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Material crudo de sponsors (los logos van a Supabase Storage)
+sponsor/

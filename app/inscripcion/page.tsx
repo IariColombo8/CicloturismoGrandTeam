@@ -420,35 +420,49 @@ export default function InscripcionPage() {
 
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-black text-white mb-4">
+            <h1 className="font-heading text-h2 text-white mb-4">
               Formulario de <span className="gradient-text">Inscripción</span>
             </h1>
-            <p className="text-gray-400 text-lg">Completa los siguientes pasos para asegurar tu lugar en el evento</p>
+            <p className="text-gray-300 text-body-fluid">Completa los siguientes pasos para asegurar tu lugar en el evento</p>
           </div>
 
           {/* Progress bar */}
           <div className="mb-8">
             <Progress value={progress} className="h-2 mb-6" />
             <div className="grid grid-cols-4 gap-2">
-              {steps.map((step) => (
-                <div
-                  key={step.number}
-                  className={`text-center transition-all ${currentStep >= step.number ? "opacity-100" : "opacity-40"}`}
-                >
-                  <div
-                    className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center text-xl font-bold transition-all ${
-                      currentStep > step.number
-                        ? "bg-green-500 text-white"
-                        : currentStep === step.number
-                          ? "bg-gradient-to-r from-yellow-400 to-amber-600 text-black"
-                          : "bg-zinc-800 text-gray-500"
+              {steps.map((step) => {
+                // Solo los pasos ya completados son clickeables (volver atrás
+                // sin perder datos). No se permite saltar hacia adelante sin
+                // pasar la validación de cada paso.
+                const isCompleted = currentStep > step.number
+                const isCurrent = currentStep === step.number
+                return (
+                  <button
+                    type="button"
+                    key={step.number}
+                    onClick={() => isCompleted && setCurrentStep(step.number)}
+                    disabled={!isCompleted}
+                    aria-current={isCurrent ? "step" : undefined}
+                    aria-label={`Paso ${step.number}: ${step.title}${isCompleted ? " (completado, volver)" : ""}`}
+                    className={`text-center transition-all ${currentStep >= step.number ? "opacity-100" : "opacity-40"} ${
+                      isCompleted ? "cursor-pointer hover:opacity-80" : "cursor-default"
                     }`}
                   >
-                    {currentStep > step.number ? <CheckCircle2 className="w-6 h-6" /> : step.number}
-                  </div>
-                  <p className="text-xs text-gray-400 hidden sm:block">{step.title}</p>
-                </div>
-              ))}
+                    <div
+                      className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center text-xl font-bold transition-all ${
+                        isCompleted
+                          ? "bg-green-500 text-white"
+                          : isCurrent
+                            ? "bg-gradient-to-r from-yellow-400 to-amber-600 text-black"
+                            : "bg-zinc-800 text-gray-500"
+                      }`}
+                    >
+                      {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : step.number}
+                    </div>
+                    <p className="text-xs text-gray-400 hidden sm:block">{step.title}</p>
+                  </button>
+                )
+              })}
             </div>
             {/* Título del paso actual en móvil (los otros se ocultan arriba) */}
             <p className="sm:hidden text-center text-sm text-yellow-400 font-semibold mt-3">

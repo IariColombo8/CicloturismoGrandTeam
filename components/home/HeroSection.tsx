@@ -6,13 +6,23 @@ import Image from "next/image"
 import { ChevronRight, MapPin, Calendar, Users, Shield, Wrench, Droplet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EVENTO } from "@/lib/constants"
+import { useCuposRestantes } from "@/hooks/useCuposRestantes"
 
 export default function HeroSection() {
   const [isVisible, setIsVisible] = useState(false)
+  const { disponibles, hayDatos } = useCuposRestantes()
 
   useEffect(() => {
     setIsVisible(true)
   }, [])
+
+  // Mostramos el numero real de cupos cuando hay dato confiable; si no,
+  // caemos al texto generico para no inventar cifras.
+  const cuposValue = hayDatos
+    ? disponibles === 0
+      ? "Agotados"
+      : `${disponibles} disponibles`
+    : "Limitados"
 
   // Función para scroll suave a secciones
   const handleScrollToSection = (e: React.MouseEvent, sectionId: string) => {
@@ -39,7 +49,7 @@ export default function HeroSection() {
     {
       icon: Users,
       label: "Cupos",
-      value: "Limitados",
+      value: cuposValue,
       color: "text-yellow-400"
     }
   ]
