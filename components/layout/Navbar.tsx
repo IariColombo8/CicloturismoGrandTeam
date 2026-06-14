@@ -13,6 +13,11 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState("inicio")
+  // Guard de hidratación: el resaltado de la sección activa depende de estado
+  // del cliente (scroll/pathname). Hasta montar, renderizamos el estado base
+  // (sin link activo) para que el primer render del cliente coincida con el
+  // del servidor y no haya hydration mismatch.
+  const [mounted, setMounted] = useState(false)
   const { user, userRole } = useSupabaseContext()
   const pathname = usePathname()
   const router = useRouter()
@@ -23,6 +28,11 @@ export default function Navbar() {
 
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
   const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || ""
+
+  // Marcamos montado tras la hidratación para habilitar el resaltado activo.
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Scroll listener optimizado con requestAnimationFrame
   useEffect(() => {
@@ -131,7 +141,7 @@ export default function Navbar() {
 
   // Helpers de render para los links de la landing: unica fuente de markup
   // (desktop y mobile) con resaltado de la seccion activa via scroll spy.
-  const isLinkActive = (id: string) => pathname === "/" && activeSection === id
+  const isLinkActive = (id: string) => mounted && pathname === "/" && activeSection === id
 
   const renderDesktopLink = (link: { id: string; label: string }) => {
     const active = isLinkActive(link.id)
