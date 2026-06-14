@@ -93,10 +93,10 @@ export default function HeroSection() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
           }`}
         >
-          {/* Main title - MÁS COMPACTO PARA MÓVIL */}
-          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-black mb-3 sm:mb-6 leading-tight">
+          {/* Main title - fuente display atlética + escala fluida por tokens */}
+          <h1 className="font-heading text-hero mb-3 sm:mb-6 leading-none">
             <span className="block text-white">1er CICLOTURISMO</span>
-            <span className="block text-yellow-400 text-xl sm:text-3xl md:text-4xl lg:text-6xl mt-1">
+            <span className="block text-yellow-400 text-[0.72em] mt-1">
               RUINAS DEL VIEJO MOLINO
             </span>
           </h1>

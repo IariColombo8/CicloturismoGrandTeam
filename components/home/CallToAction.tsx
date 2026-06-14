@@ -6,7 +6,7 @@ import { ChevronRight, Sparkles, Instagram, Mail, Phone } from "lucide-react"
 
 export default function CallToAction() {
   return (
-    <section id="contacto" className="py-12 sm:py-20 bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
+    <section id="contacto" className="py-section bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden section-divider-top">
       {/* Animated background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.15),transparent_50%)]" />
@@ -28,7 +28,7 @@ export default function CallToAction() {
               </div>
 
               {/* Title - COMPACTO EN MÓVIL */}
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black text-white mb-4 sm:mb-6 leading-tight px-2">
+              <h2 className="font-heading text-hero text-white mb-4 sm:mb-6 leading-none px-2">
                 ¿Listo para el{" "}
                 <span className="gradient-text-intense">
                   Desafío

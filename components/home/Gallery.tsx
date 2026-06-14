@@ -100,7 +100,7 @@ export default function Gallery() {
             <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" aria-hidden="true" />
             <span className="text-xs sm:text-sm font-semibold text-yellow-400">Galería</span>
           </div>
-          <h2 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4">
+          <h2 className="font-heading text-h2 text-white mb-2 sm:mb-4">
             <span className="gradient-text">Momentos</span> Inolvidables
           </h2>
           <p className="text-xs sm:text-sm md:text-base text-gray-400 max-w-2xl mx-auto leading-relaxed px-2">

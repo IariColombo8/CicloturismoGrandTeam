@@ -71,7 +71,7 @@ export default function RouteMap() {
   ]
 
   return (
-    <section id="detalles" className="py-12 sm:py-20 bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
+    <section id="detalles" className="py-section bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-40 right-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
@@ -89,10 +89,10 @@ export default function RouteMap() {
             <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" aria-hidden="true" />
             <span className="text-xs sm:text-sm font-semibold text-yellow-400">Recorrido</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4">
+          <h2 className="font-heading text-h2 text-white mb-2 sm:mb-4">
             Ruta del <span className="gradient-text">Evento</span>
           </h2>
-          <p className="text-xs sm:text-base md:text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed px-2">
+          <p className="text-body-fluid text-gray-300 max-w-3xl mx-auto leading-relaxed px-2">
             Conoce el trazado completo de los <span className="text-yellow-400 font-semibold">50 kilómetros</span> por las rutas más hermosas de Concepción del Uruguay
           </p>
         </div>

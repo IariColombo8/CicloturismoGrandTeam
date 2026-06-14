@@ -41,6 +41,23 @@
   --chart-5: #ff6f00;
 
   --radius: 0.75rem;
+
+  /* ── Tokens de diseño ──────────────────────────────────────────────
+     Escala tipográfica fluida con clamp(): escala suave entre móvil y
+     desktop sin saltos por breakpoint. Reemplazan las cadenas repetidas
+     tipo "text-2xl sm:text-4xl md:text-5xl lg:text-7xl". */
+  --text-hero: clamp(2.25rem, 1rem + 7vw, 7rem);
+  --text-h2: clamp(1.75rem, 1rem + 3.2vw, 3.25rem);
+  --text-h3: clamp(1.25rem, 0.95rem + 1.4vw, 1.75rem);
+  --text-body: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+  --text-eyebrow: clamp(0.75rem, 0.7rem + 0.3vw, 0.875rem);
+
+  /* Ritmo vertical de secciones */
+  --space-section: clamp(3rem, 2rem + 5vw, 7rem);
+
+  /* Fuente display para titulos. Fallback a Geist si Bebas aun no cargo. */
+  --font-heading: var(--font-bebas), var(--font-geist), "Geist", sans-serif;
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -345,6 +362,78 @@
   background: rgba(26, 26, 26, 0.7);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+/* ── Utilidades de tipografía y ritmo (tokens de diseño) ──────────────── */
+@layer utilities {
+  /* Fuente display atlética para titulos. Bebas Neue es condensada y en
+     mayusculas: encaja con la identidad deportiva del evento. */
+  .font-heading {
+    font-family: var(--font-heading);
+    letter-spacing: 0.01em;
+  }
+
+  .text-hero {
+    font-size: var(--text-hero);
+    line-height: 0.95;
+  }
+  .text-h2 {
+    font-size: var(--text-h2);
+    line-height: 1.05;
+  }
+  .text-h3 {
+    font-size: var(--text-h3);
+    line-height: 1.15;
+  }
+  .text-body-fluid {
+    font-size: var(--text-body);
+  }
+  .text-eyebrow {
+    font-size: var(--text-eyebrow);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* Ritmo vertical consistente entre secciones */
+  .py-section {
+    padding-top: var(--space-section);
+    padding-bottom: var(--space-section);
+  }
+}
+
+/* ── Profundidad / capas (jerarquía visual) ──────────────────────────── */
+/* Eyebrow: etiqueta corta sobre cada titulo de sección, en dorado. */
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ffd700;
+  font-weight: 600;
+}
+.section-eyebrow::before {
+  content: "";
+  width: 1.75rem;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #ffd700);
+}
+
+/* Resplandor radial sutil para dar atmósfera a una sección sin recargarla. */
+.section-glow {
+  position: relative;
+  isolation: isolate;
+}
+.section-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse at top, rgba(255, 215, 0, 0.08), transparent 60%);
+  pointer-events: none;
+}
+
+/* Borde superior dorado de hairline para separar secciones con elegancia. */
+.section-divider-top {
+  border-top: 1px solid rgba(255, 215, 0, 0.12);
 }
 
 /* Efectos de líneas dinámicas */

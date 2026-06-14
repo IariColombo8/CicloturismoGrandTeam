@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist } from "next/font/google"
+import { Geist, Bebas_Neue } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
@@ -11,6 +11,15 @@ const geist = Geist({
   display: "swap",
   preload: true,
   variable: "--font-geist",
+})
+
+// Fuente display atlética para titulos (H1/H2). Un solo peso, swap, sin
+// bloquear el render. El cuerpo sigue usando Geist.
+const bebasNeue = Bebas_Neue({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+  variable: "--font-bebas",
 })
 
 // ────────────────────────────────────────────────────────────────────
@@ -127,7 +136,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${geist.variable} font-sans antialiased`}>
+      <body className={`${geist.variable} ${bebasNeue.variable} font-sans antialiased`}>
         <SupabaseProvider>
           {children}
           <Toaster />

@@ -91,7 +91,7 @@ export default function AboutTeam() {
   ]
 
   return (
-    <section id="nosotros" className="py-12 sm:py-20 bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
+    <section id="nosotros" className="py-section bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden section-divider-top">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-40 right-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
@@ -101,10 +101,11 @@ export default function AboutTeam() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section header - COMPACTO EN MÓVIL */}
         <div className="text-center mb-8 sm:mb-16 animate-fadeInUp">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4">
+          <span className="section-eyebrow text-eyebrow mb-3 sm:mb-4">Quiénes somos</span>
+          <h2 className="font-heading text-h2 text-white mb-2 sm:mb-4">
             <span className="gradient-text">Cicloturismo</span> Concepción del Uruguay
           </h2>
-          <p className="text-xs sm:text-base md:text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed px-2">
+          <p className="text-body-fluid text-gray-300 max-w-3xl mx-auto leading-relaxed px-2">
             Únete a la aventura más desafiante del año. <span className="text-yellow-400 font-semibold">50km de pura adrenalina</span> a través de paisajes inolvidables.
           </p>
         </div>
@@ -141,7 +142,7 @@ export default function AboutTeam() {
               <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 animate-pulse" aria-hidden="true" />
               <span className="text-xs sm:text-base md:text-lg font-semibold text-yellow-400">Cuenta Regresiva</span>
             </div>
-            <h3 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 sm:mb-4 leading-tight px-2">
+            <h3 className="font-heading text-h2 text-white mb-2 sm:mb-4 leading-tight px-2">
               Faltan para el <span className="gradient-text">Gran Evento</span>
             </h3>
             <p className="text-xs sm:text-base md:text-lg text-gray-400 flex items-center justify-center gap-2">

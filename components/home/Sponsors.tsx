@@ -354,7 +354,7 @@ export default function Sponsors() {
               <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-yellow-400 hidden xs:block" aria-hidden="true" />
             </div>
 
-            <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 px-2">
+            <h2 className="font-heading text-h2 text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 px-2">
               Nuestros{" "}
               <span className="relative inline-block">
                 <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
