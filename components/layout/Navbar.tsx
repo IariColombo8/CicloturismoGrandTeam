@@ -50,16 +50,20 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // Click outside dropdown
+  // Click outside dropdown (solo aplica al dropdown de escritorio: dropdownRef
+  // no envuelve el menu mobile, asi que en mobile esto se salta por completo
+  // para no cerrar el dropdown mobile antes de que el tap en un link llegue
+  // a disparar su evento click).
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      if (isMobileMenuOpen) return
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdown(null)
       }
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+  }, [isMobileMenuOpen])
 
   // Cerrar menu mobile al cambiar de ruta
   useEffect(() => {
