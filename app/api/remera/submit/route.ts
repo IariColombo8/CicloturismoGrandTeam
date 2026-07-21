@@ -6,7 +6,13 @@ import { TALLES_DISPONIBLES } from "@/types/database"
 // Límite del comprobante en base64. Una imagen de ~3MB ≈ 4M caracteres en
 // base64; acotamos para evitar payloads gigantes (DoS de memoria).
 const MAX_BASE64_LENGTH = 5_000_000
-const MIME_PERMITIDOS = ["image/jpeg", "image/png", "image/webp"] as const
+// Debe coincidir con el `accept` del input en RemeroFormModal (JPG, PNG, PDF).
+const MIME_PERMITIDOS = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+] as const
 
 // Validación de entrada en el borde: nunca confiar en el cliente.
 const submitSchema = z.object({

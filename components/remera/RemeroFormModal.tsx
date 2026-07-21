@@ -445,7 +445,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,application/pdf"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0]
