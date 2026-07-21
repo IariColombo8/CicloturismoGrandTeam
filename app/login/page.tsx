@@ -303,33 +303,12 @@ export default function LoginPage() {
       }
     }
 
-    // Intentar recuperar sesion del hash fragment manualmente si existe
-    const hash = window.location.hash
-    if (hash && hash.includes("access_token")) {
-      const params = new URLSearchParams(hash.substring(1))
-      const accessToken = params.get("access_token")
-      const refreshToken = params.get("refresh_token")
-
-      if (accessToken && refreshToken) {
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        }).then(({ data: { session }, error }) => {
-          if (error) {
-            console.error("Error al establecer sesion desde hash:", error)
-          } else if (session?.user) {
-            // Limpiar hash de la URL
-            window.history.replaceState(null, "", window.location.pathname + window.location.search)
-            handleUser(session.user)
-          }
-        })
-      }
-    } else {
-      // Sin hash, verificar sesion existente
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) handleUser(session.user)
-      })
-    }
+    // Con flujo PKCE, el codigo llega por query param (?code=) y
+    // supabase-js lo intercambia automaticamente por una sesion
+    // (detectSessionInUrl: true). Solo verificamos sesion existente.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) handleUser(session.user)
+    })
 
     // Escuchar cambios de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

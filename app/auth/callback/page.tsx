@@ -86,13 +86,14 @@ function AuthCallbackContent() {
             }
           )
 
-          // Timeout: si no hay sesion en 5s, volver al login.
+          // Timeout: si no hay sesion en 8s, volver al login.
           // Se cancela si el login llega a tiempo (antes rebotaba al login
-          // incluso despues de un login exitoso).
+          // incluso despues de un login exitoso). 8s (en vez de 5s) da
+          // margen al intercambio de codigo PKCE en redes moviles lentas.
           const fallbackTimeout = setTimeout(() => {
             subscription.unsubscribe()
             router.replace(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
-          }, 5000)
+          }, 8000)
         }
       } catch (error) {
         console.error("Error en auth callback:", error)
