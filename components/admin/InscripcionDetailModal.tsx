@@ -4,19 +4,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  CheckCircle, 
-  XCircle, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  CheckCircle,
+  XCircle,
+  User,
+  Mail,
+  Phone,
+  MapPin,
   Calendar,
   Users,
   Stethoscope,
   FileText,
   CreditCard,
-  Clock
+  Clock,
 } from "lucide-react"
 
 interface InscripcionDetailModalProps {
@@ -55,7 +55,7 @@ export default function InscripcionDetailModal({
           <XCircle className="w-4 h-4 mr-1" />
           Rechazada
         </Badge>
-      )
+      ),
     }
     return badges[estado] || badges.pendiente
   }
@@ -93,7 +93,9 @@ export default function InscripcionDetailModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-medium text-gray-500">Nombre Completo</label>
-                  <p className="text-sm font-medium mt-1">{inscripcion.nombreCompleto}</p>
+                  <p className="text-sm font-medium mt-1">
+                    {inscripcion.nombreCompleto || `${inscripcion.nombre} ${inscripcion.apellido}`}
+                  </p>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500">DNI/Cédula</label>
@@ -140,7 +142,7 @@ export default function InscripcionDetailModal({
                     <MapPin className="h-3 w-3" />
                     Localidad
                   </label>
-                  <p className="text-sm mt-1">{inscripcion.localidad || "-"}</p>
+                  <p className="text-sm mt-1">{inscripcion.localidad || inscripcion.ciudad || "-"}</p>
                 </div>
                 {inscripcion.telefonoEmergencia && (
                   <div>
@@ -166,12 +168,6 @@ export default function InscripcionDetailModal({
                   <div>
                     <label className="text-xs font-medium text-gray-500">Categoría</label>
                     <p className="text-sm mt-1 capitalize">{inscripcion.categoria}</p>
-                  </div>
-                )}
-                {inscripcion.talleRemera && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Talle de Remera</label>
-                    <p className="text-sm mt-1 uppercase">{inscripcion.talleRemera}</p>
                   </div>
                 )}
                 {inscripcion.grupoCiclistas && (
@@ -212,12 +208,16 @@ export default function InscripcionDetailModal({
                     <p className="text-sm mt-1 font-medium">{inscripcion.tipoSangre}</p>
                   </div>
                 )}
+                {inscripcion.esCeliaco && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">¿Es Celíaco?</label>
+                    <p className="text-sm mt-1 font-medium capitalize">{inscripcion.esCeliaco}</p>
+                  </div>
+                )}
                 {inscripcion.condicionSalud && (
                   <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-500">Condiciones de Salud</label>
-                    <p className="text-sm mt-1 bg-gray-50 p-3 rounded border">
-                      {inscripcion.condicionSalud}
-                    </p>
+                    <p className="text-sm mt-1 bg-gray-50 p-3 rounded border">{inscripcion.condicionSalud}</p>
                   </div>
                 )}
                 {inscripcion.alergias && (
@@ -274,7 +274,12 @@ export default function InscripcionDetailModal({
                       src={inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64}
                       alt="Comprobante"
                       className="max-h-64 mx-auto rounded shadow-md cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => window.open(inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64, "_blank")}
+                      onClick={() =>
+                        window.open(
+                          inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64,
+                          "_blank",
+                        )
+                      }
                     />
                     <p className="text-xs text-center text-gray-500 mt-2">Click para ver en tamaño completo</p>
                   </div>
@@ -287,9 +292,7 @@ export default function InscripcionDetailModal({
           {inscripcion.nota && (
             <Card className="border-amber-200 shadow-sm bg-amber-50/30">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-amber-800">
-                  Notas Administrativas
-                </CardTitle>
+                <CardTitle className="text-lg font-semibold text-amber-800">Notas Administrativas</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-700">{inscripcion.nota}</p>
@@ -306,7 +309,7 @@ export default function InscripcionDetailModal({
             <>
               <Button
                 variant="outline"
-                className="border-red-500/50 text-red-600 hover:bg-red-50"
+                className="border-red-500/50 text-red-600 hover:bg-red-50 bg-transparent"
                 onClick={() => {
                   onReject(inscripcion.id)
                   onClose()

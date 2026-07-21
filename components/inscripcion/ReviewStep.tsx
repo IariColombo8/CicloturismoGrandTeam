@@ -100,25 +100,37 @@ export default function ReviewStep({ formData, eventConfig }: ReviewStepProps) {
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-gray-400">¿Ha recorrido 50 km antes?</p>
-            <Badge className={`mt-1 ${formData.haRecorridoDistancia === 'si' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
-              {formData.haRecorridoDistancia === 'si' ? 'Sí' : 'No'}
+            <Badge
+              className={`mt-1 ${formData.haRecorridoDistancia === "si" ? "bg-green-500/20 text-green-400" : "bg-orange-500/20 text-orange-400"}`}
+            >
+              {formData.haRecorridoDistancia === "si" ? "Sí" : "No"}
             </Badge>
           </div>
           <div>
-            <p className="text-gray-400">Talla de Camiseta</p>
-            <p className="text-white font-medium uppercase">{formData.tallaCamiseta}</p>
+            <p className="text-gray-400">Grupo de Ciclistas</p>
+            <p className="text-white font-medium">{formData.grupoCiclistas}</p>
           </div>
           <div>
             <p className="text-gray-400">Tipo de Sangre</p>
             <p className="text-white font-medium">{formData.tipoSangre}</p>
           </div>
           <div>
-            <p className="text-gray-400">¿Tiene alergias?</p>
-            <Badge className={`mt-1 ${formData.tieneAlergias === 'si' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-              {formData.tieneAlergias === 'si' ? 'Sí' : 'No'}
+            <p className="text-gray-400">¿Es Celíaco?</p>
+            <Badge
+              className={`mt-1 ${formData.esCeliaco === "si" ? "bg-orange-500/20 text-orange-400" : "bg-green-500/20 text-green-400"}`}
+            >
+              {formData.esCeliaco === "si" ? "Sí" : "No"}
             </Badge>
           </div>
-          {formData.tieneAlergias === 'si' && formData.alergias && (
+          <div>
+            <p className="text-gray-400">¿Tiene alergias?</p>
+            <Badge
+              className={`mt-1 ${formData.tieneAlergias === "si" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}
+            >
+              {formData.tieneAlergias === "si" ? "Sí" : "No"}
+            </Badge>
+          </div>
+          {formData.tieneAlergias === "si" && formData.alergias && (
             <div className="md:col-span-2">
               <p className="text-gray-400">Alergias</p>
               <p className="text-white font-medium">{formData.alergias}</p>
@@ -126,11 +138,13 @@ export default function ReviewStep({ formData, eventConfig }: ReviewStepProps) {
           )}
           <div>
             <p className="text-gray-400">¿Tiene problemas de salud?</p>
-            <Badge className={`mt-1 ${formData.tieneProblemasSalud === 'si' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-              {formData.tieneProblemasSalud === 'si' ? 'Sí' : 'No'}
+            <Badge
+              className={`mt-1 ${formData.tieneProblemasSalud === "si" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}
+            >
+              {formData.tieneProblemasSalud === "si" ? "Sí" : "No"}
             </Badge>
           </div>
-          {formData.tieneProblemasSalud === 'si' && formData.condicionesMedicas && (
+          {formData.tieneProblemasSalud === "si" && formData.condicionesMedicas && (
             <div className="md:col-span-2">
               <p className="text-gray-400">Condiciones Médicas</p>
               <p className="text-white font-medium">{formData.condicionesMedicas}</p>
@@ -155,7 +169,7 @@ export default function ReviewStep({ formData, eventConfig }: ReviewStepProps) {
           <div>
             <p className="text-gray-400">Monto</p>
             <p className="text-yellow-400 font-bold text-lg">
-              ${eventConfig.costoInscripcion.toLocaleString('es-AR')} ARS
+              ${eventConfig.costoInscripcion.toLocaleString("es-AR")} ARS
             </p>
           </div>
           <div>

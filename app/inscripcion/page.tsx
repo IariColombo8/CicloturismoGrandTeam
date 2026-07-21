@@ -24,9 +24,9 @@ export default function InscripcionPage() {
   const [eventConfig, setEventConfig] = useState({
     costoInscripcion: 0,
     aliasTransferencia: "",
-    datosTransferencia: ""
+    datosTransferencia: "",
   })
-  
+
   const [formData, setFormData] = useState({
     // Personal Info
     nombres: "",
@@ -45,12 +45,13 @@ export default function InscripcionPage() {
 
     // Category
     haRecorridoDistancia: "",
-    tallaCamiseta: "",
     tipoSangre: "",
     tieneAlergias: "",
     alergias: "",
     tieneProblemasSalud: "",
     condicionesMedicas: "",
+    grupoCiclistas: "",
+    esCeliaco: "",
 
     // Payment
     metodoPago: "transferencia",
@@ -63,20 +64,20 @@ export default function InscripcionPage() {
       try {
         const docRef = doc(db, "eventos", "2026")
         const docSnap = await getDoc(docRef)
-        
+
         if (docSnap.exists()) {
           const data = docSnap.data()
           setEventConfig({
             costoInscripcion: data.costoInscripcion || 0,
             aliasTransferencia: data.aliasTransferencia || "",
-            datosTransferencia: data.datosTransferencia || ""
+            datosTransferencia: data.datosTransferencia || "",
           })
         }
       } catch (error) {
         console.error("Error loading event config:", error)
       }
     }
-    
+
     loadEventConfig()
   }, [])
 
@@ -110,14 +111,13 @@ export default function InscripcionPage() {
           formData.telefonoEmergencia
         )
       case 2:
-        const alergiasValid = formData.tieneAlergias === "no" || 
-                             (formData.tieneAlergias === "si" && formData.alergias)
-        const saludValid = formData.tieneProblemasSalud === "no" || 
-                          (formData.tieneProblemasSalud === "si" && formData.condicionesMedicas)
-        
+        const alergiasValid = formData.tieneAlergias === "no" || (formData.tieneAlergias === "si" && formData.alergias)
+        const saludValid =
+          formData.tieneProblemasSalud === "no" ||
+          (formData.tieneProblemasSalud === "si" && formData.condicionesMedicas)
+
         return !!(
           formData.haRecorridoDistancia &&
-          formData.tallaCamiseta &&
           formData.tipoSangre &&
           formData.tieneAlergias &&
           alergiasValid &&
@@ -217,12 +217,13 @@ export default function InscripcionPage() {
 
         // Additional info
         haRecorridoDistancia: formData.haRecorridoDistancia,
-        tallaCamiseta: formData.tallaCamiseta,
         tipoSangre: formData.tipoSangre,
         tieneAlergias: formData.tieneAlergias,
         alergias: formData.tieneAlergias === "si" ? formData.alergias : "",
         tieneProblemasSalud: formData.tieneProblemasSalud,
         condicionesMedicas: formData.tieneProblemasSalud === "si" ? formData.condicionesMedicas : "",
+        grupoCiclistas: formData.grupoCiclistas,
+        esCeliaco: formData.esCeliaco,
 
         // Payment
         metodoPago: "transferencia",
@@ -312,7 +313,9 @@ export default function InscripcionPage() {
               {/* Step Content */}
               {currentStep === 1 && <PersonalInfoStep formData={formData} updateFormData={updateFormData} />}
               {currentStep === 2 && <CategoryStep formData={formData} updateFormData={updateFormData} />}
-              {currentStep === 3 && <PaymentStep formData={formData} updateFormData={updateFormData} eventConfig={eventConfig} />}
+              {currentStep === 3 && (
+                <PaymentStep formData={formData} updateFormData={updateFormData} eventConfig={eventConfig} />
+              )}
               {currentStep === 4 && <ReviewStep formData={formData} eventConfig={eventConfig} />}
 
               {/* Navigation Buttons */}

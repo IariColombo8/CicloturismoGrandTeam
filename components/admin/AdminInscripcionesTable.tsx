@@ -10,13 +10,19 @@ import { Eye, CheckCircle, XCircle, Download, Search, Filter, Clock } from "luci
 interface Inscripcion {
   id: string
   nombreCompleto: string
+  nombre?: string
+  apellido?: string
   email: string
   telefono: string
+  telefonoEmergencia?: string
   localidad: string
   estado: "pendiente" | "confirmada" | "rechazada"
   fechaInscripcion: Date
   grupoCiclistas?: string
+  esCeliaco?: string
   dni?: string
+  grupoSanguineo?: string
+  condicionSalud?: string
 }
 
 interface AdminInscripcionesTableProps {
@@ -32,20 +38,21 @@ export default function AdminInscripcionesTable({
   onViewDetails,
   onApprove,
   onReject,
-  onExport
+  onExport,
 }: AdminInscripcionesTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
-  const filteredInscripciones = inscripciones.filter(insc => {
-    const matchesSearch = 
-      insc.nombreCompleto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredInscripciones = inscripciones.filter((insc) => {
+    const fullName = `${insc.nombre || ""} ${insc.apellido || ""}`.trim() || insc.nombreCompleto
+    const matchesSearch =
+      fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       insc.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       insc.telefono?.includes(searchTerm) ||
       insc.dni?.includes(searchTerm)
-    
+
     const matchesStatus = statusFilter === "all" || insc.estado === statusFilter
-    
+
     return matchesSearch && matchesStatus
   })
 
@@ -68,7 +75,7 @@ export default function AdminInscripcionesTable({
           <XCircle className="w-3 h-3 mr-1" />
           Rechazada
         </Badge>
-      )
+      ),
     }
     return badges[estado] || badges.pendiente
   }
@@ -109,7 +116,7 @@ export default function AdminInscripcionesTable({
         <Button
           onClick={onExport}
           variant="outline"
-          className="border-green-500/50 text-green-600 hover:bg-green-50"
+          className="border-green-500/50 text-green-600 hover:bg-green-50 bg-transparent"
         >
           <Download className="w-4 h-4 mr-2" />
           Exportar ({filteredInscripciones.length})
@@ -127,45 +134,44 @@ export default function AdminInscripcionesTable({
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left p-4 font-semibold text-sm">Nombre</th>
-              <th className="text-left p-4 font-semibold text-sm hidden md:table-cell">Email</th>
+              <th className="text-left p-4 font-semibold text-sm hidden md:table-cell">DNI</th>
               <th className="text-left p-4 font-semibold text-sm hidden md:table-cell">Teléfono</th>
-              <th className="text-left p-4 font-semibold text-sm hidden lg:table-cell">Localidad</th>
+              <th className="text-left p-4 font-semibold text-sm hidden lg:table-cell">Tel. Emergencia</th>
+              <th className="text-left p-4 font-semibold text-sm hidden lg:table-cell">Grupo Ciclistas</th>
+              <th className="text-left p-4 font-semibold text-sm hidden lg:table-cell">Celíaco</th>
               <th className="text-left p-4 font-semibold text-sm">Estado</th>
               <th className="text-right p-4 font-semibold text-sm">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filteredInscripciones.map((inscripcion) => (
-              <tr
-                key={inscripcion.id}
-                className="hover:bg-gray-50 border-b transition-colors"
-              >
+              <tr key={inscripcion.id} className="hover:bg-gray-50 border-b transition-colors">
                 <td className="p-4">
                   <div>
-                    <div className="font-medium">{inscripcion.nombreCompleto}</div>
-                    <div className="md:hidden text-xs text-gray-500 mt-1">
-                      {inscripcion.email}
+                    <div className="font-medium">
+                      {inscripcion.nombre
+                        ? `${inscripcion.nombre} ${inscripcion.apellido}`
+                        : inscripcion.nombreCompleto}
                     </div>
+                    <div className="md:hidden text-xs text-gray-500 mt-1">{inscripcion.email}</div>
                   </div>
                 </td>
-                <td className="p-4 hidden md:table-cell text-gray-600 text-sm">
-                  {inscripcion.email}
-                </td>
-                <td className="p-4 hidden md:table-cell text-gray-600 text-sm">
-                  {inscripcion.telefono}
-                </td>
+                <td className="p-4 hidden md:table-cell text-gray-600 text-sm">{inscripcion.dni || "-"}</td>
+                <td className="p-4 hidden md:table-cell text-gray-600 text-sm">{inscripcion.telefono}</td>
                 <td className="p-4 hidden lg:table-cell text-gray-600 text-sm">
-                  {inscripcion.localidad}
+                  {inscripcion.telefonoEmergencia || "-"}
                 </td>
-                <td className="p-4">
-                  {getStatusBadge(inscripcion.estado)}
+                <td className="p-4 hidden lg:table-cell text-gray-600 text-sm">{inscripcion.grupoCiclistas || "-"}</td>
+                <td className="p-4 hidden lg:table-cell text-gray-600 text-sm">
+                  {inscripcion.esCeliaco ? (inscripcion.esCeliaco === "si" ? "Sí" : "No") : "-"}
                 </td>
+                <td className="p-4">{getStatusBadge(inscripcion.estado)}</td>
                 <td className="p-4">
                   <div className="flex gap-2 justify-end">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300"
+                      className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 bg-transparent"
                       onClick={() => onViewDetails(inscripcion)}
                     >
                       <Eye className="w-4 h-4" />
@@ -176,7 +182,7 @@ export default function AdminInscripcionesTable({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:bg-green-50 hover:text-green-600 hover:border-green-300"
+                          className="hover:bg-green-50 hover:text-green-600 hover:border-green-300 bg-transparent"
                           onClick={() => onApprove(inscripcion.id)}
                         >
                           <CheckCircle className="w-4 h-4" />
@@ -184,7 +190,7 @@ export default function AdminInscripcionesTable({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                          className="hover:bg-red-50 hover:text-red-600 hover:border-red-300 bg-transparent"
                           onClick={() => onReject(inscripcion.id)}
                         >
                           <XCircle className="w-4 h-4" />
@@ -200,9 +206,7 @@ export default function AdminInscripcionesTable({
       </div>
 
       {filteredInscripciones.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No se encontraron inscripciones con los filtros aplicados
-        </div>
+        <div className="text-center py-8 text-gray-500">No se encontraron inscripciones con los filtros aplicados</div>
       )}
     </div>
   )

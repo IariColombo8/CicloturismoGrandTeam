@@ -12,6 +12,24 @@ interface CategoryStepProps {
 }
 
 export default function CategoryStep({ formData, updateFormData }: CategoryStepProps) {
+  const gruposCiclistas = [
+    "Team Riders",
+    "Pedal Power",
+    "Grand Team Bike Cdelu",
+    "Ciclo Materos",
+    "Los Despacito",
+    "Kamikaze MTB",
+    "Rural Bike concepcion",
+    "En Bici Ando",
+    "Desafiando Caminos",
+    "Los Tiernitos",
+    "CicloturismoBasso",
+    "Desacatados Bike",
+    "Bikers Alcorta",
+    "Bici Chicas",
+    "Panteras Bike",
+  ]
+
   return (
     <div className="space-y-6">
       {/* Experience Question */}
@@ -55,20 +73,20 @@ export default function CategoryStep({ formData, updateFormData }: CategoryStepP
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="tallaCamiseta" className="text-gray-300">
-            Talla de Camiseta <span className="text-red-500">*</span>
+          <Label htmlFor="grupoCiclistas" className="text-gray-300">
+            Grupo de Ciclistas <span className="text-red-500">*</span>
           </Label>
-          <Select value={formData.tallaCamiseta} onValueChange={(value) => updateFormData({ tallaCamiseta: value })}>
+          <Select value={formData.grupoCiclistas} onValueChange={(value) => updateFormData({ grupoCiclistas: value })}>
             <SelectTrigger className="bg-zinc-900 border-yellow-400/30 text-white">
-              <SelectValue placeholder="Selecciona tu talla" />
+              <SelectValue placeholder="Selecciona tu grupo de ciclistas" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-yellow-400/30">
-              <SelectItem value="xs">XS - Extra Small</SelectItem>
-              <SelectItem value="s">S - Small</SelectItem>
-              <SelectItem value="m">M - Medium</SelectItem>
-              <SelectItem value="l">L - Large</SelectItem>
-              <SelectItem value="xl">XL - Extra Large</SelectItem>
-              <SelectItem value="xxl">XXL - Double Extra Large</SelectItem>
+              <SelectItem value="no-pertenezco">No pertenezco a ninguno</SelectItem>
+              {gruposCiclistas.map((grupo) => (
+                <SelectItem key={grupo} value={grupo}>
+                  {grupo}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -180,6 +198,33 @@ export default function CategoryStep({ formData, updateFormData }: CategoryStepP
               required
             />
           )}
+        </div>
+
+        <div className="space-y-3">
+          <Label className="text-gray-300">
+            ¿Es usted celíaco? <span className="text-red-500">*</span>
+          </Label>
+          <RadioGroup
+            value={formData.esCeliaco}
+            onValueChange={(value) => updateFormData({ esCeliaco: value })}
+            className="flex gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="si" id="celiaco-si" className="border-yellow-400 text-yellow-400" />
+              <Label htmlFor="celiaco-si" className="text-white cursor-pointer">
+                Sí
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="no" id="celiaco-no" className="border-yellow-400 text-yellow-400" />
+              <Label htmlFor="celiaco-no" className="text-white cursor-pointer">
+                No
+              </Label>
+            </div>
+          </RadioGroup>
+          <p className="text-xs text-gray-400 italic">
+            Esta información es importante para la preparación de alimentos durante el evento.
+          </p>
         </div>
 
         <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-4">
