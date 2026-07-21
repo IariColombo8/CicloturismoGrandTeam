@@ -8,21 +8,40 @@ import {
   X, MapPin, Phone, Instagram, Facebook, Mail, ExternalLink, Clock, Globe
 } from "lucide-react"
 
-// Logo de sponsor con <img> nativo (sin optimizador de next/image).
-// Los logos vienen de fuentes externas variables (Supabase, Google Drive)
-// que el optimizador del servidor no puede procesar de forma confiable.
+// Fallback embebido: no depende de que exista /placeholder.svg y evita
+// tarjetas negras cuando un navegador movil no puede descargar el logo.
+const SPONSOR_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+    <rect width="640" height="360" rx="24" fill="#ffffff"/>
+    <circle cx="320" cy="145" r="54" fill="#e4e4e7"/>
+    <path d="M278 145h84M320 103v84" stroke="#71717a" stroke-width="12" stroke-linecap="round"/>
+    <text x="320" y="245" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#3f3f46">SPONSOR</text>
+  </svg>
+`)}`
+
+// Logo nativo: se evita next/image porque los archivos pueden venir de
+// Supabase o Google Drive. En movil se usa carga eager porque algunos
+// navegadores retrasan imagenes lazy dentro de elementos animados.
 function SponsorLogo({ src, alt, className }: { src: string | null | undefined; alt: string; className?: string }) {
+  const resolvedSrc = src?.trim() || SPONSOR_PLACEHOLDER
+  const [currentSrc, setCurrentSrc] = useState(resolvedSrc)
+
+  useEffect(() => {
+    setCurrentSrc(resolvedSrc)
+  }, [resolvedSrc])
+
   return (
     <img
-      src={src || "/placeholder.svg"}
+      src={currentSrc}
       alt={alt}
       referrerPolicy="no-referrer"
-      loading="lazy"
+      loading="eager"
+      decoding="async"
+      draggable={false}
       className={className}
-      onError={(e) => {
-        const img = e.currentTarget
-        if (img.src !== window.location.origin + "/placeholder.svg") {
-          img.src = "/placeholder.svg"
+      onError={() => {
+        if (currentSrc !== SPONSOR_PLACEHOLDER) {
+          setCurrentSrc(SPONSOR_PLACEHOLDER)
         }
       }}
     />
@@ -31,12 +50,25 @@ function SponsorLogo({ src, alt, className }: { src: string | null | undefined; 
 
 function normalizeLogoUrl(url: string | null | undefined): string | null {
   if (!url) return null
-  // Convertir links de Google Drive /file/d/ID/view a thumbnail directo
-  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/)
-  if (driveMatch) {
-    return `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w400-h400`
+
+  let value = url.trim()
+  if (!value) return null
+
+  // Evitar contenido mixto cuando la pagina esta publicada con HTTPS.
+  if (value.startsWith("http://")) {
+    value = `https://${value.slice("http://".length)}`
   }
-  return url
+
+  // Aceptar las variantes mas comunes de enlaces compartidos de Drive.
+  const driveFileMatch = value.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)
+  const driveIdMatch = value.match(/[?&]id=([^&#]+)/)
+  const driveId = driveFileMatch?.[1] || driveIdMatch?.[1]
+
+  if (driveId && value.includes("drive.google.com")) {
+    return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`
+  }
+
+  return encodeURI(value)
 }
 
 // Normaliza numeros de WhatsApp al formato internacional argentino que
@@ -385,7 +417,7 @@ export default function Sponsors() {
                   </div>
                   <div className="h-px w-8 sm:w-12 md:w-20 bg-gradient-to-l from-transparent to-yellow-400" />
                 </div>
-                <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8 max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8 max-w-4xl mx-auto">
                   {sponsorTiers.gold.map((sponsor, index) => (
                     <SponsorCard 
                       key={index} 
@@ -412,7 +444,7 @@ export default function Sponsors() {
                   </h3>
                   <div className="h-px w-6 sm:w-10 md:w-16 bg-gradient-to-l from-transparent to-zinc-400" />
                 </div>
-                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4 md:gap-6">
                   {sponsorTiers.silver.map((sponsor, index) => (
                     <SponsorCard
                       key={index}
@@ -439,13 +471,14 @@ export default function Sponsors() {
                   </h3>
                   <div className="h-px w-4 sm:w-8 md:w-12 bg-gradient-to-l from-transparent to-amber-700" />
                 </div>
-                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+                <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5">
                   {sponsorTiers.bronze.map((sponsor, index) => (
                     <BronzeSponsorCard
-                      key={index}
+                      key={sponsor.name || index}
                       sponsor={sponsor}
-                      delay={(index + 6) * 150}
+                      delay={(index + 6) * 100}
                       isVisible={isVisible}
+                      onClick={() => openModal(sponsor)}
                     />
                   ))}
                 </div>
@@ -617,11 +650,11 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }: { sponsor
           </div>
 
           <CardContent className={`flex items-center justify-center ${styles.padding}`}>
-            <div className={`relative w-full ${styles.height}`}>
+            <div className={`relative w-full ${styles.height} overflow-hidden rounded-lg sm:rounded-xl bg-white p-1.5 sm:p-2`}>
               <SponsorLogo
                 src={sponsor.logo}
                 alt={`Logo de ${sponsor.name}`}
-                className="absolute inset-0 w-full h-full object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105 sm:group-hover:scale-110 md:group-hover:scale-125"
+                className="block w-full h-full object-contain transition-transform duration-500 group-hover:scale-105 sm:group-hover:scale-110"
               />
             </div>
           </CardContent>
@@ -631,72 +664,48 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }: { sponsor
   )
 }
 
-// Bronze Sponsor Card - Simplificado: logo, nombre, descripción, WhatsApp e Instagram
-function BronzeSponsorCard({ sponsor, delay = 0, isVisible }: { sponsor: any; delay?: number; isVisible: boolean }) {
-  const whatsappMessage = encodeURIComponent(
-    `Hola ${sponsor.businessName}! Los vi en el evento Grand Team Bike 2026 y me gustaría conocer más sobre sus servicios.`
-  )
-  const whatsappUrl = sponsor.whatsapp ? `https://wa.me/${sponsor.whatsapp}?text=${whatsappMessage}` : null
-
+// Bronze Sponsor Card compacto. En celular entran cuatro por fila; los
+// datos completos se muestran al tocar la tarjeta y abrir el modal.
+function BronzeSponsorCard({
+  sponsor,
+  delay = 0,
+  isVisible,
+  onClick,
+}: {
+  sponsor: any
+  delay?: number
+  isVisible: boolean
+  onClick: () => void
+}) {
   return (
     <div
-      className={`transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+      className={`min-w-0 transition-all duration-500 ${
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+      }`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <Card className="group relative overflow-hidden bg-zinc-900/80 border-zinc-800 hover:border-amber-700/50 backdrop-blur-sm hover:scale-[1.02] transition-all duration-500 group-hover:shadow-[0_0_15px_rgba(180,83,9,0.2)] h-full">
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-        </div>
+      <button
+        type="button"
+        onClick={onClick}
+        className="block w-full min-w-0 text-left"
+        aria-label={`Ver informacion de ${sponsor.name}`}
+      >
+        <Card className="group h-full overflow-hidden border-amber-700/25 bg-zinc-900/80 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-600/70 hover:shadow-[0_0_18px_rgba(180,83,9,0.22)]">
+          <CardContent className="p-1.5 sm:p-3">
+            <div className="relative aspect-square w-full overflow-hidden rounded-md sm:rounded-lg bg-white p-1 sm:p-2">
+              <SponsorLogo
+                src={sponsor.logo}
+                alt={`Logo de ${sponsor.name}`}
+                className="block h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              />
+            </div>
 
-        <CardContent className="p-3 sm:p-4 flex flex-col items-center text-center h-full">
-          {/* Logo */}
-          <div className="relative w-full h-16 xs:h-20 sm:h-24 mb-2 sm:mb-3">
-            <SponsorLogo
-              src={sponsor.logo}
-              alt={`Logo de ${sponsor.name}`}
-              className="absolute inset-0 w-full h-full object-contain transition-all duration-500 opacity-80 group-hover:opacity-100 group-hover:scale-105"
-            />
-          </div>
-
-          {/* Nombre */}
-          <h4 className="text-xs sm:text-sm font-bold text-white mb-1 sm:mb-1.5 line-clamp-1">
-            {sponsor.businessName || sponsor.name}
-          </h4>
-
-          {/* Descripción */}
-          <p className="text-[10px] sm:text-xs text-zinc-400 leading-relaxed mb-3 sm:mb-4 line-clamp-3 flex-grow">
-            {sponsor.description}
-          </p>
-
-          {/* Botones WhatsApp e Instagram */}
-          <div className="flex items-center gap-2 w-full mt-auto">
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 bg-green-600 hover:bg-green-500 text-white px-2 py-1.5 sm:py-2 rounded-lg font-semibold transition-all text-[10px] sm:text-xs"
-                aria-label={`WhatsApp de ${sponsor.name}`}
-              >
-                <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
-                <span>WhatsApp</span>
-              </a>
-            )}
-            {sponsor.instagram && (
-              <a
-                href={sponsor.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white px-2 py-1.5 sm:py-2 rounded-lg font-semibold transition-all text-[10px] sm:text-xs"
-                aria-label={`Instagram de ${sponsor.name}`}
-              >
-                <Instagram className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
-                <span>Instagram</span>
-              </a>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            <p className="mt-1 line-clamp-2 min-h-[1.5rem] text-center text-[8px] font-semibold leading-tight text-zinc-200 sm:mt-2 sm:min-h-[2rem] sm:text-xs">
+              {sponsor.businessName || sponsor.name}
+            </p>
+          </CardContent>
+        </Card>
+      </button>
     </div>
   )
 }
