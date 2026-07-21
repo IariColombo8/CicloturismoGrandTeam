@@ -1,0 +1,263 @@
+[
+  {
+    "nombre": "Panadería San Carlos",
+    "tier": "bronce",
+    "instagram_handle": "panaderia_sancarlos_cdelu",
+    "whatsapp_local": "3442543387",
+    "ofrece": "Desayuno",
+    "nota": null,
+    "orden": 1
+  },
+  {
+    "nombre": "Queen Bag",
+    "tier": "bronce",
+    "instagram_handle": "qeenbagac",
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 2
+  },
+  {
+    "nombre": "Alto Impacto",
+    "tier": "bronce",
+    "instagram_handle": "altoimpacto.consultora",
+    "whatsapp_local": "3447508396",
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 3
+  },
+  {
+    "nombre": "Diesel Nando",
+    "tier": "bronce",
+    "instagram_handle": "diesel_nando",
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 4
+  },
+  {
+    "nombre": "MultiPago",
+    "tier": "bronce",
+    "instagram_handle": null,
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 5
+  },
+  {
+    "nombre": "Calypso",
+    "tier": "bronce",
+    "instagram_handle": "calypsonauticacdelu",
+    "whatsapp_local": "3442479717",
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 6
+  },
+  {
+    "nombre": "DJ Roda",
+    "tier": "bronce",
+    "instagram_handle": "dj_roda_1",
+    "whatsapp_local": "3442315897",
+    "ofrece": "Musica",
+    "nota": null,
+    "orden": 7
+  },
+  {
+    "nombre": "Otra Vuelta",
+    "tier": "bronce",
+    "instagram_handle": "otravuelta.espiritulibre",
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 8
+  },
+  {
+    "nombre": "Estética Mara Saleb",
+    "tier": "bronce",
+    "instagram_handle": "marasaleb",
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 9
+  },
+  {
+    "nombre": "MarGus",
+    "tier": "bronce",
+    "instagram_handle": "margusservicio",
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 10
+  },
+  {
+    "nombre": "Verdulería La Porteña",
+    "tier": "bronce",
+    "instagram_handle": "verdulerialaportenia",
+    "whatsapp_local": "3442672732",
+    "ofrece": "Frutas",
+    "nota": "1 cajon naranja/1caja de banana",
+    "orden": 11
+  },
+  {
+    "nombre": "Emuná",
+    "tier": "bronce",
+    "instagram_handle": "__emuna.ok",
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 12
+  },
+  {
+    "nombre": "HJS informática",
+    "tier": "bronce",
+    "instagram_handle": "hjsinformatica",
+    "whatsapp_local": "3442646083",
+    "ofrece": "Premio",
+    "nota": "Listo!",
+    "orden": 13
+  },
+  {
+    "nombre": "100% actitud",
+    "tier": "bronce",
+    "instagram_handle": "100por_ciento_actitud",
+    "whatsapp_local": "3447649362",
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 14
+  },
+  {
+    "nombre": "Heladería Lucero",
+    "tier": "bronce",
+    "instagram_handle": "luceroheladeria.cdelu",
+    "whatsapp_local": "3442642526",
+    "ofrece": "Helado y torta",
+    "nota": null,
+    "orden": 15
+  },
+  {
+    "nombre": "Soderia Entre Ríos",
+    "tier": "bronce",
+    "instagram_handle": "soderiaer",
+    "whatsapp_local": null,
+    "ofrece": "Agua y hielo",
+    "nota": null,
+    "orden": 16
+  },
+  {
+    "nombre": "Uruguay Motos",
+    "tier": "bronce",
+    "instagram_handle": null,
+    "whatsapp_local": "3442641234",
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 17
+  },
+  {
+    "nombre": "Club Rivadavia",
+    "tier": "bronce",
+    "instagram_handle": "clubrivadaviaok",
+    "whatsapp_local": null,
+    "ofrece": null,
+    "nota": null,
+    "orden": 18
+  },
+  {
+    "nombre": "Cusco",
+    "tier": "bronce",
+    "instagram_handle": "cusco.cdelu",
+    "whatsapp_local": "3442498637",
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 19
+  },
+  {
+    "nombre": "Bicicletería San José",
+    "tier": "bronce",
+    "instagram_handle": "lyb.bike",
+    "whatsapp_local": null,
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 20
+  },
+  {
+    "nombre": "Beging",
+    "tier": "oro",
+    "instagram_handle": "begins_sport",
+    "whatsapp_local": null,
+    "ofrece": null,
+    "nota": null,
+    "orden": 21
+  },
+  {
+    "nombre": "Troya",
+    "tier": "bronce",
+    "instagram_handle": "troyadamascdelu",
+    "whatsapp_local": "3442473007",
+    "ofrece": "Premio",
+    "nota": null,
+    "orden": 22
+  },
+  {
+    "nombre": "Las Yuccas",
+    "tier": "bronce",
+    "instagram_handle": "lasyuccas_",
+    "whatsapp_local": null,
+    "ofrece": null,
+    "nota": null,
+    "orden": 23
+  },
+  {
+    "nombre": "La Avenida - Mini Market",
+    "tier": "bronce",
+    "instagram_handle": null,
+    "whatsapp_local": null,
+    "ofrece": null,
+    "nota": null,
+    "orden": 24
+  },
+  {
+    "nombre": "GB",
+    "tier": "bronce",
+    "instagram_handle": "gb_carpinteria_artesanal",
+    "whatsapp_local": null,
+    "ofrece": "Reconocimiento grupos participantes",
+    "nota": null,
+    "orden": 25
+  },
+  {
+    "nombre": "Ledesma motos",
+    "tier": "bronce",
+    "instagram_handle": null,
+    "whatsapp_local": null,
+    "ofrece": null,
+    "nota": null,
+    "orden": 26
+  },
+  {
+    "nombre": "Il Palatium",
+    "tier": "bronce",
+    "instagram_handle": "il_palatium",
+    "whatsapp_local": null,
+    "ofrece": null,
+    "nota": null,
+    "orden": 27
+  },
+  {
+    "nombre": "La ocasión gráfica",
+    "tier": "bronce",
+    "instagram_handle": "graficalo.ok",
+    "whatsapp_local": null,
+    "ofrece": "Descuento en impresión de bolsas",
+    "nota": null,
+    "orden": 28
+  },
+  {
+    "nombre": "Ruca Outdoor",
+    "tier": "bronce",
+    "instagram_handle": "rucaoutdoors",
+    "whatsapp_local": null,
+    "ofrece": "Premios",
+    "nota": null,
+    "orden": 29
+  }
+]

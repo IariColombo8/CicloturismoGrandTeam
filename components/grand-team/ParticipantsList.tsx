@@ -15,19 +15,6 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const getCategoryColor = (categoria: string) => {
-    switch (categoria) {
-      case "libre":
-        return "bg-blue-400/20 text-blue-400"
-      case "competitivo":
-        return "bg-red-400/20 text-red-400"
-      case "familiar":
-        return "bg-green-400/20 text-green-400"
-      default:
-        return "bg-gray-400/20 text-gray-400"
-    }
-  }
-
   if (participants.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400">
@@ -43,11 +30,10 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
           <TableHeader className="bg-zinc-900">
             <TableRow className="border-yellow-400/20 hover:bg-zinc-900">
               <TableHead className="text-yellow-400">Nombre</TableHead>
-              <TableHead className="text-yellow-400">Cédula</TableHead>
+              <TableHead className="text-yellow-400">DNI</TableHead>
               <TableHead className="text-yellow-400">Email</TableHead>
-              <TableHead className="text-yellow-400">Teléfono</TableHead>
-              <TableHead className="text-yellow-400">Categoría</TableHead>
-              <TableHead className="text-yellow-400">Talla</TableHead>
+              <TableHead className="text-yellow-400">Localidad</TableHead>
+              <TableHead className="text-yellow-400">Grupo ciclista</TableHead>
               <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -59,13 +45,8 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
                 </TableCell>
                 <TableCell className="text-gray-400">{participant.dni}</TableCell>
                 <TableCell className="text-gray-400">{participant.email}</TableCell>
-                <TableCell className="text-gray-400">{participant.telefono}</TableCell>
-                <TableCell>
-                  <Badge className={`${getCategoryColor(participant.categoria)} border-none capitalize`}>
-                    {participant.categoria}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-gray-400 uppercase">{participant.talleRemera}</TableCell>
+                <TableCell className="text-gray-400">{participant.localidad || "-"}</TableCell>
+                <TableCell className="text-gray-400">{participant.grupoCiclistas || "Sin grupo"}</TableCell>
                 <TableCell className="text-right">
                   <Button
                     size="sm"
@@ -85,7 +66,6 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
         </Table>
       </div>
 
-      {/* Participant Detail Modal */}
       {selectedParticipant && (
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="bg-zinc-900 border-yellow-400/30 text-white max-w-2xl">
@@ -94,10 +74,9 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
             </DialogHeader>
 
             <div className="space-y-4">
-              {/* Personal Info */}
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-yellow-400">Información Personal</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-gray-400">Nombre Completo</p>
                     <p className="text-white font-medium">
@@ -117,59 +96,41 @@ export default function ParticipantsList({ participants }: ParticipantsListProps
                     <p className="text-white font-medium">{selectedParticipant.telefono}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400">Fecha de Nacimiento</p>
-                    <p className="text-white font-medium">{selectedParticipant.fechaNacimiento}</p>
-                  </div>
-                  {selectedParticipant.localidad && (
-                    <div>
-                      <p className="text-gray-400">Localidad</p>
-                      <p className="text-white font-medium">{selectedParticipant.localidad}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Emergency Contact */}
-              <div className="space-y-3 pt-4 border-t border-yellow-400/20">
-                <h3 className="text-lg font-semibold text-yellow-400">Contacto de Emergencia</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-400">Nombre</p>
-                    <p className="text-white font-medium">{selectedParticipant.nombreEmergencia}</p>
+                    <p className="text-gray-400">País</p>
+                    <p className="text-white font-medium">{selectedParticipant.pais || "-"}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400">Teléfono</p>
-                    <p className="text-white font-medium">{selectedParticipant.telefonoEmergencia}</p>
+                    <p className="text-gray-400">Localidad</p>
+                    <p className="text-white font-medium">{selectedParticipant.localidad || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Grupo ciclista</p>
+                    <p className="text-white font-medium">{selectedParticipant.grupoCiclistas || "Sin grupo"}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Medical & Category */}
               <div className="space-y-3 pt-4 border-t border-yellow-400/20">
-                <h3 className="text-lg font-semibold text-yellow-400">Información Médica y Categoría</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-400">Categoría</p>
-                    <Badge className={`${getCategoryColor(selectedParticipant.categoria)} border-none capitalize mt-1`}>
-                      {selectedParticipant.categoria}
-                    </Badge>
-                  </div>
-                  {/*<div>
-                    <p className="text-gray-400">Talle</p>
-                    <p className="text-white font-medium uppercase">{selectedParticipant.talleRemera}</p>
-                  </div>*/}
+                <h3 className="text-lg font-semibold text-yellow-400">Información Médica</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-gray-400">Grupo Sanguíneo</p>
-                    <p className="text-white font-medium">{selectedParticipant.grupoSanguineo}</p>
+                    <p className="text-white font-medium uppercase">{selectedParticipant.grupoSanguineo || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Celíaco/a</p>
+                    <Badge className={selectedParticipant.esCeliaco ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}>
+                      {selectedParticipant.esCeliaco ? "Sí" : "No"}
+                    </Badge>
                   </div>
                   {selectedParticipant.alergias && (
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <p className="text-gray-400">Alergias</p>
                       <p className="text-white font-medium">{selectedParticipant.alergias}</p>
                     </div>
                   )}
                   {selectedParticipant.condicionSalud && (
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <p className="text-gray-400">Condición de Salud</p>
                       <p className="text-white font-medium">{selectedParticipant.condicionSalud}</p>
                     </div>

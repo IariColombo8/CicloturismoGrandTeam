@@ -20,6 +20,7 @@ interface PaymentStepProps {
 
 export default function PaymentStep({ formData, updateFormData, eventConfig }: PaymentStepProps) {
   const [fileName, setFileName] = useState<string>("")
+  const [fileError, setFileError] = useState<string>("")
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   // Cualquier dato copiable (alias, CBU, etc.). Tomó un id local para feedback.
@@ -48,10 +49,25 @@ export default function PaymentStep({ formData, updateFormData, eventConfig }: P
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      updateFormData({ comprobanteFile: file })
-      setFileName(file.name)
+    setFileError("")
+
+    if (!file) return
+
+    const allowed = file.type === "application/pdf" || file.type.startsWith("image/")
+    if (!allowed) {
+      setFileError("Solo se permiten imágenes o archivos PDF.")
+      e.target.value = ""
+      return
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError("El comprobante no puede superar los 5 MB.")
+      e.target.value = ""
+      return
+    }
+
+    updateFormData({ comprobanteFile: file })
+    setFileName(file.name)
   }
 
   return (
@@ -65,7 +81,7 @@ export default function PaymentStep({ formData, updateFormData, eventConfig }: P
               <p className="text-4xl font-black text-yellow-400">
                 ${eventConfig.costoInscripcion.toLocaleString('es-AR')} ARS
               </p>
-              <p className="text-gray-500 text-sm mt-1">Incluye kit completo del evento</p>
+              <p className="text-gray-500 text-sm mt-1">La remera no está incluida y se solicita por separado</p>
             </div>
             <DollarSign className="w-16 h-16 text-yellow-400/30" />
           </div>
@@ -204,7 +220,8 @@ export default function PaymentStep({ formData, updateFormData, eventConfig }: P
             )}
           </label>
         </div>
-        <p className="text-sm text-gray-500">Formatos aceptados: JPG, PNG, PDF (Máx. 5MB)</p>
+        <p className="text-sm text-gray-500">Formatos aceptados: JPG, PNG, WEBP o PDF (máx. 5 MB)</p>
+        {fileError && <p className="text-sm text-red-400">{fileError}</p>}
       </div>
 
       {/* Important Notice */}

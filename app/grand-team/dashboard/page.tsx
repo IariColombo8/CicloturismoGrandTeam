@@ -48,7 +48,14 @@ export default function GrandTeamDashboard() {
         email: d.email,
         telefono: d.telefono,
         categoria: d.categoria,
+        pais: d.pais,
+        localidad: d.localidad,
+        grupoCiclistas: d.grupo_ciclistas,
+        esCeliaco: d.es_celiaco,
         grupoSanguineo: d.grupo_sanguineo,
+        fechaNacimiento: d.fecha_nacimiento,
+        alergias: d.alergias,
+        condicionSalud: d.condicion_salud,
         estado: d.estado,
       })))
       setLoading(false)
@@ -72,15 +79,17 @@ export default function GrandTeamDashboard() {
 
   const handleExport = () => {
     // Export participants list to CSV
-    const headers = ["Nombre", "Cédula", "Email", "Teléfono", "Categoría", "Talla", "Tipo Sangre"]
+    const headers = ["Nombre", "DNI", "Email", "Teléfono", "País", "Localidad", "Grupo ciclista", "Celíaco", "Tipo Sangre"]
     const csvData = inscripciones.map((i) => [
       `${i.nombre} ${i.apellido}`,
       i.dni,
       i.email,
       i.telefono,
-      i.categoria,
-      //i.talleRemera,
-      i.grupoSanguineo,
+      i.pais || "",
+      i.localidad || "",
+      i.grupoCiclistas || "Sin grupo",
+      i.esCeliaco ? "Sí" : "No",
+      i.grupoSanguineo || "",
     ])
 
     const csv = [headers, ...csvData].map((row) => row.join(",")).join("\n")

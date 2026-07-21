@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { compressAndConvertToBase64 } from "@/lib/imageUtils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -19,7 +18,8 @@ import Navbar from "@/components/layout/Navbar"
 // Persistencia del draft en localStorage
 // El File del comprobante NO se serializa (no es JSON-friendly).
 // ──────────────────────────────────────────────────────────────
-const DRAFT_KEY = "inscripcion-draft-v1"
+const DRAFT_KEY = "inscripcion-draft-v2"
+const LEGACY_DRAFT_KEY = "inscripcion-draft-v1"
 const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14 // 14 días
 
 const defaultFormData = {
@@ -30,7 +30,7 @@ const defaultFormData = {
   email: "",
   telefono: "",
   fechaNacimiento: "",
-  paisTelefono: "",
+  pais: "Argentina",
   localidad: "",
 
   // Emergency Contact
@@ -40,8 +40,9 @@ const defaultFormData = {
 
   // Category
   haRecorridoDistancia: "",
-  talleRemera: "",
+  grupoCiclistas: "",
   grupoSanguineo: "",
+  esCeliaco: "",
   tieneAlergias: "",
   alergias: "",
   tieneProblemasSalud: "",
@@ -56,16 +57,23 @@ const defaultFormData = {
 function loadDraft(): { data: typeof defaultFormData; step: number; savedAt: number } | null {
   if (typeof window === "undefined") return null
   try {
-    const raw = localStorage.getItem(DRAFT_KEY)
+    const raw = localStorage.getItem(DRAFT_KEY) || localStorage.getItem(LEGACY_DRAFT_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
     // Expirar drafts viejos para que no aparezcan "borradores zombi".
     if (!parsed?.savedAt || Date.now() - parsed.savedAt > DRAFT_MAX_AGE_MS) {
       localStorage.removeItem(DRAFT_KEY)
+      localStorage.removeItem(LEGACY_DRAFT_KEY)
       return null
     }
     return {
-      data: { ...defaultFormData, ...(parsed.data || {}), comprobanteFile: null },
+      data: {
+        ...defaultFormData,
+        ...(parsed.data || {}),
+        // Compatibilidad defensiva con un borrador anterior.
+        pais: parsed.data?.pais || parsed.data?.paisTelefono || "",
+        comprobanteFile: null,
+      },
       step: parsed.step || 1,
       savedAt: parsed.savedAt,
     }
@@ -75,7 +83,6 @@ function loadDraft(): { data: typeof defaultFormData; step: number; savedAt: num
 }
 
 export default function InscripcionPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -144,38 +151,59 @@ export default function InscripcionPage() {
   const discardDraft = () => {
     try {
       localStorage.removeItem(DRAFT_KEY)
+      localStorage.removeItem(LEGACY_DRAFT_KEY)
     } catch {}
     setHasDraft(null)
   }
 
-  // Autocompletado por DNI: al salir del campo, busca una inscripción previa
-  // con ese DNI y precarga los datos personales para que el usuario solo
-  // tenga que revisar/actualizar lo que cambió.
-  const lookupDni = async (dniRaw: string) => {
-    const dni = dniRaw.trim()
-    if (!/^\d{7,8}$/.test(dni) || dni === ultimoDniBuscadoRef.current) return
-    ultimoDniBuscadoRef.current = dni
+  // Autocompletado por DNI con debounce: busca apenas se completan 7 u 8 dígitos,
+  // sin exigir Enter, blur ni un botón adicional.
+  useEffect(() => {
+    const dni = formData.dni.replace(/\D/g, "")
 
-    setBuscandoDNI(true)
-    try {
-      const res = await fetch(`/api/lookup-participant?dni=${encodeURIComponent(dni)}`)
-      if (!res.ok) return
-      const result = await res.json()
-      if (result.found && result.data) {
-        setFormData((prev) => ({ ...prev, ...result.data, dni: prev.dni }))
-        toast({
-          title: result.isEdicion ? "Ya estás inscripto este año" : "Datos encontrados",
-          description: result.isEdicion
-            ? "Cargamos tus datos para que los edites. Revisá que esté todo correcto."
-            : "Precargamos tu información de una inscripción anterior. Revisá que esté todo correcto.",
-        })
-      }
-    } catch (error) {
-      console.error("Error buscando DNI:", error)
-    } finally {
+    if (!/^\d{7,8}$/.test(dni)) {
+      ultimoDniBuscadoRef.current = ""
       setBuscandoDNI(false)
+      return
     }
-  }
+
+    if (dni === ultimoDniBuscadoRef.current) return
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      ultimoDniBuscadoRef.current = dni
+      setBuscandoDNI(true)
+
+      try {
+        const res = await fetch(`/api/lookup-participant?dni=${encodeURIComponent(dni)}`, {
+          signal: controller.signal,
+        })
+        if (!res.ok) return
+
+        const result = await res.json()
+        if (result.found && result.data) {
+          setFormData((prev) => ({ ...prev, ...result.data, dni: prev.dni }))
+          toast({
+            title: result.isEdicion ? "Ya estás inscripto este año" : "Datos encontrados",
+            description: result.isEdicion
+              ? "Cargamos tus datos para que los revises o actualices."
+              : "Precargamos tu información de una inscripción anterior. Revisá que esté correcta.",
+          })
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Error buscando DNI:", error)
+        }
+      } finally {
+        if (!controller.signal.aborted) setBuscandoDNI(false)
+      }
+    }, 450)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [formData.dni, toast])
 
   useEffect(() => {
     const loadEventConfig = async () => {
@@ -225,7 +253,7 @@ export default function InscripcionPage() {
           formData.email &&
           formData.telefono &&
           formData.fechaNacimiento &&
-          formData.paisTelefono &&
+          formData.pais &&
           formData.localidad &&
           formData.nombreEmergencia &&
           formData.telefonoEmergencia
@@ -238,8 +266,9 @@ export default function InscripcionPage() {
 
         return !!(
           formData.haRecorridoDistancia &&
-          formData.talleRemera &&
+          formData.grupoCiclistas &&
           formData.grupoSanguineo &&
+          formData.esCeliaco &&
           formData.tieneAlergias &&
           alergiasValid &&
           formData.tieneProblemasSalud &&
@@ -285,8 +314,8 @@ export default function InscripcionPage() {
 
       if (formData.comprobanteFile) {
         toast({
-          title: "Procesando imagen...",
-          description: "Comprimiendo el comprobante de pago.",
+          title: "Procesando comprobante...",
+          description: "Preparando el archivo para enviarlo.",
         })
         comprobanteBase64 = await compressAndConvertToBase64(formData.comprobanteFile, 500)
       }
@@ -304,7 +333,19 @@ export default function InscripcionPage() {
         throw new Error(body.error || "No se pudo guardar la inscripción")
       }
 
-      await res.json()
+      const result = await res.json()
+
+      // Guardar solo los datos necesarios para la pantalla final.
+      try {
+        sessionStorage.setItem(
+          "inscripcion_exito",
+          JSON.stringify({
+            token: result.tokenQR || null,
+            nombre: `${formData.nombre} ${formData.apellido}`.trim(),
+            numero: result.numeroInscripcion || null,
+          })
+        )
+      } catch {}
 
       // El email de confirmación con QR se envía cuando el admin aprueba
       // la inscripción (cambia el estado a "Confirmada"), no acá.
@@ -312,14 +353,12 @@ export default function InscripcionPage() {
       // Limpiar draft para no ofrecer restaurarlo en el siguiente intento.
       try {
         localStorage.removeItem(DRAFT_KEY)
+        localStorage.removeItem(LEGACY_DRAFT_KEY)
       } catch {}
 
-      toast({
-        title: "¡Inscripción exitosa!",
-        description: "Tu solicitud ha sido enviada. Te avisaremos por correo cuando esté confirmada.",
-      })
-
-      router.push("/inscripcion/exito")
+      // Navegación completa para que la persona no quede detenida en el
+      // formulario después de enviar.
+      window.location.assign("/inscripcion/exito")
     } catch (error) {
       console.error("Error submitting inscription:", error)
       toast({
@@ -444,7 +483,6 @@ export default function InscripcionPage() {
                 <PersonalInfoStep
                   formData={formData}
                   updateFormData={updateFormData}
-                  onDNIBlur={lookupDni}
                   buscandoDNI={buscandoDNI}
                 />
               )}

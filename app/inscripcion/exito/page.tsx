@@ -5,7 +5,7 @@ import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle2, Mail, Home, FileText, Download, QrCode } from "lucide-react"
+import { CheckCircle2, Mail, Home, FileText, Download, QrCode, UserPlus } from "lucide-react"
 
 export default function ExitoPage() {
   const [token, setToken] = useState<string | null>(null)
@@ -14,14 +14,25 @@ export default function ExitoPage() {
   const qrRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const data = sessionStorage.getItem("inscripcion_exito")
-    if (data) {
-      const parsed = JSON.parse(data)
-      setToken(parsed.token)
-      setNombre(parsed.nombre)
-      setNumero(parsed.numero)
+    try {
+      const data = sessionStorage.getItem("inscripcion_exito")
+      if (data) {
+        const parsed = JSON.parse(data)
+        setToken(parsed.token || null)
+        setNombre(parsed.nombre || null)
+        setNumero(parsed.numero ? String(parsed.numero) : null)
+      }
+    } catch {
+      sessionStorage.removeItem("inscripcion_exito")
     }
   }, [])
+
+  const iniciarOtraInscripcion = () => {
+    try {
+      sessionStorage.removeItem("inscripcion_exito")
+    } catch {}
+    window.location.assign("/inscripcion")
+  }
 
   const descargarQR = useCallback(() => {
     if (!qrRef.current) return
@@ -139,26 +150,35 @@ export default function ExitoPage() {
             </ul>
           </div>
 
-          {/* Botones de acción */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/">
+          {/* Elección clara después de completar la inscripción */}
+          <div className="border-t border-yellow-400/20 pt-7">
+            <h2 className="text-xl font-bold text-white mb-2">¿Qué querés hacer ahora?</h2>
+            <p className="text-sm text-gray-400 mb-5">
+              Podés inscribir a otra persona o regresar a la página principal.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
+                type="button"
                 size="lg"
+                onClick={iniciarOtraInscripcion}
                 className="bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:scale-105 transition-transform"
               >
-                <Home className="w-4 h-4 mr-2" />
-                Volver al Inicio
+                <UserPlus className="w-4 h-4 mr-2" />
+                Inscribir a otra persona
               </Button>
-            </Link>
-            <Link href="/login">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black bg-transparent"
-              >
-                Ir a Mi Cuenta
-              </Button>
-            </Link>
+
+              <Link href="/">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black bg-transparent"
+                >
+                  <Home className="w-4 h-4 mr-2" />
+                  Volver al inicio
+                </Button>
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>

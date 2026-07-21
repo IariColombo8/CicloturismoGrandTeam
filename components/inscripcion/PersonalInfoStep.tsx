@@ -2,21 +2,59 @@
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Search } from "lucide-react"
 
 interface PersonalInfoStepProps {
   formData: any
   updateFormData: (data: any) => void
-  onDNIBlur?: (dni: string) => void
   buscandoDNI?: boolean
 }
 
-export default function PersonalInfoStep({ formData, updateFormData, onDNIBlur, buscandoDNI }: PersonalInfoStepProps) {
+export default function PersonalInfoStep({
+  formData,
+  updateFormData,
+  buscandoDNI,
+}: PersonalInfoStepProps) {
+  const handleDniChange = (value: string) => {
+    // DNI/Cédula: conservar solo números y limitar a 8 dígitos.
+    updateFormData({ dni: value.replace(/\D/g, "").slice(0, 8) })
+  }
+
   return (
     <div className="space-y-6">
-      {/* Personal Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-yellow-400">Información Personal</h3>
+
+        {/* El DNI va primero y dispara la búsqueda automática desde la página padre. */}
+        <div className="space-y-2">
+          <Label htmlFor="dni" className="text-gray-300">
+            DNI/Cédula <span className="text-red-500">*</span>
+          </Label>
+          <div className="relative">
+            <Input
+              id="dni"
+              inputMode="numeric"
+              autoComplete="off"
+              value={formData.dni}
+              onChange={(e) => handleDniChange(e.target.value)}
+              placeholder="Ingresá tu DNI"
+              className="bg-zinc-900 border-yellow-400/30 text-white pr-10"
+              required
+              autoFocus
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-live="polite">
+              {buscandoDNI ? (
+                <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" aria-label="Buscando DNI" />
+              ) : (
+                <Search className="w-4 h-4 text-gray-500" aria-hidden="true" />
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">
+            Cuando completes 7 u 8 dígitos, buscaremos tus datos automáticamente. No hace falta presionar Enter.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -50,31 +88,6 @@ export default function PersonalInfoStep({ formData, updateFormData, onDNIBlur, 
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="dni" className="text-gray-300">
-              DNI/Cédula <span className="text-red-500">*</span>
-            </Label>
-            <div className="relative">
-              <Input
-                id="dni"
-                value={formData.dni}
-                onChange={(e) => updateFormData({ dni: e.target.value })}
-                onBlur={(e) => onDNIBlur?.(e.target.value)}
-                placeholder="Ingresá tu DNI y se buscarán tus datos"
-                className="bg-zinc-900 border-yellow-400/30 text-white pr-10"
-                required
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                {buscandoDNI ? (
-                  <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />
-                ) : (
-                  <Search className="w-4 h-4 text-gray-500" />
-                )}
-              </div>
-            </div>
-            <p className="text-xs text-gray-500">Al salir del campo, se buscarán tus datos automáticamente</p>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="fechaNacimiento" className="text-gray-300">
               Fecha de Nacimiento <span className="text-red-500">*</span>
             </Label>
@@ -87,9 +100,7 @@ export default function PersonalInfoStep({ formData, updateFormData, onDNIBlur, 
               required
             />
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-gray-300">
               Email <span className="text-red-500">*</span>
@@ -104,7 +115,9 @@ export default function PersonalInfoStep({ formData, updateFormData, onDNIBlur, 
               required
             />
           </div>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="telefono" className="text-gray-300">
               Teléfono <span className="text-red-500">*</span>
@@ -119,40 +132,38 @@ export default function PersonalInfoStep({ formData, updateFormData, onDNIBlur, 
               required
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pais" className="text-gray-300">
+              País de residencia <span className="text-red-500">*</span>
+            </Label>
+            <Select value={formData.pais} onValueChange={(value) => updateFormData({ pais: value })}>
+              <SelectTrigger id="pais" className="bg-zinc-900 border-yellow-400/30 text-white">
+                <SelectValue placeholder="Seleccioná el país" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-yellow-400/30">
+                <SelectItem value="Argentina">Argentina</SelectItem>
+                <SelectItem value="Uruguay">Uruguay</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="paisTelefono" className="text-gray-300">
-              País <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="paisTelefono"
-              value={formData.paisTelefono}
-              onChange={(e) => updateFormData({ paisTelefono: e.target.value })}
-              placeholder="Argentina"
-              className="bg-zinc-900 border-yellow-400/30 text-white"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="localidad" className="text-gray-300">
-              Localidad <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="localidad"
-              value={formData.localidad}
-              onChange={(e) => updateFormData({ localidad: e.target.value })}
-              placeholder="Concepción del Uruguay"
-              className="bg-zinc-900 border-yellow-400/30 text-white"
-              required
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="localidad" className="text-gray-300">
+            Ciudad/Localidad <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="localidad"
+            value={formData.localidad}
+            onChange={(e) => updateFormData({ localidad: e.target.value })}
+            placeholder="Concepción del Uruguay"
+            className="bg-zinc-900 border-yellow-400/30 text-white"
+            required
+          />
         </div>
       </div>
 
-      {/* Emergency Contact */}
       <div className="space-y-4 pt-6 border-t border-yellow-400/20">
         <h3 className="text-lg font-semibold text-yellow-400">Contacto de Emergencia</h3>
 

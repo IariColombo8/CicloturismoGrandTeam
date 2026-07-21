@@ -1,4 +1,26 @@
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ""))
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo"))
+    reader.readAsDataURL(file)
+  })
+}
+
 export const compressAndConvertToBase64 = async (file: File, maxSizeKB = 500): Promise<string> => {
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("El comprobante supera los 5 MB")
+  }
+
+  // Los PDF no se rasterizan: se envían como Data URL y el servidor conserva su MIME.
+  if (file.type === "application/pdf") {
+    return readFileAsDataUrl(file)
+  }
+
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Formato de comprobante no permitido")
+  }
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
@@ -9,11 +31,10 @@ export const compressAndConvertToBase64 = async (file: File, maxSizeKB = 500): P
         const ctx = canvas.getContext("2d")
 
         if (!ctx) {
-          reject(new Error("Could not get canvas context"))
+          reject(new Error("No se pudo procesar la imagen"))
           return
         }
 
-        // Calculate new dimensions (max 1200px width)
         let width = img.width
         let height = img.height
         const maxWidth = 1200
@@ -25,18 +46,12 @@ export const compressAndConvertToBase64 = async (file: File, maxSizeKB = 500): P
 
         canvas.width = width
         canvas.height = height
-
-        // Draw and compress
         ctx.drawImage(img, 0, 0, width, height)
 
-        // Start with quality 0.8 and reduce if needed
         let quality = 0.8
         let base64 = canvas.toDataURL("image/jpeg", quality)
-
-        // base64 string is ~37% larger than actual bytes, so adjust threshold
         const maxBase64Length = Math.ceil(maxSizeKB * 1024 * 1.37)
 
-        // Reduce quality until file is under maxSizeKB
         while (base64.length > maxBase64Length && quality > 0.1) {
           quality -= 0.1
           base64 = canvas.toDataURL("image/jpeg", quality)
@@ -45,12 +60,11 @@ export const compressAndConvertToBase64 = async (file: File, maxSizeKB = 500): P
         resolve(base64)
       }
 
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = event.target?.result as string
+      img.onerror = () => reject(new Error("No se pudo cargar la imagen"))
+      img.src = String(event.target?.result || "")
     }
 
-    reader.onerror = () => reject(new Error("Failed to read file"))
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo"))
     reader.readAsDataURL(file)
   })
 }
-

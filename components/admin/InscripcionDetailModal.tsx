@@ -18,9 +18,7 @@ import {
   FileText,
   CreditCard,
   Clock,
-  QrCode,
-  UserCheck,
-  Eye
+  Eye,
 } from "lucide-react"
 
 interface InscripcionDetailModalProps {
@@ -42,32 +40,38 @@ export default function InscripcionDetailModal({
 
   if (!inscripcion) return null
 
+  const comprobanteUrl =
+    inscripcion.comprobantePagoUrl || inscripcion.comprobanteUrl || inscripcion.imagenBase64 || ""
+
   const getStatusBadge = (estado: string) => {
-    const badges: Record<string, React.ReactNode> = {
-      pendiente: (
-        <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
-          <Clock className="w-4 h-4 mr-1" />
-          Pendiente
-        </Badge>
-      ),
-      confirmada: (
+    if (estado === "confirmada") {
+      return (
         <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
-          <CheckCircle className="w-4 h-4 mr-1" />
-          Confirmada
-        </Badge>
-      ),
-      rechazada: (
-        <Badge className="bg-red-500/20 text-red-600 border-red-500/30">
-          <XCircle className="w-4 h-4 mr-1" />
-          Rechazada
+          <CheckCircle className="w-4 h-4 mr-1" /> Confirmada
         </Badge>
       )
     }
-    return badges[estado] || badges.pendiente
+    if (estado === "rechazada") {
+      return (
+        <Badge className="bg-red-500/20 text-red-600 border-red-500/30">
+          <XCircle className="w-4 h-4 mr-1" /> Rechazada
+        </Badge>
+      )
+    }
+    return (
+      <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
+        <Clock className="w-4 h-4 mr-1" /> Pendiente
+      </Badge>
+    )
+  }
+
+  const close = () => {
+    setComprobanteVisible(false)
+    onClose()
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => { setComprobanteVisible(false); onClose() }}>
+    <Dialog open={isOpen} onOpenChange={close}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
@@ -77,262 +81,163 @@ export default function InscripcionDetailModal({
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Estado */}
           <Card className="border-2">
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600">Estado actual</span>
-                <div className="flex items-center gap-2">
-                  {inscripcion.checkedIn && (
-                    <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
-                      <UserCheck className="w-4 h-4 mr-1" />
-                      Presente
-                    </Badge>
-                  )}
-                  {getStatusBadge(inscripcion.estado)}
-                </div>
+            <CardContent className="pt-6 flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-600">Estado actual</span>
+              {getStatusBadge(inscripcion.estado)}
+            </CardContent>
+          </Card>
+
+          <Card className="border-indigo-200 shadow-sm">
+            <CardHeader className="bg-indigo-50/50 pb-3">
+              <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
+                <User className="h-5 w-5" /> Información Personal
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500">Nombre Completo</label>
+                <p className="text-sm font-medium mt-1">
+                  {inscripcion.nombreCompleto || `${inscripcion.nombres || inscripcion.nombre || ""} ${inscripcion.apellidos || inscripcion.apellido || ""}`.trim()}
+                </p>
               </div>
-              {inscripcion.checkedIn && inscripcion.checkedInAt && (
-                <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <p className="text-xs text-emerald-700">
-                    <QrCode className="w-3 h-3 inline mr-1" />
-                    Check-in realizado el{" "}
-                    {inscripcion.checkedInAt?.toDate?.()?.toLocaleString("es-AR", {
-                      day: "2-digit", month: "2-digit", year: "numeric",
-                      hour: "2-digit", minute: "2-digit"
-                    }) || ""}
-                    {inscripcion.checkedInBy && ` por ${inscripcion.checkedInBy}`}
-                  </p>
+              <div>
+                <label className="text-xs font-medium text-gray-500">DNI/Cédula</label>
+                <p className="text-sm mt-1">{inscripcion.dni || "-"}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" /> Fecha de Nacimiento
+                </label>
+                <p className="text-sm mt-1">{inscripcion.fechaNacimiento || "-"}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">Grupo de ciclistas</label>
+                <p className="text-sm mt-1">{inscripcion.grupoCiclistas || "Sin grupo"}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-indigo-200 shadow-sm">
+            <CardHeader className="bg-indigo-50/50 pb-3">
+              <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
+                <Mail className="h-5 w-5" /> Información de Contacto
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500">Email</label>
+                <p className="text-sm mt-1 break-words">{inscripcion.email || "-"}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                  <Phone className="h-3 w-3" /> Teléfono
+                </label>
+                <p className="text-sm mt-1">{inscripcion.telefono || "-"}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">País</label>
+                <p className="text-sm mt-1">{inscripcion.pais || "-"}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" /> Ciudad/Localidad
+                </label>
+                <p className="text-sm mt-1">{inscripcion.localidad || inscripcion.ciudad || "-"}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-indigo-200 shadow-sm">
+            <CardHeader className="bg-indigo-50/50 pb-3">
+              <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
+                <Stethoscope className="h-5 w-5" /> Información de Salud
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500">Grupo Sanguíneo</label>
+                <p className="text-sm mt-1 font-medium uppercase">{inscripcion.grupoSanguineo || inscripcion.tipoSangre || "-"}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500">Celíaco/a</label>
+                <p className="text-sm mt-1">
+                  {inscripcion.esCeliaco === true ? "Sí" : inscripcion.esCeliaco === false ? "No" : "-"}
+                </p>
+              </div>
+              {inscripcion.condicionSalud && (
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-gray-500">Condiciones de Salud</label>
+                  <p className="text-sm mt-1 bg-gray-50 p-3 rounded border whitespace-pre-wrap">{inscripcion.condicionSalud}</p>
+                </div>
+              )}
+              {inscripcion.alergias && (
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-gray-500">Alergias</label>
+                  <p className="text-sm mt-1 bg-amber-50 p-3 rounded border border-amber-200 whitespace-pre-wrap">{inscripcion.alergias}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Información Personal */}
           <Card className="border-indigo-200 shadow-sm">
             <CardHeader className="bg-indigo-50/50 pb-3">
               <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Información Personal
+                <CreditCard className="h-5 w-5" /> Información de Pago
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-medium text-gray-500">Nombre Completo</label>
-                  <p className="text-sm font-medium mt-1">{inscripcion.nombreCompleto}</p>
+                  <label className="text-xs font-medium text-gray-500">Método de Pago</label>
+                  <p className="text-sm mt-1 capitalize">{inscripcion.metodoPago?.replace("_", " ") || "-"}</p>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-500">DNI/Cédula</label>
-                  <p className="text-sm mt-1">{inscripcion.dni || "-"}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Fecha de Nacimiento
-                  </label>
-                  <p className="text-sm mt-1">{inscripcion.fechaNacimiento || "-"}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">Género</label>
-                  <p className="text-sm mt-1 capitalize">{inscripcion.genero || "-"}</p>
+                  <label className="text-xs font-medium text-gray-500">Nº de Referencia</label>
+                  <p className="text-sm mt-1 font-mono">{inscripcion.numeroReferencia || "-"}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Información de Contacto */}
-          <Card className="border-indigo-200 shadow-sm">
-            <CardHeader className="bg-indigo-50/50 pb-3">
-              <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Información de Contacto
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-gray-500">Email</label>
-                  <p className="text-sm mt-1 break-words">{inscripcion.email}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
-                    Teléfono
-                  </label>
-                  <p className="text-sm mt-1">{inscripcion.telefono}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    Localidad
-                  </label>
-                  <p className="text-sm mt-1">{inscripcion.localidad || "-"}</p>
-                </div>
-                {inscripcion.telefonoEmergencia && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Tel. Emergencia</label>
-                    <p className="text-sm mt-1">{inscripcion.telefonoEmergencia}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Información del Evento */}
-          <Card className="border-indigo-200 shadow-sm">
-            <CardHeader className="bg-indigo-50/50 pb-3">
-              <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Información del Evento
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {inscripcion.categoria && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Categoría</label>
-                    <p className="text-sm mt-1 capitalize">{inscripcion.categoria}</p>
-                  </div>
-                )}
-                {inscripcion.talleRemera && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Talle de Remera</label>
-                    <p className="text-sm mt-1 uppercase">{inscripcion.talleRemera}</p>
-                  </div>
-                )}
-                {inscripcion.grupoCiclistas && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Grupo de Ciclistas</label>
-                    <p className="text-sm mt-1">{inscripcion.grupoCiclistas}</p>
-                  </div>
-                )}
-                {inscripcion.recorrido && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Recorrido</label>
-                    <p className="text-sm mt-1">{inscripcion.recorrido}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Información de Salud */}
-          <Card className="border-indigo-200 shadow-sm">
-            <CardHeader className="bg-indigo-50/50 pb-3">
-              <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
-                <Stethoscope className="h-5 w-5" />
-                Información de Salud
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {inscripcion.grupoSanguineo && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Grupo Sanguíneo</label>
-                    <p className="text-sm mt-1 font-medium">{inscripcion.grupoSanguineo}</p>
-                  </div>
-                )}
-                {inscripcion.condicionSalud && (
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-500">Condiciones de Salud</label>
-                    <p className="text-sm mt-1 bg-gray-50 p-3 rounded border">
-                      {inscripcion.condicionSalud}
-                    </p>
-                  </div>
-                )}
-                {inscripcion.alergias && (
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-500">Alergias</label>
-                    <p className="text-sm mt-1 bg-amber-50 p-3 rounded border border-amber-200">
-                      {inscripcion.alergias}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Información de Pago */}
-          <Card className="border-indigo-200 shadow-sm">
-            <CardHeader className="bg-indigo-50/50 pb-3">
-              <CardTitle className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Información de Pago
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {inscripcion.metodoPago && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Método de Pago</label>
-                    <p className="text-sm mt-1 capitalize">{inscripcion.metodoPago.replace("_", " ")}</p>
-                  </div>
-                )}
-                {inscripcion.numeroReferencia && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Nº de Referencia</label>
-                    <p className="text-sm mt-1 font-mono">{inscripcion.numeroReferencia}</p>
-                  </div>
-                )}
-                {inscripcion.precio && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500">Precio</label>
-                    <p className="text-sm mt-1 font-semibold text-green-600">{inscripcion.precio}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Comprobante — carga solo al hacer click en "Ver" */}
-              {(inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64) && (
-                <div className="mt-4">
-                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-2">
-                    <FileText className="h-3 w-3" />
-                    Comprobante de Pago
-                  </label>
-                  {!comprobanteVisible ? (
+              <div className="mt-4">
+                <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-2">
+                  <FileText className="h-3 w-3" /> Comprobante de Pago
+                </label>
+                {comprobanteUrl ? (
+                  !comprobanteVisible ? (
                     <button
+                      type="button"
                       onClick={() => setComprobanteVisible(true)}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors text-sm"
                     >
-                      <Eye className="h-4 w-4" />
-                      Ver comprobante
+                      <Eye className="h-4 w-4" /> Ver comprobante
                     </button>
+                  ) : comprobanteUrl.toLowerCase().includes(".pdf") ? (
+                    <div className="space-y-2">
+                      <iframe src={comprobanteUrl} title="Comprobante de pago" className="w-full h-96 rounded border" />
+                      <a href={comprobanteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 underline">
+                        Abrir PDF en una pestaña nueva
+                      </a>
+                    </div>
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-4 border">
                       <img
-                        src={inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64}
+                        src={comprobanteUrl}
                         alt="Comprobante"
-                        className="max-h-64 mx-auto rounded shadow-md cursor-pointer hover:shadow-lg transition-shadow"
-                        onClick={() => window.open(inscripcion.comprobanteUrl || inscripcion.comprobantePagoUrl || inscripcion.imagenBase64, "_blank")}
+                        className="max-h-80 mx-auto rounded shadow-md cursor-pointer"
+                        onClick={() => window.open(comprobanteUrl, "_blank", "noopener,noreferrer")}
                       />
-                      <p className="text-xs text-center text-gray-500 mt-2">Click para ver en tamaño completo</p>
                     </div>
-                  )}
-                </div>
-              )}
+                  )
+                ) : (
+                  <p className="text-sm text-gray-500">No hay comprobante cargado.</p>
+                )}
+              </div>
             </CardContent>
           </Card>
-
-          {/* Notas adicionales */}
-          {inscripcion.nota && (
-            <Card className="border-amber-200 shadow-sm bg-amber-50/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-amber-800">
-                  Notas Administrativas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700">{inscripcion.nota}</p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         <DialogFooter className="mt-6 gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Cerrar
-          </Button>
+          <Button variant="outline" onClick={close}>Cerrar</Button>
           {inscripcion.estado === "pendiente" && (
             <>
               <Button
@@ -340,21 +245,19 @@ export default function InscripcionDetailModal({
                 className="border-red-500/50 text-red-600 hover:bg-red-50"
                 onClick={() => {
                   onReject(inscripcion.id)
-                  onClose()
+                  close()
                 }}
               >
-                <XCircle className="w-4 h-4 mr-2" />
-                Rechazar
+                <XCircle className="w-4 h-4 mr-2" /> Rechazar
               </Button>
               <Button
                 className="bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => {
                   onApprove(inscripcion.id)
-                  onClose()
+                  close()
                 }}
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Confirmar Inscripción
+                <CheckCircle className="w-4 h-4 mr-2" /> Confirmar Inscripción
               </Button>
             </>
           )}

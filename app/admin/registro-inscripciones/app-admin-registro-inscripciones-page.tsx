@@ -94,11 +94,6 @@ export default function RegistroInscripciones() {
   const [statusNote, setStatusNote] = useState("")
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [openingComprobante, setOpeningComprobante] = useState<string | null>(null)
-  const [comprobanteModal, setComprobanteModal] = useState<{
-    url: string
-    source: string
-    kind: "image" | "pdf" | "unknown"
-  } | null>(null)
 
   // Debounce timer para busqueda
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -350,7 +345,17 @@ export default function RegistroInscripciones() {
   }
 
   const openComprobante = async (source?: string | null) => {
-    if (!source) return
+    if (!source || typeof window === "undefined") return
+
+    // Abrimos la pestaña antes del await para evitar que el navegador la
+    // bloquee como popup. El endpoint devuelve una URL firmada por un año.
+    const previewWindow = window.open("", "_blank")
+    if (previewWindow) {
+      previewWindow.opener = null
+      previewWindow.document.title = "Abriendo comprobante..."
+      previewWindow.document.body.innerHTML =
+        '<p style="font-family:system-ui;padding:24px">Preparando comprobante...</p>'
+    }
 
     setOpeningComprobante(source)
     try {
@@ -372,45 +377,18 @@ export default function RegistroInscripciones() {
         throw new Error(body.error || "No se pudo abrir el comprobante")
       }
 
-      const cleanSource = source.split("?")[0].toLowerCase()
-      const kind = cleanSource.endsWith(".pdf")
-        ? "pdf"
-        : /\.(png|jpe?g|webp|gif|bmp|svg)$/.test(cleanSource)
-          ? "image"
-          : "unknown"
-
-      setComprobanteModal({
-        url: body.signedUrl,
-        source,
-        kind,
-      })
+      if (previewWindow) {
+        previewWindow.location.replace(body.signedUrl)
+      } else {
+        window.open(body.signedUrl, "_blank", "noopener,noreferrer")
+      }
     } catch (error) {
+      previewWindow?.close()
       alert(error instanceof Error ? error.message : "No se pudo abrir el comprobante")
     } finally {
       setOpeningComprobante(null)
     }
   }
-
-  const closeComprobanteModal = () => {
-    setComprobanteModal(null)
-  }
-
-  useEffect(() => {
-    if (!comprobanteModal || typeof document === "undefined") return
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeComprobanteModal()
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-      document.body.style.overflow = previousOverflow
-    }
-  }, [comprobanteModal])
 
   const updateStatus = async () => {
     if (!selectedInscripcion) return
@@ -1006,72 +984,6 @@ export default function RegistroInscripciones() {
                       Actualizar Estado
                     </>
                   )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Comprobante Modal */}
-        {comprobanteModal && (
-          <div
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-3 sm:p-6 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="comprobante-modal-title"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) closeComprobanteModal()
-            }}
-          >
-            <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-yellow-400/30 bg-zinc-950 shadow-2xl">
-              <div className="flex items-center justify-between gap-4 border-b border-yellow-400/20 bg-zinc-900 px-4 py-3 sm:px-5">
-                <div className="min-w-0">
-                  <h2
-                    id="comprobante-modal-title"
-                    className="flex items-center gap-2 text-base font-bold text-yellow-400 sm:text-lg"
-                  >
-                    <Eye className="h-5 w-5 flex-shrink-0" />
-                    Comprobante de pago
-                  </h2>
-                  <p className="mt-1 truncate text-xs text-gray-400">
-                    {selectedInscripcion
-                      ? `${selectedInscripcion.nombres} ${selectedInscripcion.apellidos}`
-                      : "Vista previa del comprobante"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeComprobanteModal}
-                  className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-zinc-800 hover:text-white"
-                  aria-label="Cerrar comprobante"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-black p-2 sm:p-4">
-                {comprobanteModal.kind === "image" ? (
-                  <img
-                    src={comprobanteModal.url}
-                    alt="Comprobante de pago"
-                    className="max-h-full max-w-full rounded-lg object-contain"
-                  />
-                ) : (
-                  <iframe
-                    src={comprobanteModal.url}
-                    title="Comprobante de pago"
-                    className="h-full min-h-[65vh] w-full rounded-lg border-0 bg-white"
-                  />
-                )}
-              </div>
-
-              <div className="flex items-center justify-end border-t border-yellow-400/20 bg-zinc-900 px-4 py-3 sm:px-5">
-                <button
-                  type="button"
-                  onClick={closeComprobanteModal}
-                  className="rounded-lg bg-yellow-400 px-5 py-2 text-sm font-semibold text-black transition-colors hover:bg-yellow-500"
-                >
-                  Cerrar
                 </button>
               </div>
             </div>

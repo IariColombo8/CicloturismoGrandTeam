@@ -7,15 +7,15 @@ import { onInscripciones, type Inscripcion } from "@/lib/services/inscripciones"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, Users, TrendingUp, Bike } from "lucide-react"
 
-interface ProvinciaData {
-  provincia: string
+interface LocalidadData {
+  localidad: string
   total: number
   confirmadas: number
   pendientes: number
   rechazadas: number
 }
 
-export default function CiclosProvinciaPage() {
+export default function CiclosLocalidadPage() {
   const router = useRouter()
   const { user, userRole, loading: authLoading } = useSupabaseContext()
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([])
@@ -40,12 +40,12 @@ export default function CiclosProvinciaPage() {
     return () => unsubscribe()
   }, [isAuthorized, user])
 
-  // Agrupar por provincia
-  const provinciasMap = new Map<string, ProvinciaData>()
+  // Agrupar por localidad
+  const localidadesMap = new Map<string, LocalidadData>()
   inscripciones.forEach((i) => {
-    const prov = i.provincia || "Sin dato"
-    const existing = provinciasMap.get(prov) || {
-      provincia: prov,
+    const prov = `${i.localidad || "Sin localidad"} · ${i.pais || "Sin país"}`
+    const existing = localidadesMap.get(prov) || {
+      localidad: prov,
       total: 0,
       confirmadas: 0,
       pendientes: 0,
@@ -55,15 +55,15 @@ export default function CiclosProvinciaPage() {
     if (i.estado === "confirmada") existing.confirmadas++
     else if (i.estado === "pendiente") existing.pendientes++
     else if (i.estado === "rechazada") existing.rechazadas++
-    provinciasMap.set(prov, existing)
+    localidadesMap.set(prov, existing)
   })
 
-  const provinciaData = Array.from(provinciasMap.values()).sort(
+  const localidadData = Array.from(localidadesMap.values()).sort(
     (a, b) => b.total - a.total
   )
 
-  const totalProvincias = provinciaData.length
-  const provinciaMayor = provinciaData[0]
+  const totalLocalidades = localidadData.length
+  const localidadMayor = localidadData[0]
 
   if (authLoading || (!userRole && loading)) {
     return (
@@ -84,7 +84,7 @@ export default function CiclosProvinciaPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div>
             <h1 className="text-xl sm:text-3xl font-black text-white leading-tight">
-              <span className="gradient-text">Ciclistas</span> por Provincia
+              <span className="gradient-text">Ciclistas</span> por Localidad
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
               Distribución geográfica de inscriptos
@@ -99,7 +99,7 @@ export default function CiclosProvinciaPage() {
           <Card className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-900/20 border-yellow-400/30">
             <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">
-                Provincias
+                Localidades
               </CardTitle>
               <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
             </CardHeader>
@@ -108,7 +108,7 @@ export default function CiclosProvinciaPage() {
                 <div className="h-8 w-12 bg-zinc-800 rounded animate-pulse" />
               ) : (
                 <div className="text-2xl sm:text-4xl font-black text-white">
-                  {totalProvincias}
+                  {totalLocalidades}
                 </div>
               )}
               <p className="text-xs text-gray-500 mt-1 hidden sm:block">
@@ -150,24 +150,24 @@ export default function CiclosProvinciaPage() {
                 <div className="h-8 w-24 bg-zinc-800 rounded animate-pulse" />
               ) : (
                 <div className="text-lg sm:text-2xl font-black text-amber-400 truncate">
-                  {provinciaMayor?.provincia || "—"}
+                  {localidadMayor?.localidad || "—"}
                 </div>
               )}
               <p className="text-xs text-gray-500 mt-1 hidden sm:block">
-                {provinciaMayor
-                  ? `${provinciaMayor.total} ciclistas`
+                {localidadMayor
+                  ? `${localidadMayor.total} ciclistas`
                   : "Sin datos"}
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabla de provincias */}
+        {/* Tabla de localidads */}
         <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
           <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-white flex items-center gap-2 text-base sm:text-lg">
               <Bike className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
-              Detalle por Provincia
+              Detalle por Localidad
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0">
@@ -180,7 +180,7 @@ export default function CiclosProvinciaPage() {
                   />
                 ))}
               </div>
-            ) : provinciaData.length === 0 ? (
+            ) : localidadData.length === 0 ? (
               <p className="text-gray-400 text-center py-8">
                 No hay inscripciones registradas
               </p>
@@ -188,7 +188,7 @@ export default function CiclosProvinciaPage() {
               <>
                 {/* Header de tabla */}
                 <div className="hidden sm:grid grid-cols-5 gap-4 px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-yellow-400/10 mb-2">
-                  <span>Provincia</span>
+                  <span>Localidad</span>
                   <span className="text-center">Total</span>
                   <span className="text-center">Confirmadas</span>
                   <span className="text-center">Pendientes</span>
@@ -196,25 +196,25 @@ export default function CiclosProvinciaPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {provinciaData.map((prov) => {
+                  {localidadData.map((prov) => {
                     const porcentaje =
                       inscripciones.length > 0
                         ? ((prov.total / inscripciones.length) * 100).toFixed(1)
                         : "0"
                     return (
                       <div
-                        key={prov.provincia}
+                        key={prov.localidad}
                         className="p-3 sm:p-4 bg-zinc-900 rounded-lg border border-yellow-400/10 hover:border-yellow-400/30 transition-all"
                       >
                         {/* Versión desktop */}
                         <div className="hidden sm:grid grid-cols-5 gap-4 items-center">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-black font-bold text-sm">
-                              {prov.provincia.charAt(0)}
+                              {prov.localidad.charAt(0)}
                             </div>
                             <div>
                               <p className="text-white font-semibold text-sm">
-                                {prov.provincia}
+                                {prov.localidad}
                               </p>
                               <p className="text-gray-500 text-xs">
                                 {porcentaje}% del total
@@ -240,10 +240,10 @@ export default function CiclosProvinciaPage() {
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-black font-bold text-xs">
-                                {prov.provincia.charAt(0)}
+                                {prov.localidad.charAt(0)}
                               </div>
                               <span className="text-white font-semibold text-sm">
-                                {prov.provincia}
+                                {prov.localidad}
                               </span>
                             </div>
                             <span className="text-white font-bold">

@@ -27,7 +27,6 @@ interface ConfirmationEmailParams extends EmailParams {
   numeroInscripcion?: string
   fechaEvento?: string
   ubicacion?: string
-  talleRemera?: string
   qrCodeUrl?: string
   tokenQR?: string
 }
@@ -55,7 +54,7 @@ export const emailService = {
         numero_inscripcion: params.numeroInscripcion || "Pendiente",
         fecha_evento: params.fechaEvento || "Por confirmar",
         ubicacion: params.ubicacion || "Concepción del Uruguay, Entre Ríos",
-        talle_remera: params.talleRemera || "No especificado",
+        talle_remera: "No incluye",
         qr_code_url: qrCodeUrl,
         ...params
       }
@@ -181,8 +180,7 @@ await emailService.sendConfirmationEmail({
   email: "participante@email.com",
   nombreCompleto: "Juan Pérez",
   numeroInscripcion: "2025-001",
-  fechaEvento: "8 de Noviembre de 2025",
-  talleRemera: "L"
+  fechaEvento: "8 de Noviembre de 2025"
 })
 
 // Enviar rechazo

@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase"
-import type { Participante } from "@/types/database"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 export interface Inscripcion {
@@ -11,7 +10,10 @@ export interface Inscripcion {
   telefono: string
   estado: "pendiente" | "confirmada" | "rechazada" | "aprobado"
   categoria: string
-  provincia: string
+  pais: string
+  localidad: string
+  grupoCiclistas: string
+  esCeliaco: boolean | null
   fechaInscripcion: string
   numeroInscripcion: number
   precio: string
@@ -22,8 +24,29 @@ export interface Inscripcion {
   [key: string]: unknown
 }
 
-// Mapear fila de Supabase (snake_case) a formato frontend (camelCase)
-function mapParticipante(row: Participante): Inscripcion {
+type ParticipanteRow = {
+  id: string
+  nombre: string
+  apellido: string
+  email: string | null
+  dni: string
+  telefono: string | null
+  estado: Inscripcion["estado"]
+  categoria: string | null
+  pais: string | null
+  localidad: string | null
+  grupo_ciclistas: string | null
+  es_celiaco: boolean | null
+  fecha_inscripcion: string | null
+  numero_inscripcion: number | null
+  precio: string | number | null
+  checked_in: boolean | null
+  checked_in_at: string | null
+  checked_in_by: string | null
+  token_qr: string | null
+}
+
+function mapParticipante(row: ParticipanteRow): Inscripcion {
   return {
     id: row.id,
     nombre: row.nombre,
@@ -33,18 +56,20 @@ function mapParticipante(row: Participante): Inscripcion {
     telefono: row.telefono || "",
     estado: row.estado,
     categoria: row.categoria || "",
-    provincia: row.provincia || "",
-    fechaInscripcion: row.fecha_inscripcion,
+    pais: row.pais || "",
+    localidad: row.localidad || "",
+    grupoCiclistas: row.grupo_ciclistas || "Sin grupo",
+    esCeliaco: row.es_celiaco,
+    fechaInscripcion: row.fecha_inscripcion || "",
     numeroInscripcion: row.numero_inscripcion || 0,
-    precio: row.precio || "",
-    checkedIn: row.checked_in,
+    precio: row.precio == null ? "" : String(row.precio),
+    checkedIn: !!row.checked_in,
     checkedInAt: row.checked_in_at,
     checkedInBy: row.checked_in_by || undefined,
     tokenQR: row.token_qr || undefined,
   }
 }
 
-// Obtener todos los participantes (fetch inicial)
 async function fetchParticipantes(): Promise<Inscripcion[]> {
   const { data, error } = await supabase
     .from("participantes")
@@ -56,46 +81,31 @@ async function fetchParticipantes(): Promise<Inscripcion[]> {
     return []
   }
 
-  return (data || []).map(mapParticipante)
+  return ((data || []) as ParticipanteRow[]).map(mapParticipante)
 }
 
-// Suscripcion en tiempo real a todas las inscripciones (participantes)
 export function onInscripciones(callback: (data: Inscripcion[]) => void): () => void {
-  // Carga inicial
   fetchParticipantes().then(callback)
 
-  // Suscripcion a cambios en tiempo real
   const channel: RealtimeChannel = supabase
     .channel("participantes-changes")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "participantes" },
-      () => {
-        // Re-fetch en cada cambio para mantener el orden correcto
-        fetchParticipantes().then(callback)
-      }
+      () => fetchParticipantes().then(callback)
     )
     .subscribe()
 
-  // Retornar funcion de limpieza
   return () => {
     supabase.removeChannel(channel)
   }
 }
 
-// Actualizar estado de una inscripcion (participante)
-export async function actualizarEstado(
-  id: string,
-  estado: string,
-  nota?: string
-) {
+export async function actualizarEstado(id: string, estado: string, nota?: string) {
   const updateData: Record<string, unknown> = { estado }
   if (nota) updateData.nota_estado = nota
 
-  const { error } = await supabase
-    .from("participantes")
-    .update(updateData)
-    .eq("id", id)
+  const { error } = await supabase.from("participantes").update(updateData).eq("id", id)
 
   if (error) {
     console.error("Error al actualizar estado:", error)
@@ -103,7 +113,6 @@ export async function actualizarEstado(
   }
 }
 
-// Buscar participante por DNI
 export async function buscarPorDNI(dni: string): Promise<Inscripcion | null> {
   const { data, error } = await supabase
     .from("participantes")
@@ -117,10 +126,9 @@ export async function buscarPorDNI(dni: string): Promise<Inscripcion | null> {
     return null
   }
 
-  return data ? mapParticipante(data) : null
+  return data ? mapParticipante(data as ParticipanteRow) : null
 }
 
-// Buscar participante por token QR
 export async function buscarPorTokenQR(token: string): Promise<Inscripcion | null> {
   const { data, error } = await supabase
     .from("participantes")
@@ -134,10 +142,9 @@ export async function buscarPorTokenQR(token: string): Promise<Inscripcion | nul
     return null
   }
 
-  return data ? mapParticipante(data) : null
+  return data ? mapParticipante(data as ParticipanteRow) : null
 }
 
-// Hacer check-in
 export async function hacerCheckIn(id: string, adminEmail: string) {
   const { error } = await supabase
     .from("participantes")

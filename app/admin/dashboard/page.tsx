@@ -60,7 +60,7 @@ export default function AdminDashboard() {
         base().eq("estado", "rechazada"),
         supabase
           .from("participantes")
-          .select("id, estado, nombre, apellido, email, talla_camiseta, fecha_inscripcion")
+          .select("id, estado, nombre, apellido, email, grupo_ciclistas, localidad, fecha_inscripcion")
           .contains("anios", [EDICION_ACTUAL])
           .order("fecha_inscripcion", { ascending: false })
           .limit(5),
@@ -80,7 +80,8 @@ export default function AdminDashboard() {
           apellido: d.apellido,
           email: d.email,
           estado: d.estado,
-          categoria: d.talla_camiseta || "",
+          grupoCiclistas: d.grupo_ciclistas || "Sin grupo",
+          localidad: d.localidad || "",
         }))
       )
       setLoading(false)
@@ -344,7 +345,7 @@ export default function AdminDashboard() {
                       }`}>
                         {inscripcion.estado?.toUpperCase()}
                       </span>
-                      <p className="text-gray-500 text-xs mt-1 hidden sm:block">{inscripcion.categoria}</p>
+                      <p className="text-gray-500 text-xs mt-1 hidden sm:block">{inscripcion.grupoCiclistas}</p>
                     </div>
                   </div>
                 ))}

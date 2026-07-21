@@ -72,10 +72,10 @@ function processChartData(inscripciones: any[]) {
     { name: "Rechazadas", value: rechazadas, color: "#ef4444" },
   ].filter((d) => d.value > 0)
 
-  // Categorías
+  // Grupos ciclistas
   const byCat: Record<string, number> = {}
   inscripciones.forEach((i) => {
-    const cat = i.categoria || i.experiencia || "Sin categoría"
+    const cat = i.grupoCiclistas || "Sin grupo"
     byCat[cat] = (byCat[cat] || 0) + 1
   })
   const categoriaData = Object.entries(byCat).map(([name, value], idx) => ({
@@ -84,16 +84,16 @@ function processChartData(inscripciones: any[]) {
     color: COLORS_CATEGORIA[idx % COLORS_CATEGORIA.length],
   }))
 
-  // Provincias top 5
-  const byProv: Record<string, number> = {}
+  // Localidades top 5
+  const byLocalidad: Record<string, number> = {}
   inscripciones.forEach((i) => {
-    const prov = i.provincia || i.ciudad || "Sin dato"
-    byProv[prov] = (byProv[prov] || 0) + 1
+    const localidad = i.localidad || i.ciudad || "Sin dato"
+    byLocalidad[localidad] = (byLocalidad[localidad] || 0) + 1
   })
-  const provinciaData = Object.entries(byProv)
+  const localidadData = Object.entries(byLocalidad)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(([provincia, count]) => ({ provincia, count }))
+    .map(([localidad, count]) => ({ localidad, count }))
 
   // Tendencia acumulada
   let acum = 0
@@ -109,10 +109,10 @@ function processChartData(inscripciones: any[]) {
     { metric: "Ocupación", value: Math.min(100, Math.round((total / 150) * 100)) },
     { metric: "Pago", value: Math.round((confirmadas / total) * 100) },
     { metric: "Actividad", value: Math.min(100, chartData.length * 10) },
-    { metric: "Diversidad", value: Math.min(100, Object.keys(byProv).length * 15) },
+    { metric: "Diversidad", value: Math.min(100, Object.keys(byLocalidad).length * 15) },
   ]
 
-  return { chartData, estadoData, categoriaData, provinciaData, tendenciaData, radarData }
+  return { chartData, estadoData, categoriaData, localidadData, tendenciaData, radarData }
 }
 
 export default function DashboardCharts({
@@ -122,7 +122,7 @@ export default function DashboardCharts({
   aprobadas,
   pendientes,
 }: DashboardChartsProps) {
-  const { chartData, estadoData, categoriaData, provinciaData, tendenciaData, radarData } =
+  const { chartData, estadoData, categoriaData, localidadData, tendenciaData, radarData } =
     processChartData(inscripciones)
   const aprobadasLength = aprobadas.length
   const pendientesLength = pendientes.length
@@ -227,12 +227,12 @@ export default function DashboardCharts({
           </CardContent>
         </Card>
 
-        {/* Categorías - Pie */}
+        {/* Grupos ciclistas - Pie */}
         <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Award className="w-5 h-5 text-yellow-400" />
-              Distribución por Categoría
+              Distribución por grupo ciclista
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -261,20 +261,20 @@ export default function DashboardCharts({
 
       {/* Charts Row 3 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {/* Top Provincias - Bar */}
+        {/* Top Localidades - Bar */}
         <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <MapPin className="w-5 h-5 text-yellow-400" />
-              Top 5 Provincias
+              Top 5 Localidades
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={provinciaData} layout="vertical">
+              <BarChart data={localidadData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis type="number" stroke="#9ca3af" />
-                <YAxis dataKey="provincia" type="category" stroke="#9ca3af" width={80} style={{ fontSize: "11px" }} />
+                <YAxis dataKey="localidad" type="category" stroke="#9ca3af" width={80} style={{ fontSize: "11px" }} />
                 <Tooltip {...tooltipStyle} />
                 <Bar dataKey="count" fill="#fbbf24" radius={[0, 8, 8, 0]} />
               </BarChart>
