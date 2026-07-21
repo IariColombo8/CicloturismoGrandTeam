@@ -49,14 +49,19 @@ export default function AdminDashboard() {
     if (!isAuthorized || !user) return
 
     const fetchData = async () => {
+      const EDICION_ACTUAL = 2026
+      const base = () =>
+        supabase.from("participantes").select("*", { count: "exact", head: true }).contains("anios", [EDICION_ACTUAL])
+
       const [totalRes, pendRes, confRes, rechRes, ultimasRes] = await Promise.all([
-        supabase.from("inscripciones").select("*", { count: "exact", head: true }),
-        supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "pendiente"),
-        supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "confirmada"),
-        supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "rechazada"),
+        base(),
+        base().eq("estado", "pendiente"),
+        base().eq("estado", "confirmada"),
+        base().eq("estado", "rechazada"),
         supabase
-          .from("inscripciones")
-          .select("id, estado, nombres, apellidos, email, talla_camiseta, fecha_inscripcion")
+          .from("participantes")
+          .select("id, estado, nombre, apellido, email, talla_camiseta, fecha_inscripcion")
+          .contains("anios", [EDICION_ACTUAL])
           .order("fecha_inscripcion", { ascending: false })
           .limit(5),
       ])
@@ -71,8 +76,8 @@ export default function AdminDashboard() {
       setUltimas(
         (ultimasRes.data || []).map((d: any) => ({
           id: d.id,
-          nombre: d.nombres,
-          apellido: d.apellidos,
+          nombre: d.nombre,
+          apellido: d.apellido,
           email: d.email,
           estado: d.estado,
           categoria: d.talla_camiseta || "",
@@ -84,7 +89,7 @@ export default function AdminDashboard() {
 
     const channel = supabase
       .channel("dashboard-inscripciones")
-      .on("postgres_changes", { event: "*", schema: "public", table: "inscripciones" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "participantes" }, () => {
         fetchData()
       })
       .subscribe()

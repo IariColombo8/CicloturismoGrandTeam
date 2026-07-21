@@ -7,7 +7,7 @@ const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || ""
 
 // IDs de templates - actualiza estos con tus propios template IDs
 const TEMPLATE_IDS = {
-  CONFIRMATION: "template_2fg4bhx", // Template de confirmación
+  CONFIRMATION: "template_8ml1cks", // Template de confirmación
   REJECTION: "template_rejection",   // Crea este template en EmailJS
   REMINDER: "template_reminder"      // Crea este template en EmailJS
 }
@@ -67,8 +67,11 @@ export const emailService = {
       )
 
       return { success: true, response }
-    } catch (error) {
-      console.error("Error enviando email de confirmación:", error)
+    } catch (error: any) {
+      console.error(
+        "Error enviando email de confirmación:",
+        error?.text || error?.message || JSON.stringify(error)
+      )
       return { success: false, error }
     }
   },

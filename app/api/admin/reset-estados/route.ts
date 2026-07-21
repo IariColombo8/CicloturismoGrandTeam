@@ -5,16 +5,6 @@ export async function POST() {
   try {
     const supabase = createAdminClient()
 
-    // Resetear inscripciones a pendiente
-    const { error: errInsc } = await supabase
-      .from("inscripciones")
-      .update({ estado: "pendiente" })
-      .neq("estado", "pendiente")
-
-    if (errInsc) {
-      return NextResponse.json({ error: errInsc.message }, { status: 500 })
-    }
-
     // Resetear participantes a pendiente
     const { error: errPart } = await supabase
       .from("participantes")

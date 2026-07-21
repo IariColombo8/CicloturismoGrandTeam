@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { useIsMobile } from "@/components/ui/use-mobile"
 import { exportToCSV } from "@/lib/exportUtils"
+import { emailService } from "@/lib/emailService"
 import {
   Users,
   CheckCircle,
@@ -35,7 +36,11 @@ import {
 
 // Columnas que pedimos a Supabase (sin comprobante_base64 que es pesado)
 const INSCRIPCIONES_COLUMNS =
-  "id, estado, nombres, apellidos, email, cedula, ciudad, metodo_pago, numero_referencia, fecha_nacimiento, talla_camiseta, tipo_sangre, telefono, nota_estado, numero_inscripcion, fecha_inscripcion"
+  "id, estado, nombre, apellido, email, dni, provincia, metodo_pago, numero_referencia, fecha_nacimiento, talla_camiseta, grupo_sanguineo, telefono, nota_estado, numero_inscripcion, fecha_inscripcion, token_qr"
+
+// "participantes" es historico (acumula todas las ediciones via anios[]).
+// Esta pantalla es de la edicion actual: siempre filtramos por anio.
+const EDICION_ACTUAL = 2026
 
 interface Stats {
   total: number
@@ -105,8 +110,9 @@ export default function RegistroInscripciones() {
       const to = from + perPage - 1
 
       let query = supabase
-        .from("inscripciones")
+        .from("participantes")
         .select(INSCRIPCIONES_COLUMNS, { count: "exact" })
+        .contains("anios", [EDICION_ACTUAL])
         .order("fecha_inscripcion", { ascending: false })
 
       // Filtro de estado
@@ -118,7 +124,7 @@ export default function RegistroInscripciones() {
       if (search.trim()) {
         const term = `%${search.trim()}%`
         query = query.or(
-          `nombres.ilike.${term},apellidos.ilike.${term},email.ilike.${term},cedula.ilike.${term}`
+          `nombre.ilike.${term},apellido.ilike.${term},email.ilike.${term},dni.ilike.${term}`
         )
       }
 
@@ -140,21 +146,22 @@ export default function RegistroInscripciones() {
       setInscripciones(
         (data || []).map((d: any) => ({
           id: d.id,
-          nombres: d.nombres,
-          apellidos: d.apellidos,
+          nombres: d.nombre,
+          apellidos: d.apellido,
           email: d.email,
-          dni: d.cedula,
-          ciudad: d.ciudad,
+          dni: d.dni,
+          ciudad: d.provincia,
           estado: d.estado,
           metodoPago: d.metodo_pago,
           numeroReferencia: d.numero_referencia,
           fechaNacimiento: d.fecha_nacimiento,
           tallaCamiseta: d.talla_camiseta,
-          tipoSangre: d.tipo_sangre,
+          tipoSangre: d.grupo_sanguineo,
           telefono: d.telefono,
           nota: d.nota_estado,
           numeroInscripcion: d.numero_inscripcion,
           fechaInscripcion: d.fecha_inscripcion,
+          tokenQR: d.token_qr,
         }))
       )
     },
@@ -163,11 +170,12 @@ export default function RegistroInscripciones() {
 
   // --- Fetch stats (solo conteos, sin datos) ---
   const fetchStats = useCallback(async () => {
+    const base = () => supabase.from("participantes").select("*", { count: "exact", head: true }).contains("anios", [EDICION_ACTUAL])
     const [totalRes, confirmRes, pendRes, rechRes] = await Promise.all([
-      supabase.from("inscripciones").select("*", { count: "exact", head: true }),
-      supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "confirmada"),
-      supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "pendiente"),
-      supabase.from("inscripciones").select("*", { count: "exact", head: true }).eq("estado", "rechazada"),
+      base(),
+      base().eq("estado", "confirmada"),
+      base().eq("estado", "pendiente"),
+      base().eq("estado", "rechazada"),
     ])
 
     setStats({
@@ -195,7 +203,7 @@ export default function RegistroInscripciones() {
     // Realtime: re-fetch pagina actual cuando cambia la tabla
     const channel = supabase
       .channel("registro-inscripciones")
-      .on("postgres_changes", { event: "*", schema: "public", table: "inscripciones" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "participantes" }, () => {
         fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter)
         fetchStats()
       })
@@ -290,7 +298,7 @@ export default function RegistroInscripciones() {
     setUpdatingStatus(true)
     try {
       const { error: updateError } = await supabase
-        .from("inscripciones")
+        .from("participantes")
         .update({
           estado: newStatus,
           nota_estado: statusNote,
@@ -299,12 +307,21 @@ export default function RegistroInscripciones() {
 
       if (updateError) throw updateError
 
-      // Sincronizar estado en participantes (por DNI)
-      if (selectedInscripcion.cedula) {
-        await supabase
-          .from("participantes")
-          .update({ estado: newStatus })
-          .eq("dni", selectedInscripcion.cedula)
+      // Enviar email de confirmacion con QR recien acá, al aprobar.
+      // Evita reenviarlo si ya estaba confirmada (edicion de nota, etc).
+      if (newStatus === "confirmada" && selectedInscripcion.estado !== "confirmada") {
+        try {
+          await emailService.sendConfirmationEmail({
+            email: selectedInscripcion.email,
+            nombreCompleto: `${selectedInscripcion.nombres} ${selectedInscripcion.apellidos}`,
+            numeroInscripcion: String(selectedInscripcion.numeroInscripcion),
+            talleRemera: selectedInscripcion.tallaCamiseta,
+            tokenQR: selectedInscripcion.tokenQR,
+            ubicacion: "Concepcion del Uruguay, Entre Rios",
+          })
+        } catch (emailError) {
+          console.error("Error enviando email de confirmación:", emailError)
+        }
       }
 
       // Actualizar optimistamente en la lista local
@@ -328,29 +345,30 @@ export default function RegistroInscripciones() {
   // Exportar CSV: descarga TODAS las inscripciones filtradas (no solo la pagina actual)
   const exportarCSV = async () => {
     let query = supabase
-      .from("inscripciones")
+      .from("participantes")
       .select(INSCRIPCIONES_COLUMNS)
+      .contains("anios", [EDICION_ACTUAL])
       .order("fecha_inscripcion", { ascending: false })
 
     if (statusFilter !== "all") query = query.eq("estado", statusFilter)
     if (searchTerm.trim()) {
       const term = `%${searchTerm.trim()}%`
       query = query.or(
-        `nombres.ilike.${term},apellidos.ilike.${term},email.ilike.${term},cedula.ilike.${term}`
+        `nombre.ilike.${term},apellido.ilike.${term},email.ilike.${term},dni.ilike.${term}`
       )
     }
 
     const { data } = await query
     const datos = (data || []).map((d: any) => ({
       "N Inscripcion": d.numero_inscripcion || "",
-      Nombres: d.nombres || "",
-      Apellidos: d.apellidos || "",
-      DNI: d.cedula || "",
+      Nombres: d.nombre || "",
+      Apellidos: d.apellido || "",
+      DNI: d.dni || "",
       Email: d.email || "",
       Telefono: d.telefono || "",
-      Ciudad: d.ciudad || "",
+      Ciudad: d.provincia || "",
       "Talle Remera": d.talla_camiseta || "",
-      "Tipo Sangre": d.tipo_sangre || "",
+      "Tipo Sangre": d.grupo_sanguineo || "",
       "Metodo Pago": d.metodo_pago || "",
       "N Referencia": d.numero_referencia || "",
       Estado: d.estado || "pendiente",

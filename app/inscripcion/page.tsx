@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { compressAndConvertToBase64 } from "@/lib/imageUtils"
-import { emailService } from "@/lib/emailService"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -25,14 +24,14 @@ const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14 // 14 días
 
 const defaultFormData = {
   // Personal Info
-  nombres: "",
-  apellidos: "",
-  cedula: "",
+  nombre: "",
+  apellido: "",
+  dni: "",
   email: "",
   telefono: "",
   fechaNacimiento: "",
-  pais: "",
-  ciudad: "",
+  paisTelefono: "",
+  localidad: "",
 
   // Emergency Contact
   nombreEmergencia: "",
@@ -41,12 +40,12 @@ const defaultFormData = {
 
   // Category
   haRecorridoDistancia: "",
-  tallaCamiseta: "",
-  tipoSangre: "",
+  talleRemera: "",
+  grupoSanguineo: "",
   tieneAlergias: "",
   alergias: "",
   tieneProblemasSalud: "",
-  condicionesMedicas: "",
+  condicionSalud: "",
 
   // Payment
   metodoPago: "transferencia",
@@ -90,6 +89,8 @@ export default function InscripcionPage() {
   })
   
   const [formData, setFormData] = useState(defaultFormData)
+  const [buscandoDNI, setBuscandoDNI] = useState(false)
+  const ultimoDniBuscadoRef = useRef<string>("")
 
   // Cargar draft del localStorage en el primer mount.
   useEffect(() => {
@@ -147,6 +148,35 @@ export default function InscripcionPage() {
     setHasDraft(null)
   }
 
+  // Autocompletado por DNI: al salir del campo, busca una inscripción previa
+  // con ese DNI y precarga los datos personales para que el usuario solo
+  // tenga que revisar/actualizar lo que cambió.
+  const lookupDni = async (dniRaw: string) => {
+    const dni = dniRaw.trim()
+    if (!/^\d{7,8}$/.test(dni) || dni === ultimoDniBuscadoRef.current) return
+    ultimoDniBuscadoRef.current = dni
+
+    setBuscandoDNI(true)
+    try {
+      const res = await fetch(`/api/lookup-participant?dni=${encodeURIComponent(dni)}`)
+      if (!res.ok) return
+      const result = await res.json()
+      if (result.found && result.data) {
+        setFormData((prev) => ({ ...prev, ...result.data, dni: prev.dni }))
+        toast({
+          title: result.isEdicion ? "Ya estás inscripto este año" : "Datos encontrados",
+          description: result.isEdicion
+            ? "Cargamos tus datos para que los edites. Revisá que esté todo correcto."
+            : "Precargamos tu información de una inscripción anterior. Revisá que esté todo correcto.",
+        })
+      }
+    } catch (error) {
+      console.error("Error buscando DNI:", error)
+    } finally {
+      setBuscandoDNI(false)
+    }
+  }
+
   useEffect(() => {
     const loadEventConfig = async () => {
       try {
@@ -189,27 +219,27 @@ export default function InscripcionPage() {
     switch (step) {
       case 1:
         return !!(
-          formData.nombres &&
-          formData.apellidos &&
-          formData.cedula &&
+          formData.nombre &&
+          formData.apellido &&
+          formData.dni &&
           formData.email &&
           formData.telefono &&
           formData.fechaNacimiento &&
-          formData.pais &&
-          formData.ciudad &&
+          formData.paisTelefono &&
+          formData.localidad &&
           formData.nombreEmergencia &&
           formData.telefonoEmergencia
         )
       case 2:
-        const alergiasValid = formData.tieneAlergias === "no" || 
+        const alergiasValid = formData.tieneAlergias === "no" ||
                              (formData.tieneAlergias === "si" && formData.alergias)
-        const saludValid = formData.tieneProblemasSalud === "no" || 
-                          (formData.tieneProblemasSalud === "si" && formData.condicionesMedicas)
-        
+        const saludValid = formData.tieneProblemasSalud === "no" ||
+                          (formData.tieneProblemasSalud === "si" && formData.condicionSalud)
+
         return !!(
           formData.haRecorridoDistancia &&
-          formData.tallaCamiseta &&
-          formData.tipoSangre &&
+          formData.talleRemera &&
+          formData.grupoSanguineo &&
           formData.tieneAlergias &&
           alergiasValid &&
           formData.tieneProblemasSalud &&
@@ -238,17 +268,6 @@ export default function InscripcionPage() {
     setCurrentStep((prev) => Math.max(prev - 1, 1))
   }
 
-  const getNextInscriptionNumber = async () => {
-    try {
-      const { data, error } = await supabase.rpc("next_inscription_number", { p_year: "2026" })
-      if (error) throw error
-      return data as number
-    } catch (error) {
-      console.error("Error getting inscription number:", error)
-      throw error
-    }
-  }
-
   const handleSubmit = async () => {
     if (!validateStep(3)) {
       toast({
@@ -272,85 +291,23 @@ export default function InscripcionPage() {
         comprobanteBase64 = await compressAndConvertToBase64(formData.comprobanteFile, 500)
       }
 
-      const inscriptionNumber = await getNextInscriptionNumber()
-      const paddedNumber = String(inscriptionNumber).padStart(3, "0")
-      const customDocId = `Inscripciones_2026 - ${paddedNumber}-${formData.nombres} ${formData.apellidos}`
+      const { comprobanteFile, metodoPago, ...datosInscripcion } = formData
 
-      const inscripcionData = {
-        id: customDocId,
-        numero_inscripcion: inscriptionNumber,
-        // Personal info
-        nombres: formData.nombres,
-        apellidos: formData.apellidos,
-        cedula: formData.cedula,
-        email: formData.email,
-        telefono: formData.telefono,
-        fecha_nacimiento: formData.fechaNacimiento,
-        pais: formData.pais,
-        ciudad: formData.ciudad,
-
-        // Emergency contact
-        nombre_emergencia: formData.nombreEmergencia,
-        telefono_emergencia: formData.telefonoEmergencia,
-        relacion_emergencia: formData.relacionEmergencia || "",
-
-        // Additional info
-        ha_recorrido_distancia: formData.haRecorridoDistancia,
-        talla_camiseta: formData.tallaCamiseta,
-        tipo_sangre: formData.tipoSangre,
-        tiene_alergias: formData.tieneAlergias,
-        alergias: formData.tieneAlergias === "si" ? formData.alergias : "",
-        tiene_problemas_salud: formData.tieneProblemasSalud,
-        condiciones_medicas: formData.tieneProblemasSalud === "si" ? formData.condicionesMedicas : "",
-
-        // Payment
-        metodo_pago: "transferencia",
-        numero_referencia: formData.numeroReferencia,
-        comprobante_base64: comprobanteBase64,
-
-        // Metadata
-        estado: "pendiente" as const,
-        fecha_inscripcion: new Date().toISOString(),
-        aprobado_por_admin: false,
-      }
-
-      const { error } = await supabase.from("inscripciones").insert(inscripcionData)
-      if (error) throw error
-
-      // Crear registro en participantes con token QR para check-in
-      const tokenQR = crypto.randomUUID()
-      const { error: partError } = await supabase.from("participantes").insert({
-        nombre: formData.nombres,
-        apellido: formData.apellidos,
-        dni: formData.cedula,
-        email: formData.email,
-        telefono: formData.telefono,
-        categoria: formData.tallaCamiseta,
-        provincia: formData.ciudad,
-        numero_inscripcion: inscriptionNumber,
-        estado: "pendiente",
-        talla_camiseta: formData.tallaCamiseta,
-        grupo_sanguineo: formData.tipoSangre,
-        token_qr: tokenQR,
+      const res = await fetch("/api/inscripcion/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...datosInscripcion, comprobanteBase64 }),
       })
 
-      if (partError) {
-        console.error("Error creando participante:", partError)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || "No se pudo guardar la inscripción")
       }
 
-      // Enviar email de confirmacion con QR
-      try {
-        await emailService.sendConfirmationEmail({
-          email: formData.email,
-          nombreCompleto: `${formData.nombres} ${formData.apellidos}`,
-          numeroInscripcion: String(inscriptionNumber),
-          talleRemera: formData.tallaCamiseta,
-          tokenQR: tokenQR,
-          ubicacion: "Concepcion del Uruguay, Entre Rios",
-        })
-      } catch (emailError) {
-        console.error("Error enviando email:", emailError)
-      }
+      await res.json()
+
+      // El email de confirmación con QR se envía cuando el admin aprueba
+      // la inscripción (cambia el estado a "Confirmada"), no acá.
 
       // Limpiar draft para no ofrecer restaurarlo en el siguiente intento.
       try {
@@ -359,7 +316,7 @@ export default function InscripcionPage() {
 
       toast({
         title: "¡Inscripción exitosa!",
-        description: "Tu solicitud ha sido enviada. Recibirás un correo con tu código QR.",
+        description: "Tu solicitud ha sido enviada. Te avisaremos por correo cuando esté confirmada.",
       })
 
       router.push("/inscripcion/exito")
@@ -483,7 +440,14 @@ export default function InscripcionPage() {
             </CardHeader>
             <CardContent>
               {/* Step Content */}
-              {currentStep === 1 && <PersonalInfoStep formData={formData} updateFormData={updateFormData} />}
+              {currentStep === 1 && (
+                <PersonalInfoStep
+                  formData={formData}
+                  updateFormData={updateFormData}
+                  onDNIBlur={lookupDni}
+                  buscandoDNI={buscandoDNI}
+                />
+              )}
               {currentStep === 2 && <CategoryStep formData={formData} updateFormData={updateFormData} />}
               {currentStep === 3 && <PaymentStep formData={formData} updateFormData={updateFormData} eventConfig={eventConfig} />}
               {currentStep === 4 && <ReviewStep formData={formData} eventConfig={eventConfig} />}

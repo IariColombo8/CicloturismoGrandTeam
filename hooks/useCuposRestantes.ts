@@ -15,13 +15,18 @@ interface CuposRestantes {
   hayDatos: boolean
 }
 
+// "participantes" es historico (acumula todas las ediciones via anios[]).
+// El contador publico es de la edicion actual: siempre filtramos por anio.
+const EDICION_ACTUAL = 2026
+
 /**
  * Cupos disponibles en tiempo real.
  *
- * Cuenta filas de `participantes` (una por inscripto) y las resta del
- * `cupoMaximo` del evento. Si la consulta falla —por ejemplo, por RLS— no
- * inventa números: deja `disponibles` en null y `hayDatos` en false para que
- * la UI muestre un fallback en vez de un "0 disponibles" alarmante.
+ * Cuenta filas de `participantes` inscriptas en la edicion actual (una por
+ * inscripto) y las resta del `cupoMaximo` del evento. Si la consulta falla
+ * —por ejemplo, por RLS— no inventa números: deja `disponibles` en null y
+ * `hayDatos` en false para que la UI muestre un fallback en vez de un
+ * "0 disponibles" alarmante.
  */
 export function useCuposRestantes(): CuposRestantes {
   const { eventSettings } = useSupabaseContext()
@@ -35,6 +40,7 @@ export function useCuposRestantes(): CuposRestantes {
         const { count, error } = await supabase
           .from("participantes")
           .select("id", { count: "exact", head: true })
+          .contains("anios", [EDICION_ACTUAL])
 
         if (cancelled) return
         if (error || typeof count !== "number") {

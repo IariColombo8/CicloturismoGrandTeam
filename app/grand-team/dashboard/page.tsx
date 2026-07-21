@@ -37,6 +37,7 @@ export default function GrandTeamDashboard() {
         .from("participantes")
         .select("*")
         .eq("estado", "aprobado")
+        .contains("anios", [2026])
         .order("fecha_inscripcion", { ascending: false })
 
       setInscripciones((data || []).map((d: any) => ({

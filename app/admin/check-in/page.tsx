@@ -339,6 +339,25 @@ export default function CheckInPage() {
     }
   }
 
+  // Cancelar un check-in (permite volver a escanear el mismo QR).
+  // No toca token_qr: el código impreso/enviado por email sigue siendo válido.
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null)
+  const cancelarCheckIn = async (id: string) => {
+    setCancelandoId(id)
+    try {
+      const { error } = await supabase
+        .from("participantes")
+        .update({ checked_in: false, checked_in_at: null, checked_in_by: null })
+        .eq("id", id)
+      if (error) throw error
+      setHistorial((prev) => prev.filter((item) => item.id !== id))
+    } catch (error) {
+      console.error("Error cancelando check-in:", error)
+    } finally {
+      setCancelandoId(null)
+    }
+  }
+
   // Busqueda manual por DNI o nombre (server-side, sin descargar toda la tabla)
   const buscarManual = async () => {
     if (!busquedaManual.trim()) return
@@ -659,14 +678,29 @@ export default function CheckInPage() {
                         </p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400 flex-shrink-0 ml-2">
-                      {item.checkedInAt
-                        ? new Date(item.checkedInAt).toLocaleTimeString("es-AR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : ""}
-                    </p>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <p className="text-xs text-gray-400">
+                        {item.checkedInAt
+                          ? new Date(item.checkedInAt).toLocaleTimeString("es-AR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => cancelarCheckIn(item.id)}
+                        disabled={cancelandoId === item.id}
+                        title="Cancelar check-in (permite volver a escanear el QR)"
+                        className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                      >
+                        {cancelandoId === item.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

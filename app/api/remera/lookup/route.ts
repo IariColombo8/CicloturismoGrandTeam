@@ -12,13 +12,13 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient()
 
-  type InscRow = { nombres: string; apellidos: string; telefono: string | null }
+  type ParticipanteRow = { nombre: string; apellido: string; telefono: string | null }
 
-  const inscripcionResult = await supabase
-    .from("inscripciones")
-    .select("nombres, apellidos, telefono, cedula")
-    .eq("cedula", dni)
-    .maybeSingle() as { data: InscRow | null; error: unknown }
+  const participanteResult = (await supabase
+    .from("participantes")
+    .select("nombre, apellido, telefono")
+    .eq("dni", dni)
+    .maybeSingle()) as { data: ParticipanteRow | null; error: unknown }
 
   const remeraResult = await supabase
     .from("remera")
@@ -26,14 +26,14 @@ export async function GET(req: NextRequest) {
     .eq("dni", dni)
     .maybeSingle()
 
-  const insc = inscripcionResult.data
+  const participante = participanteResult.data
   const remera = remeraResult.data
 
   return NextResponse.json({
-    participante: insc
+    participante: participante
       ? {
-          nombre: `${insc.nombres} ${insc.apellidos}`.trim(),
-          telefono: insc.telefono ?? "",
+          nombre: `${participante.nombre} ${participante.apellido}`.trim(),
+          telefono: participante.telefono ?? "",
           estaRegistrado: true,
         }
       : null,
