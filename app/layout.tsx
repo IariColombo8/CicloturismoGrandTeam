@@ -19,7 +19,7 @@ const bebasNeue = Bebas_Neue({
 })
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://grandteambike.com.ar"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://grand-team.vercel.app"
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
