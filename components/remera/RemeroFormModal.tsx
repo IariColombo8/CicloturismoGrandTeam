@@ -540,10 +540,13 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         <DialogContent className="bg-zinc-900 border-yellow-400/20 text-white max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-yellow-400 text-xl">
-              {pedidoPrevio ? "Modificar pedido de remera" : "Pedir remera del evento"}
+              {pedidoPrevio
+                ? "Modificar pedido de remera"
+                : "Pedir remera del evento"}
             </DialogTitle>
             <DialogDescription className="text-zinc-400">
-              Paso {currentStep}/{TOTAL_STEPS} · Tu avance se guarda automáticamente.
+              Paso {currentStep}/{TOTAL_STEPS} · Tu avance se guarda
+              automáticamente.
             </DialogDescription>
           </DialogHeader>
 
@@ -552,10 +555,12 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               <div className="flex gap-3">
                 <Save className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-white">Encontramos un pedido a medio completar</p>
+                  <p className="font-semibold text-white">
+                    Encontramos un pedido a medio completar
+                  </p>
                   <p className="text-sm text-zinc-300 mt-1">
-                    Quedaste en el paso {clampStep(draftCandidate.step)}/{TOTAL_STEPS} ·{" "}
-                    {formatDraftDate(draftCandidate.updatedAt)}
+                    Quedaste en el paso {clampStep(draftCandidate.step)}/
+                    {TOTAL_STEPS} · {formatDraftDate(draftCandidate.updatedAt)}
                   </p>
                 </div>
               </div>
@@ -582,14 +587,20 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
           ) : (
             <form
               onSubmit={(event) => {
-                event.preventDefault()
-                if (currentStep === TOTAL_STEPS) void handleSubmit()
-                else avanzarPaso()
+                event.preventDefault();
+                if (currentStep === TOTAL_STEPS) void handleSubmit();
+                else avanzarPaso();
               }}
               className="space-y-5 mt-2"
             >
-              <div className="grid grid-cols-4 gap-2" aria-label={`Paso ${currentStep} de ${TOTAL_STEPS}`}>
-                {Array.from({ length: TOTAL_STEPS }, (_, index) => index + 1).map((step) => (
+              <div
+                className="grid grid-cols-4 gap-2"
+                aria-label={`Paso ${currentStep} de ${TOTAL_STEPS}`}
+              >
+                {Array.from(
+                  { length: TOTAL_STEPS },
+                  (_, index) => index + 1,
+                ).map((step) => (
                   <div
                     key={step}
                     className={`h-1.5 rounded-full ${step <= currentStep ? "bg-yellow-400" : "bg-zinc-700"}`}
@@ -607,8 +618,12 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               {currentStep === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Tus datos</h3>
-                    <p className="text-sm text-zinc-400">Los usaremos para identificar el pedido y contactarte.</p>
+                    <h3 className="text-lg font-semibold text-white">
+                      Tus datos
+                    </h3>
+                    <p className="text-sm text-zinc-400">
+                      Los usaremos para identificar el pedido y contactarte.
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -619,7 +634,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                     <div className="relative">
                       <Input
                         value={dni}
-                        onChange={(event) => handleDniChange(event.target.value)}
+                        onChange={(event) =>
+                          handleDniChange(event.target.value)
+                        }
                         placeholder="12345678"
                         inputMode="numeric"
                         maxLength={8}
@@ -631,7 +648,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       )}
                     </div>
                     {estaRegistrado && (
-                      <p className="text-xs text-green-400">✓ Participante registrado en el evento</p>
+                      <p className="text-xs text-green-400">
+                        ✓ Participante registrado en el evento
+                      </p>
                     )}
                   </div>
 
@@ -651,7 +670,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                     <Input
                       value={telefono}
                       onChange={(event) => setTelefono(event.target.value)}
-                      placeholder="+54 9 3442 123456"
+                      placeholder="+54 9 3442 65-4257"
                       className="bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400"
                     />
                   </div>
@@ -668,7 +687,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       placeholder="tu@email.com"
                       className="bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400"
                     />
-                    <p className="text-xs text-zinc-500">El email quedará asociado al pedido.</p>
+                    <p className="text-xs text-zinc-500">
+                      El email quedará asociado al pedido.
+                    </p>
                   </div>
                 </div>
               )}
@@ -676,14 +697,21 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               {currentStep === 2 && (
                 <div className="space-y-5">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Remeras y entrega</h3>
-                    <p className="text-sm text-zinc-400">Elegí si es modelo de mujer o de hombre, el talle, la cantidad y la entrega.</p>
+                    <h3 className="text-lg font-semibold text-white">
+                      Remeras y entrega
+                    </h3>
+                    <p className="text-sm text-zinc-400">
+                      Elegí si es modelo de mujer o de hombre, el talle, la
+                      cantidad y la entrega.
+                    </p>
                   </div>
 
                   <div className="rounded-lg border border-yellow-400/40 bg-yellow-400/10 p-3">
                     <p className="flex items-start gap-2 text-sm font-semibold text-yellow-300">
                       <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      Por favor, lea bien la tabla de talles antes de seleccionar. Los talles pueden variar entre el modelo de mujer y el de hombre.
+                      Por favor, lea bien la tabla de talles antes de
+                      seleccionar. Los talles pueden variar entre el modelo de
+                      mujer y el de hombre.
                     </p>
                   </div>
 
@@ -724,10 +752,16 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                             <SelectValue placeholder="Modelo" />
                           </SelectTrigger>
                           <SelectContent className="bg-zinc-800 border-zinc-700">
-                            <SelectItem value="hombre" className="text-white focus:bg-zinc-700">
+                            <SelectItem
+                              value="hombre"
+                              className="text-white focus:bg-zinc-700"
+                            >
                               Hombre
                             </SelectItem>
-                            <SelectItem value="mujer" className="text-white focus:bg-zinc-700">
+                            <SelectItem
+                              value="mujer"
+                              className="text-white focus:bg-zinc-700"
+                            >
                               Mujer
                             </SelectItem>
                           </SelectContent>
@@ -735,7 +769,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
 
                         <Select
                           value={item.talle}
-                          onValueChange={(value) => actualizarItem(index, "talle", value)}
+                          onValueChange={(value) =>
+                            actualizarItem(index, "talle", value)
+                          }
                         >
                           <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
                             <SelectValue placeholder="Talle" />
@@ -759,7 +795,11 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                           max={999}
                           value={item.cantidad}
                           onChange={(event) =>
-                            actualizarItem(index, "cantidad", Number(event.target.value))
+                            actualizarItem(
+                              index,
+                              "cantidad",
+                              Number(event.target.value),
+                            )
                           }
                           aria-label={`Cantidad para ${etiquetaGenero(item.genero)} talle ${item.talle}`}
                           className="w-full sm:w-20 bg-zinc-800 border-zinc-700 text-white text-center"
@@ -824,7 +864,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
 
                   {envioTipo === "envio" && (
                     <div className="space-y-1.5">
-                      <Label className="text-zinc-300">Dirección de entrega</Label>
+                      <Label className="text-zinc-300">
+                        Dirección de entrega
+                      </Label>
                       <Input
                         value={direccion}
                         onChange={(event) => setDireccion(event.target.value)}
@@ -833,7 +875,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       />
                       <p className="flex items-start gap-1.5 text-xs text-yellow-400/90">
                         <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        El envío tiene un costo adicional; nos vamos a contactar.
+                        El envío tiene un costo adicional; nos vamos a
+                        contactar.
                       </p>
                     </div>
                   )}
@@ -844,7 +887,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                 <div className="space-y-5">
                   <div>
                     <h3 className="text-lg font-semibold text-white">Pago</h3>
-                    <p className="text-sm text-zinc-400">Realizá la transferencia y adjuntá el comprobante.</p>
+                    <p className="text-sm text-zinc-400">
+                      Realizá la transferencia y adjuntá el comprobante.
+                    </p>
                   </div>
 
                   {aliasInfo && (
@@ -853,7 +898,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                         <CreditCard className="w-3.5 h-3.5" />
                         Datos de pago
                       </p>
-                      <p className="text-sm text-zinc-300 whitespace-pre-line">{aliasInfo}</p>
+                      <p className="text-sm text-zinc-300 whitespace-pre-line">
+                        {aliasInfo}
+                      </p>
                     </div>
                   )}
 
@@ -861,7 +908,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                     <Label className="text-zinc-300 flex items-center gap-2">
                       <Upload className="w-4 h-4 text-yellow-400" />
                       Comprobante de pago{" "}
-                      <span className="text-zinc-500 text-xs">(JPG, PNG o PDF, máx. 5 MB)</span>
+                      <span className="text-zinc-500 text-xs">
+                        (JPG, PNG o PDF, máx. 5 MB)
+                      </span>
                     </Label>
                     <input
                       ref={fileInputRef}
@@ -869,16 +918,16 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       accept="image/jpeg,image/png,image/webp,application/pdf"
                       className="hidden"
                       onChange={(event) => {
-                        const file = event.target.files?.[0]
-                        if (!file) return
+                        const file = event.target.files?.[0];
+                        if (!file) return;
                         if (file.size > 5 * 1024 * 1024) {
                           toast({
                             title: "El archivo es demasiado grande (máx. 5 MB)",
                             variant: "destructive",
-                          })
-                          return
+                          });
+                          return;
                         }
-                        setComprobante(file)
+                        setComprobante(file);
                       }}
                     />
                     <button
@@ -887,7 +936,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       className="w-full border border-dashed border-zinc-700 rounded-lg py-5 text-sm text-zinc-400 hover:border-yellow-400/50 hover:text-zinc-300 transition-colors"
                     >
                       {comprobante ? (
-                        <span className="text-green-400">✓ {comprobante.name}</span>
+                        <span className="text-green-400">
+                          ✓ {comprobante.name}
+                        </span>
                       ) : pedidoPrevio ? (
                         "Podés conservar el comprobante anterior o adjuntar uno nuevo"
                       ) : (
@@ -901,15 +952,21 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               {currentStep === 4 && (
                 <div className="space-y-5">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Revisá tu pedido</h3>
-                    <p className="text-sm text-zinc-400">Confirmá que todo esté correcto antes de enviarlo.</p>
+                    <h3 className="text-lg font-semibold text-white">
+                      Revisá tu pedido
+                    </h3>
+                    <p className="text-sm text-zinc-400">
+                      Confirmá que todo esté correcto antes de enviarlo.
+                    </p>
                   </div>
 
                   <div className="rounded-xl border border-zinc-700 bg-zinc-800/50 divide-y divide-zinc-700 text-sm">
                     <div className="p-3">
                       <p className="text-zinc-500">Persona</p>
                       <p className="text-white font-medium">{nombre}</p>
-                      <p className="text-zinc-300">DNI {dni} · {telefono}</p>
+                      <p className="text-zinc-300">
+                        DNI {dni} · {telefono}
+                      </p>
                       <p className="text-yellow-400 break-all">{email}</p>
                     </div>
                     <div className="p-3">
@@ -926,13 +983,18 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                     <div className="p-3">
                       <p className="text-zinc-500">Entrega</p>
                       <p className="text-white">
-                        {envioTipo === "retiro" ? "Retiro en el evento" : `Envío: ${direccion}`}
+                        {envioTipo === "retiro"
+                          ? "Retiro en el evento"
+                          : `Envío: ${direccion}`}
                       </p>
                     </div>
                     <div className="p-3">
                       <p className="text-zinc-500">Comprobante</p>
                       <p className="text-white">
-                        {comprobante?.name ?? (pedidoPrevio ? "Se conserva el comprobante anterior" : "Sin adjuntar")}
+                        {comprobante?.name ??
+                          (pedidoPrevio
+                            ? "Se conserva el comprobante anterior"
+                            : "Sin adjuntar")}
                       </p>
                     </div>
                   </div>
@@ -982,9 +1044,12 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       <Dialog open={sizeChartOpen} onOpenChange={setSizeChartOpen}>
         <DialogContent className="bg-zinc-900 border-yellow-400/20 max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-yellow-400">Tabla de talles</DialogTitle>
+            <DialogTitle className="text-yellow-400">
+              Tabla de talles
+            </DialogTitle>
             <DialogDescription className="text-yellow-200 font-semibold">
-              Por favor, lea bien la tabla de talles y verifique el modelo de mujer o de hombre antes de confirmar.
+              Por favor, lea bien la tabla de talles y verifique el modelo de
+              mujer o de hombre antes de confirmar.
             </DialogDescription>
           </DialogHeader>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -996,5 +1061,5 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

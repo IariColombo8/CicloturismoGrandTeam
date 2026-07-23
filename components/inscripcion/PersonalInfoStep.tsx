@@ -24,7 +24,9 @@ export default function PersonalInfoStep({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-yellow-400">Información Personal</h3>
+        <h3 className="text-lg font-semibold text-yellow-400">
+          Información Personal
+        </h3>
 
         {/* El DNI va primero y dispara la búsqueda automática desde la página padre. */}
         <div className="space-y-2">
@@ -43,16 +45,23 @@ export default function PersonalInfoStep({
               required
               autoFocus
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-live="polite">
+            <div
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              aria-live="polite"
+            >
               {buscandoDNI ? (
-                <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" aria-label="Buscando DNI" />
+                <Loader2
+                  className="w-4 h-4 text-yellow-400 animate-spin"
+                  aria-label="Buscando DNI"
+                />
               ) : (
                 <Search className="w-4 h-4 text-gray-500" aria-hidden="true" />
               )}
             </div>
           </div>
           <p className="text-xs text-gray-500">
-            Cuando completes 7 u 8 dígitos, buscaremos tus datos automáticamente. No hace falta presionar Enter.
+            Cuando completes 7 u 8 dígitos, buscaremos tus datos
+            automáticamente. No hace falta presionar Enter.
           </p>
         </div>
 
@@ -95,7 +104,9 @@ export default function PersonalInfoStep({
               id="fechaNacimiento"
               type="date"
               value={formData.fechaNacimiento}
-              onChange={(e) => updateFormData({ fechaNacimiento: e.target.value })}
+              onChange={(e) =>
+                updateFormData({ fechaNacimiento: e.target.value })
+              }
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required
             />
@@ -127,7 +138,7 @@ export default function PersonalInfoStep({
               type="tel"
               value={formData.telefono}
               onChange={(e) => updateFormData({ telefono: e.target.value })}
-              placeholder="+54 9 3442 123456"
+              placeholder="+54 9 3442 65-4257"
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required
             />
@@ -137,8 +148,14 @@ export default function PersonalInfoStep({
             <Label htmlFor="pais" className="text-gray-300">
               País de residencia <span className="text-red-500">*</span>
             </Label>
-            <Select value={formData.pais} onValueChange={(value) => updateFormData({ pais: value })}>
-              <SelectTrigger id="pais" className="bg-zinc-900 border-yellow-400/30 text-white">
+            <Select
+              value={formData.pais}
+              onValueChange={(value) => updateFormData({ pais: value })}
+            >
+              <SelectTrigger
+                id="pais"
+                className="bg-zinc-900 border-yellow-400/30 text-white"
+              >
                 <SelectValue placeholder="Seleccioná el país" />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-yellow-400/30">
@@ -165,7 +182,9 @@ export default function PersonalInfoStep({
       </div>
 
       <div className="space-y-4 pt-6 border-t border-yellow-400/20">
-        <h3 className="text-lg font-semibold text-yellow-400">Contacto de Emergencia</h3>
+        <h3 className="text-lg font-semibold text-yellow-400">
+          Contacto de Emergencia
+        </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -175,7 +194,9 @@ export default function PersonalInfoStep({
             <Input
               id="nombreEmergencia"
               value={formData.nombreEmergencia}
-              onChange={(e) => updateFormData({ nombreEmergencia: e.target.value })}
+              onChange={(e) =>
+                updateFormData({ nombreEmergencia: e.target.value })
+              }
               placeholder="María Pérez"
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required
@@ -190,8 +211,10 @@ export default function PersonalInfoStep({
               id="telefonoEmergencia"
               type="tel"
               value={formData.telefonoEmergencia}
-              onChange={(e) => updateFormData({ telefonoEmergencia: e.target.value })}
-              placeholder="+54 9 3442 123456"
+              onChange={(e) =>
+                updateFormData({ telefonoEmergencia: e.target.value })
+              }
+              placeholder="+54 9 3442 65-4257"
               className="bg-zinc-900 border-yellow-400/30 text-white"
               required
             />
@@ -205,12 +228,14 @@ export default function PersonalInfoStep({
           <Input
             id="relacionEmergencia"
             value={formData.relacionEmergencia}
-            onChange={(e) => updateFormData({ relacionEmergencia: e.target.value })}
+            onChange={(e) =>
+              updateFormData({ relacionEmergencia: e.target.value })
+            }
             placeholder="Esposa"
             className="bg-zinc-900 border-yellow-400/30 text-white"
           />
         </div>
       </div>
     </div>
-  )
+  );
 }

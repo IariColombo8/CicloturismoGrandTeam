@@ -154,7 +154,7 @@ export default function Footer() {
                   href="tel:+5493442" 
                   className="hover:text-yellow-400 transition-colors"
                 >
-                  +54 9 3442 
+                  +54 9 3442 65-4257
                 </a>
               </li>
               <li className="flex items-start gap-3 text-gray-400 text-sm">

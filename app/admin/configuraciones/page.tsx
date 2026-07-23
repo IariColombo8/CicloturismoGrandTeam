@@ -429,7 +429,7 @@ export default function ConfiguracionesPage() {
                     <Input
                       value={telefonoContacto}
                       onChange={(e) => setTelefonoContacto(e.target.value)}
-                      placeholder="+54 9 3442 123456"
+                      placeholder=" 65-4257"
                       className="bg-gray-700 border-gray-600 text-white"
                     />
                   </div>

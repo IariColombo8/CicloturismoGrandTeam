@@ -281,23 +281,48 @@ function TabContacto({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
   return (
     <Card className="bg-gray-800/50 border-yellow-400/20 mt-4">
       <CardHeader>
-        <CardTitle className="text-yellow-400">Información de Contacto</CardTitle>
-        <CardDescription className="text-gray-400">Datos de contacto que se muestran en el sitio.</CardDescription>
+        <CardTitle className="text-yellow-400">
+          Información de Contacto
+        </CardTitle>
+        <CardDescription className="text-gray-400">
+          Datos de contacto que se muestran en el sitio.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-zinc-300">Email</Label>
-            <Input value={data.email} onChange={(e) => setData((p) => ({ ...p, email: e.target.value }))} placeholder="contacto@grandteambike.com" className="bg-zinc-800 border-zinc-700 text-white" />
+            <Input
+              value={data.email}
+              onChange={(e) =>
+                setData((p) => ({ ...p, email: e.target.value }))
+              }
+              placeholder="contacto@grandteambike.com"
+              className="bg-zinc-800 border-zinc-700 text-white"
+            />
           </div>
           <div>
             <Label className="text-zinc-300">Teléfono</Label>
-            <Input value={data.telefono} onChange={(e) => setData((p) => ({ ...p, telefono: e.target.value }))} placeholder="+54 9 3442 123456" className="bg-zinc-800 border-zinc-700 text-white" />
+            <Input
+              value={data.telefono}
+              onChange={(e) =>
+                setData((p) => ({ ...p, telefono: e.target.value }))
+              }
+              placeholder="+54 9 3442 65-4257"
+              className="bg-zinc-800 border-zinc-700 text-white"
+            />
           </div>
         </div>
         <div>
           <Label className="text-zinc-300">Dirección</Label>
-          <Input value={data.direccion} onChange={(e) => setData((p) => ({ ...p, direccion: e.target.value }))} placeholder="Concepción del Uruguay, Entre Ríos" className="bg-zinc-800 border-zinc-700 text-white" />
+          <Input
+            value={data.direccion}
+            onChange={(e) =>
+              setData((p) => ({ ...p, direccion: e.target.value }))
+            }
+            placeholder="Concepción del Uruguay, Entre Ríos"
+            className="bg-zinc-800 border-zinc-700 text-white"
+          />
         </div>
         <div>
           <Label className="text-zinc-300 block mb-2">Redes Sociales</Label>
@@ -306,7 +331,15 @@ function TabContacto({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
               <Label className="text-zinc-500 text-xs">Instagram</Label>
               <Input
                 value={data.redesSociales.instagram ?? ""}
-                onChange={(e) => setData((p) => ({ ...p, redesSociales: { ...p.redesSociales, instagram: e.target.value } }))}
+                onChange={(e) =>
+                  setData((p) => ({
+                    ...p,
+                    redesSociales: {
+                      ...p.redesSociales,
+                      instagram: e.target.value,
+                    },
+                  }))
+                }
                 placeholder="@grandteambike"
                 className="bg-zinc-800 border-zinc-700 text-white"
               />
@@ -315,7 +348,15 @@ function TabContacto({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
               <Label className="text-zinc-500 text-xs">Facebook</Label>
               <Input
                 value={data.redesSociales.facebook ?? ""}
-                onChange={(e) => setData((p) => ({ ...p, redesSociales: { ...p.redesSociales, facebook: e.target.value } }))}
+                onChange={(e) =>
+                  setData((p) => ({
+                    ...p,
+                    redesSociales: {
+                      ...p.redesSociales,
+                      facebook: e.target.value,
+                    },
+                  }))
+                }
                 placeholder="GrandTeamBikeCdelU"
                 className="bg-zinc-800 border-zinc-700 text-white"
               />
@@ -324,8 +365,16 @@ function TabContacto({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
               <Label className="text-zinc-500 text-xs">WhatsApp</Label>
               <Input
                 value={data.redesSociales.whatsapp ?? ""}
-                onChange={(e) => setData((p) => ({ ...p, redesSociales: { ...p.redesSociales, whatsapp: e.target.value } }))}
-                placeholder="+54 9 3442 123456"
+                onChange={(e) =>
+                  setData((p) => ({
+                    ...p,
+                    redesSociales: {
+                      ...p.redesSociales,
+                      whatsapp: e.target.value,
+                    },
+                  }))
+                }
+                placeholder="+54 9 3442 65-4257"
                 className="bg-zinc-800 border-zinc-700 text-white"
               />
             </div>
@@ -334,7 +383,7 @@ function TabContacto({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
         <SaveButton onClick={guardar} saving={saving} />
       </CardContent>
     </Card>
-  )
+  );
 }
 
 // ─── Helpers de UI ────────────────────────────────────────────────────────────
