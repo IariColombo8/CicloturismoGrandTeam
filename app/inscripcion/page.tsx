@@ -54,6 +54,13 @@ const defaultFormData = {
   comprobanteFile: null as File | null,
 }
 
+function hasMeaningfulDraftData(data: Record<string, unknown>): boolean {
+  return Object.entries(data).some(([key, value]) => {
+    const defaultValue = defaultFormData[key as keyof typeof defaultFormData]
+    return typeof value === "string" && value.trim() !== "" && value !== defaultValue
+  })
+}
+
 function loadDraft(): { data: typeof defaultFormData; step: number; savedAt: number } | null {
   if (typeof window === "undefined") return null
   try {
@@ -61,7 +68,12 @@ function loadDraft(): { data: typeof defaultFormData; step: number; savedAt: num
     if (!raw) return null
     const parsed = JSON.parse(raw)
     // Expirar drafts viejos para que no aparezcan "borradores zombi".
-    if (!parsed?.savedAt || Date.now() - parsed.savedAt > DRAFT_MAX_AGE_MS) {
+    if (
+      !parsed?.savedAt ||
+      Date.now() - parsed.savedAt > DRAFT_MAX_AGE_MS ||
+      !parsed.data ||
+      !hasMeaningfulDraftData(parsed.data)
+    ) {
       localStorage.removeItem(DRAFT_KEY)
       localStorage.removeItem(LEGACY_DRAFT_KEY)
       return null
@@ -71,10 +83,10 @@ function loadDraft(): { data: typeof defaultFormData; step: number; savedAt: num
         ...defaultFormData,
         ...(parsed.data || {}),
         // Compatibilidad defensiva con un borrador anterior.
-        pais: parsed.data?.pais || parsed.data?.paisTelefono || "",
+        pais: parsed.data?.pais || parsed.data?.paisTelefono || defaultFormData.pais,
         comprobanteFile: null,
       },
-      step: parsed.step || 1,
+      step: Math.min(Math.max(Number(parsed.step) || 1, 1), 4),
       savedAt: parsed.savedAt,
     }
   } catch {
@@ -89,6 +101,9 @@ export default function InscripcionPage() {
   // Detectamos si hay un draft persistido y mostramos banner.
   const [hasDraft, setHasDraft] = useState<{ savedAt: number; step: number } | null>(null)
   const draftLoadedRef = useRef(false)
+  // Evita que el formulario vacío sobrescriba el borrador antes de que
+  // la persona elija Retomar o Empezar de cero.
+  const canPersistDraftRef = useRef(false)
   const [eventConfig, setEventConfig] = useState({
     costoInscripcion: 0,
     aliasTransferencia: "",
@@ -106,20 +121,22 @@ export default function InscripcionPage() {
     const draft = loadDraft()
     if (draft) {
       // No restauramos automáticamente: mostramos un banner y dejamos
-      // que el usuario decida (mejor UX que sobreescribir silenciosamente).
+      // que el usuario decida. Mientras tanto, no persistimos el estado
+      // vacío inicial para no pisar el borrador existente.
       setHasDraft({ savedAt: draft.savedAt, step: draft.step })
+      return
     }
+    canPersistDraftRef.current = true
   }, [])
 
   // Guardar draft cada vez que cambian los datos. Excluimos el File
   // del comprobante (no es serializable a JSON).
   useEffect(() => {
-    if (typeof window === "undefined") return
-    // Solo guardamos si hay algo cargado, para no crear drafts vacíos.
+    if (typeof window === "undefined" || !canPersistDraftRef.current) return
+    // Solo guardamos cambios reales respecto del formulario inicial. Así
+    // valores por defecto como "Argentina" no crean ni pisan borradores.
     const { comprobanteFile, ...serializable } = formData
-    const hasContent = Object.values(serializable).some(
-      (v) => typeof v === "string" && v.length > 0 && v !== "transferencia"
-    )
+    const hasContent = hasMeaningfulDraftData(serializable)
     if (!hasContent) return
     try {
       localStorage.setItem(
@@ -137,6 +154,7 @@ export default function InscripcionPage() {
 
   const restoreDraft = () => {
     const draft = loadDraft()
+    canPersistDraftRef.current = true
     if (draft) {
       setFormData(draft.data)
       setCurrentStep(draft.step)
@@ -153,6 +171,9 @@ export default function InscripcionPage() {
       localStorage.removeItem(DRAFT_KEY)
       localStorage.removeItem(LEGACY_DRAFT_KEY)
     } catch {}
+    canPersistDraftRef.current = true
+    setFormData(defaultFormData)
+    setCurrentStep(1)
     setHasDraft(null)
   }
 

@@ -103,28 +103,23 @@ export default function Navbar() {
     }
   }
 
-  // Función mejorada para navegación suave a secciones
+  // Navegación a secciones de la portada desde cualquier ruta.
   const handleSectionClick = (e: React.MouseEvent, sectionId: string) => {
     e.preventDefault()
     setIsMobileMenuOpen(false)
     setOpenDropdown(null)
 
-    // Si estamos en página de admin, primero ir a home
-    if (isInAdminPages) {
-      router.push("/")
-      // Esperar a que se cargue la página y hacer scroll
-      setTimeout(() => {
-        const element = document.getElementById(sectionId)
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "start" })
-        }
-      }, 300)
-    } else {
-      // Si ya estamos en home, solo hacer scroll
-      const element = document.getElementById(sectionId)
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" })
-      }
+    if (pathname !== "/") {
+      // En páginas como /inscripcion no existen estas secciones. Navegamos
+      // primero a la portada y dejamos que el hash posicione el contenido.
+      router.push(`/#${sectionId}`)
+      return
+    }
+
+    const element = document.getElementById(sectionId)
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" })
+      window.history.replaceState(null, "", `#${sectionId}`)
     }
   }
 
@@ -341,14 +336,12 @@ export default function Navbar() {
 
             {/* CTA Buttons Desktop */}
             <div className="hidden md:flex items-center space-x-4">
-              {!isStaff && (
-                <Link
-                  href="/inscripcion"
-                  className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50"
-                >
-                  Inscribirse
-                </Link>
-              )}
+              <Link
+                href="/inscripcion"
+                className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50"
+              >
+                Inscribirme
+              </Link>
 
               {user ? (
                 <div className="flex items-center gap-2">
@@ -525,14 +518,13 @@ export default function Navbar() {
             )}
 
             <div className="pt-6 space-y-3">
-              {!isStaff && (
-                <Link
-                  href="/inscripcion"
-                  className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
-                >
-                  Inscribirse
-                </Link>
-              )}
+              <Link
+                href="/inscripcion"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
+              >
+                Inscribirme
+              </Link>
 
               {user ? (
                 <>
