@@ -1,10 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Bebas_Neue } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-import { Toaster } from "@/components/ui/toaster"
-import { SupabaseProvider } from "@/components/providers/SupabaseProvider"
+import { AppProviders } from "@/components/providers/AppProviders"
 
 const geist = Geist({
   subsets: ["latin"],
@@ -137,11 +135,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${geist.variable} ${bebasNeue.variable} font-sans antialiased`}>
-        <SupabaseProvider>
-          {children}
-          <Toaster />
-        </SupabaseProvider>
-        <Analytics />
+        <AppProviders>{children}</AppProviders>
         <script
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger

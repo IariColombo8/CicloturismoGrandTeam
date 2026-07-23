@@ -18,7 +18,11 @@
       "Bash(cd \"C:\\\\Users\\\\Emanuel\\\\Desktop\\\\ecritorio\\\\ciclo grand team\\\\CicloturismoGrandTeam\" && npm run build 2>&1 | tail -10)",
       "Bash(cd \"C:\\\\Users\\\\Emanuel\\\\Desktop\\\\ecritorio\\\\ciclo grand team\\\\CicloturismoGrandTeam\" && npm run dev 2>&1 | head -15)",
       "Bash(node scripts/subir-sponsors.mjs --dry-run)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('\\\\n'.join\\([s for s in d.get\\('sources',[]\\) if 'node_modules' not in s]\\)\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: revertir Next 16 a 15.5.6 para resolver error de build \\(createContext\\) *)",
+      "Bash(git push *)"
     ]
   }
 }

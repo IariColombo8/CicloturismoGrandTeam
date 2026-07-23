@@ -27,20 +27,6 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     minimumCacheTTL: 31536000,
   },
-  // Optimizacion del bundler
-  experimental: {
-    optimizePackageImports: [
-      'lucide-react',
-      'recharts',
-      'date-fns',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-tabs',
-      '@radix-ui/react-toast',
-      '@radix-ui/react-select',
-      '@radix-ui/react-popover',
-    ],
-  },
   async headers() {
     return [
       // API routes: sin cache
