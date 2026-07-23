@@ -29,6 +29,10 @@ import {
   Package,
   CreditCard,
   User,
+  Tag,
+  Mail,
+  Maximize2,
+  Info,
 } from "lucide-react"
 import { TALLES_DISPONIBLES, type RemeraItem } from "@/types/database"
 
@@ -48,8 +52,6 @@ interface LookupResult {
   } | null
 }
 
-const MAX_TALLES = 5
-
 export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalProps) {
   const { toast } = useToast()
 
@@ -57,11 +59,16 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
   const [dni, setDni] = useState("")
   const [nombre, setNombre] = useState("")
   const [telefono, setTelefono] = useState("")
+  const [email, setEmail] = useState("")
   const [items, setItems] = useState<RemeraItem[]>([{ talle: "M", cantidad: 1 }])
   const [envioTipo, setEnvioTipo] = useState<"retiro" | "envio">("retiro")
   const [direccion, setDireccion] = useState("")
   const [comprobante, setComprobante] = useState<File | null>(null)
   const [aliasInfo, setAliasInfo] = useState("")
+  const [precio, setPrecio] = useState("")
+  const [tallesDisponibles, setTallesDisponibles] = useState<string[]>([...TALLES_DISPONIBLES])
+  const [sizeChartImageUrl, setSizeChartImageUrl] = useState("")
+  const [sizeChartOpen, setSizeChartOpen] = useState(false)
 
   // Estado de flujo
   const [estaRegistrado, setEstaRegistrado] = useState(false)
@@ -73,12 +80,17 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lookupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Cargar alias de pago al abrir
+  // Cargar alias de pago, precio y talles disponibles al abrir
   useEffect(() => {
     if (!open) return
     fetch("/api/remera/settings")
       .then((r) => r.json())
-      .then((d) => setAliasInfo(d.aliasInfo ?? ""))
+      .then((d) => {
+        setAliasInfo(d.aliasInfo ?? "")
+        setPrecio(d.price ?? "")
+        setSizeChartImageUrl(d.sizeChartImageUrl ?? "")
+        if (Array.isArray(d.talles) && d.talles.length > 0) setTallesDisponibles(d.talles)
+      })
       .catch(() => {})
   }, [open])
 
@@ -88,6 +100,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       setDni("")
       setNombre("")
       setTelefono("")
+      setEmail("")
       setItems([{ talle: "M", cantidad: 1 }])
       setEnvioTipo("retiro")
       setDireccion("")
@@ -142,10 +155,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     }
   }
 
-  // Manejo de talles
+  // Manejo de talles (sin límite: se puede pedir para varias personas/talles)
   const agregarTalle = () => {
-    if (items.length >= MAX_TALLES) return
-    setItems((prev) => [...prev, { talle: "M", cantidad: 1 }])
+    setItems((prev) => [...prev, { talle: tallesDisponibles[0] ?? "M", cantidad: 1 }])
   }
 
   const actualizarItem = (idx: number, campo: keyof RemeraItem, valor: string | number) => {
@@ -180,12 +192,24 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       toast({ title: "Nombre requerido", description: "Ingresá tu nombre completo", variant: "destructive" })
       return
     }
+    if (!telefono.trim()) {
+      toast({ title: "Teléfono requerido", description: "Ingresá tu teléfono de contacto", variant: "destructive" })
+      return
+    }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      toast({ title: "Email inválido", description: "Ingresá un email válido", variant: "destructive" })
+      return
+    }
     if (items.length === 0) {
       toast({ title: "Seleccioná al menos un talle", variant: "destructive" })
       return
     }
     if (envioTipo === "envio" && !direccion.trim()) {
       toast({ title: "Dirección requerida para envío a domicilio", variant: "destructive" })
+      return
+    }
+    if (!comprobante && !pedidoPrevio) {
+      toast({ title: "Comprobante requerido", description: "Adjuntá el comprobante de pago", variant: "destructive" })
       return
     }
 
@@ -210,6 +234,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
           dni,
           nombre,
           telefono,
+          email,
           items,
           envio_tipo: envioTipo,
           direccion: envioTipo === "envio" ? direccion : undefined,
@@ -257,6 +282,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-zinc-900 border-yellow-400/20 text-white max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -267,6 +293,13 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
             Completá el formulario para registrar tu pedido. El pago se coordina por transferencia.
           </DialogDescription>
         </DialogHeader>
+
+        {precio && (
+          <div className="flex items-center gap-2 -mt-1 text-yellow-400 font-semibold">
+            <Tag className="w-4 h-4" />
+            Precio: {precio}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-2">
           {/* DNI */}
@@ -282,6 +315,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                 placeholder="12345678"
                 inputMode="numeric"
                 maxLength={8}
+                required
                 className="bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400"
               />
               {buscando && (
@@ -301,6 +335,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               onChange={(e) => setNombre(e.target.value)}
               placeholder="Juan Pérez"
               readOnly={estaRegistrado}
+              required
               className={`bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400 ${estaRegistrado ? "opacity-70 cursor-not-allowed" : ""}`}
             />
           </div>
@@ -313,16 +348,45 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               onChange={(e) => setTelefono(e.target.value)}
               placeholder="+54 9 3442 123456"
               readOnly={estaRegistrado}
+              required
               className={`bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400 ${estaRegistrado ? "opacity-70 cursor-not-allowed" : ""}`}
+            />
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <Label className="text-zinc-300 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-yellow-400" />
+              Email
+            </Label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@email.com"
+              required
+              className="bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400"
             />
           </div>
 
           {/* Talles */}
           <div className="space-y-2">
-            <Label className="text-zinc-300 flex items-center gap-2">
-              <Package className="w-4 h-4 text-yellow-400" />
-              Talles (máx. {MAX_TALLES})
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-zinc-300 flex items-center gap-2">
+                <Package className="w-4 h-4 text-yellow-400" />
+                Talles
+              </Label>
+              {sizeChartImageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setSizeChartOpen(true)}
+                  className="inline-flex items-center gap-1 text-xs text-yellow-400 hover:underline"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  Ver tabla de talles
+                </button>
+              )}
+            </div>
 
             {items.map((item, idx) => (
               <div key={idx} className="flex gap-2 items-center">
@@ -334,7 +398,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-800 border-zinc-700">
-                    {TALLES_DISPONIBLES.map((t) => (
+                    {tallesDisponibles.map((t) => (
                       <SelectItem key={t} value={t} className="text-white focus:bg-zinc-700">
                         {t}
                       </SelectItem>
@@ -345,7 +409,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                 <Input
                   type="number"
                   min={1}
-                  max={10}
+                  max={999}
                   value={item.cantidad}
                   onChange={(e) => actualizarItem(idx, "cantidad", Number(e.target.value))}
                   className="w-20 bg-zinc-800 border-zinc-700 text-white text-center"
@@ -365,18 +429,16 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               </div>
             ))}
 
-            {items.length < MAX_TALLES && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={agregarTalle}
-                className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 hover:text-yellow-300"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Agregar talle
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={agregarTalle}
+              className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 hover:text-yellow-300"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Agregar talle
+            </Button>
           </div>
 
           {/* Método de entrega */}
@@ -419,8 +481,13 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                 value={direccion}
                 onChange={(e) => setDireccion(e.target.value)}
                 placeholder="Calle 123, Piso 4, Dpto A, Ciudad"
+                required
                 className="bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400"
               />
+              <p className="flex items-start gap-1.5 text-xs text-yellow-400/90">
+                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                El envío tiene un costo adicional, nos vamos a contactar.
+              </p>
             </div>
           )}
 
@@ -490,5 +557,20 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         </form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={sizeChartOpen} onOpenChange={setSizeChartOpen}>
+      <DialogContent className="bg-zinc-900 border-yellow-400/20 max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-yellow-400">Tabla de talles</DialogTitle>
+        </DialogHeader>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={sizeChartImageUrl}
+          alt="Tabla de talles"
+          className="w-full rounded-lg border border-zinc-700"
+        />
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

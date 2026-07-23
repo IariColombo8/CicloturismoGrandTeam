@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase-admin"
-import { TALLES_DISPONIBLES } from "@/types/database"
 
 // Límite del comprobante en base64. Una imagen de ~3MB ≈ 4M caracteres en
 // base64; acotamos para evitar payloads gigantes (DoS de memoria).
@@ -18,16 +17,19 @@ const MIME_PERMITIDOS = [
 const submitSchema = z.object({
   dni: z.string().trim().regex(/^\d{7,8}$/, "DNI inválido"),
   nombre: z.string().trim().min(1).max(120),
-  telefono: z.string().trim().max(40).optional().default(""),
+  telefono: z.string().trim().min(1, "Teléfono requerido").max(40),
+  email: z.string().trim().min(1, "Email requerido").email("Email inválido").max(160),
   items: z
     .array(
       z.object({
-        talle: z.enum(TALLES_DISPONIBLES),
-        cantidad: z.number().int().min(1).max(50),
+        // El talle es de texto libre: el admin puede agregar sus propias opciones
+        // (ver /admin/remera), no solo la lista TALLES_DISPONIBLES por defecto.
+        talle: z.string().trim().min(1).max(10),
+        cantidad: z.number().int().min(1).max(999),
       })
     )
     .min(1, "Seleccioná al menos un talle")
-    .max(20),
+    .max(50),
   envio_tipo: z.enum(["retiro", "envio"]),
   direccion: z.string().trim().max(300).optional().default(""),
   estaRegistrado: z.boolean().optional().default(false),
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest) {
     dni,
     nombre,
     telefono,
+    email,
     items,
     envio_tipo,
     direccion,
@@ -105,6 +108,7 @@ export async function POST(req: NextRequest) {
     dni,
     nombre,
     telefono: telefono || null,
+    email: email || null,
     items,
     envio_tipo,
     direccion: direccion || null,

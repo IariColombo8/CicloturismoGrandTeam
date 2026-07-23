@@ -372,6 +372,7 @@ export interface Database {
           dni: string
           nombre: string
           telefono: string | null
+          email: string | null
           items: RemeraItem[]
           tiene_comprobante: boolean
           comprobante_url: string | null
@@ -388,6 +389,7 @@ export interface Database {
           dni: string
           nombre: string
           telefono?: string | null
+          email?: string | null
           items?: RemeraItem[]
           tiene_comprobante?: boolean
           comprobante_url?: string | null
@@ -404,6 +406,7 @@ export interface Database {
           dni?: string
           nombre?: string
           telefono?: string | null
+          email?: string | null
           items?: RemeraItem[]
           tiene_comprobante?: boolean
           comprobante_url?: string | null

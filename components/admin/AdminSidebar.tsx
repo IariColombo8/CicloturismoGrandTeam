@@ -51,7 +51,12 @@ export default function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useAdminLayout()
-  const { user } = useSupabaseContext()
+  const { user, userRole } = useSupabaseContext()
+
+  const visibleNavItems =
+    userRole === "remera"
+      ? navItems.filter((item) => item.href === "/" || item.href === "/admin/remera")
+      : navItems
 
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
   const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || ""
@@ -154,7 +159,7 @@ export default function AdminSidebar() {
           aria-label="Secciones de administración"
           className="flex-1 p-3 md:p-4 space-y-1 overflow-y-auto pt-14 md:pt-4"
         >
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
             return (

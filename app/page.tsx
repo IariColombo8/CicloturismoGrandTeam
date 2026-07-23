@@ -5,6 +5,7 @@ import { getTeamPhotos } from "@/lib/teamPhotos"
 
 // Componentes below-the-fold: carga diferida para no bloquear el render inicial
 const AboutTeam = dynamic(() => import("@/components/home/AboutTeam"), { ssr: true })
+const RemeraSection = dynamic(() => import("@/components/remera/RemeraSection"), { ssr: true })
 const RouteMap = dynamic(() => import("@/components/home/RouteMap"), { ssr: true })
 const Gallery = dynamic(() => import("@/components/home/Gallery"), { ssr: true })
 const Sponsors = dynamic(() => import("@/components/home/Sponsors"), { ssr: true })
@@ -21,6 +22,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <AboutTeam />
+      <RemeraSection />
       <RouteMap />
       <Gallery images={teamPhotos} />
       <Sponsors />

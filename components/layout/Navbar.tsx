@@ -24,6 +24,9 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const isAdminOrGrandTeam = userRole === "admin" || userRole === "grandteam"
+  const isRemera = userRole === "remera"
+  // Personal con acceso a admin (incluye rol acotado "remera")
+  const isStaff = isAdminOrGrandTeam || isRemera
   const isInAdminPages = pathname?.startsWith("/admin")
 
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
@@ -75,7 +78,7 @@ export default function Navbar() {
   // Banda central del viewport para decidir la seccion "activa".
   useEffect(() => {
     if (pathname !== "/") return
-    const sectionIds = ["inicio", "nosotros", "detalles", "contacto"]
+    const sectionIds = ["inicio", "nosotros", "pedir-remera", "detalles", "galeria", "patrocinadores", "contacto"]
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -128,16 +131,38 @@ export default function Navbar() {
   const navLinks = useMemo(() => [
     { id: "inicio", label: "Inicio" },
     { id: "nosotros", label: "Sobre Nosotros" },
-    { id: "detalles", label: "Detalles" },
+    { id: "pedir-remera", label: "Pedir Remera" },
     { id: "contacto", label: "Contacto" },
   ], [])
 
-  const adminLinks = useMemo(() => [
-    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
-    { href: "/admin/grandteam", label: "Grand Team", icon: User },
-    { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
+  // Sub-secciones agrupadas bajo el dropdown "Detalles"
+  const detailsLinks = useMemo(() => [
+    { id: "detalles", label: "Mapa" },
+    { id: "galeria", label: "Galería" },
+    { id: "patrocinadores", label: "Sponsors" },
   ], [])
+
+  // Lista plana (para el dropdown "Volver a Inicio" en páginas de admin)
+  const flatSectionLinks = useMemo(() => [
+    { id: "inicio", label: "Inicio" },
+    { id: "nosotros", label: "Sobre Nosotros" },
+    { id: "pedir-remera", label: "Pedir Remera" },
+    ...detailsLinks,
+    { id: "contacto", label: "Contacto" },
+  ], [detailsLinks])
+
+  const adminLinks = useMemo(() => {
+    // El rol "remera" solo administra la sección de remeras
+    if (isRemera) {
+      return [{ href: "/admin/remera", label: "Remera", icon: Shirt }]
+    }
+    return [
+      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
+      { href: "/admin/grandteam", label: "Grand Team", icon: User },
+      { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
+    ]
+  }, [isRemera])
 
   const toggleDropdown = useCallback((dropdown: string) => {
     setOpenDropdown((prev) => prev === dropdown ? null : dropdown)
@@ -207,7 +232,7 @@ export default function Navbar() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8" ref={dropdownRef}>
-              {isAdminOrGrandTeam && isInAdminPages ? (
+              {isStaff && isInAdminPages ? (
                 // Vista admin en páginas de admin
                 <>
                   <DropdownMenu
@@ -216,7 +241,7 @@ export default function Navbar() {
                     isOpen={openDropdown === "inicio"}
                     onToggle={() => toggleDropdown("inicio")}
                   >
-                    {navLinks.map((link) => (
+                    {flatSectionLinks.map((link) => (
                       <a
                         key={link.id}
                         href={`/#${link.id}`}
@@ -243,10 +268,29 @@ export default function Navbar() {
                     )
                   })}
                 </>
-              ) : isAdminOrGrandTeam ? (
+              ) : isStaff ? (
                 // Vista admin en página principal
                 <>
-                  {navLinks.map(renderDesktopLink)}
+                  {renderDesktopLink(navLinks[0])}
+                  {renderDesktopLink(navLinks[1])}
+                  {renderDesktopLink(navLinks[2])}
+                  <DropdownMenu
+                    label="Detalles"
+                    isOpen={openDropdown === "detalles"}
+                    onToggle={() => toggleDropdown("detalles")}
+                  >
+                    {detailsLinks.map((link) => (
+                      <a
+                        key={link.id}
+                        href={`/#${link.id}`}
+                        onClick={(e) => handleSectionClick(e, link.id)}
+                        className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </DropdownMenu>
+                  {renderDesktopLink(navLinks[3])}
 
                   <DropdownMenu
                     label="Admin"
@@ -271,29 +315,39 @@ export default function Navbar() {
               ) : (
                 // Vista usuarios normales
                 <>
-                  {navLinks.map(renderDesktopLink)}
+                  {renderDesktopLink(navLinks[0])}
+                  {renderDesktopLink(navLinks[1])}
+                  {renderDesktopLink(navLinks[2])}
+                  <DropdownMenu
+                    label="Detalles"
+                    isOpen={openDropdown === "detalles"}
+                    onToggle={() => toggleDropdown("detalles")}
+                  >
+                    {detailsLinks.map((link) => (
+                      <a
+                        key={link.id}
+                        href={`/#${link.id}`}
+                        onClick={(e) => handleSectionClick(e, link.id)}
+                        className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    ))}
+                  </DropdownMenu>
+                  {renderDesktopLink(navLinks[3])}
                 </>
               )}
             </div>
 
             {/* CTA Buttons Desktop */}
             <div className="hidden md:flex items-center space-x-4">
-              {!isAdminOrGrandTeam && (
-                <>
-                  <Link
-                    href="/pedir-remera"
-                    className="flex items-center gap-1.5 text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium text-sm"
-                  >
-                    <Shirt size={16} />
-                    Remera
-                  </Link>
-                  <Link
-                    href="/inscripcion"
-                    className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50"
-                  >
-                    Inscribirse
-                  </Link>
-                </>
+              {!isStaff && (
+                <Link
+                  href="/inscripcion"
+                  className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50"
+                >
+                  Inscribirse
+                </Link>
               )}
 
               {user ? (
@@ -365,7 +419,7 @@ export default function Navbar() {
           }`}
         >
           <div className="h-full overflow-y-auto px-6 py-6 space-y-4">
-            {isAdminOrGrandTeam && isInAdminPages ? (
+            {isStaff && isInAdminPages ? (
               // Mobile admin en páginas admin
               <>
                 <MobileDropdown
@@ -374,7 +428,7 @@ export default function Navbar() {
                   isOpen={openDropdown === "inicio"}
                   onToggle={() => toggleDropdown("inicio")}
                 >
-                  {navLinks.map((link) => (
+                  {flatSectionLinks.map((link) => (
                     <a
                       key={link.id}
                       href={`/#${link.id}`}
@@ -400,10 +454,29 @@ export default function Navbar() {
                   )
                 })}
               </>
-            ) : isAdminOrGrandTeam ? (
+            ) : isStaff ? (
               // Mobile admin en página principal
               <>
-                {navLinks.map(renderMobileLink)}
+                {renderMobileLink(navLinks[0])}
+                {renderMobileLink(navLinks[1])}
+                {renderMobileLink(navLinks[2])}
+                <MobileDropdown
+                  label="Detalles"
+                  isOpen={openDropdown === "detalles"}
+                  onToggle={() => toggleDropdown("detalles")}
+                >
+                  {detailsLinks.map((link) => (
+                    <a
+                      key={link.id}
+                      href={`/#${link.id}`}
+                      onClick={(e) => handleSectionClick(e, link.id)}
+                      className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </MobileDropdown>
+                {renderMobileLink(navLinks[3])}
 
                 <MobileDropdown
                   label="Admin"
@@ -428,27 +501,37 @@ export default function Navbar() {
             ) : (
               // Mobile usuarios normales
               <>
-                {navLinks.map(renderMobileLink)}
+                {renderMobileLink(navLinks[0])}
+                {renderMobileLink(navLinks[1])}
+                {renderMobileLink(navLinks[2])}
+                <MobileDropdown
+                  label="Detalles"
+                  isOpen={openDropdown === "detalles"}
+                  onToggle={() => toggleDropdown("detalles")}
+                >
+                  {detailsLinks.map((link) => (
+                    <a
+                      key={link.id}
+                      href={`/#${link.id}`}
+                      onClick={(e) => handleSectionClick(e, link.id)}
+                      className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </MobileDropdown>
+                {renderMobileLink(navLinks[3])}
               </>
             )}
 
             <div className="pt-6 space-y-3">
-              {!isAdminOrGrandTeam && (
-                <>
-                  <Link
-                    href="/pedir-remera"
-                    className="flex items-center justify-center gap-2 w-full px-6 py-3 border border-yellow-400/40 text-yellow-400 rounded-lg hover:bg-yellow-400/10 transition-all font-medium"
-                  >
-                    <Shirt size={18} />
-                    Pedir Remera
-                  </Link>
-                  <Link
-                    href="/inscripcion"
-                    className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
-                  >
-                    Inscribirse
-                  </Link>
-                </>
+              {!isStaff && (
+                <Link
+                  href="/inscripcion"
+                  className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
+                >
+                  Inscribirse
+                </Link>
               )}
 
               {user ? (

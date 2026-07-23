@@ -18,7 +18,9 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   const { user, userRole, loading } = useSupabaseContext()
 
   const isAdminOnlyRoute = ADMIN_ONLY_ROUTES.some((route) => pathname.startsWith(route))
-  const allowedRoles = isAdminOnlyRoute ? ["admin"] : ["admin", "grandteam"]
+  const allowedRoles = isAdminOnlyRoute ? ["admin"] : ["admin", "grandteam", "remera"]
+  // El rol "remera" solo puede acceder a /admin/remera
+  const isRemeraOutOfScope = userRole === "remera" && !pathname.startsWith("/admin/remera")
 
   useEffect(() => {
     if (loading) return
@@ -30,8 +32,13 @@ export default function AdminGuard({ children }: AdminGuardProps) {
 
     if (userRole && !allowedRoles.includes(userRole)) {
       router.push("/")
+      return
     }
-  }, [user, userRole, loading, router, pathname, allowedRoles])
+
+    if (isRemeraOutOfScope) {
+      router.push("/admin/remera")
+    }
+  }, [user, userRole, loading, router, pathname, allowedRoles, isRemeraOutOfScope])
 
   if (loading) {
     return (
@@ -44,7 +51,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
     )
   }
 
-  if (!user || !userRole || !allowedRoles.includes(userRole)) {
+  if (!user || !userRole || !allowedRoles.includes(userRole) || isRemeraOutOfScope) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">

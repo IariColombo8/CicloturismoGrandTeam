@@ -22,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   Shirt,
@@ -36,10 +38,20 @@ import {
   Loader2,
   FilterX,
   ExternalLink,
-  CreditCard,
+  Plus,
+  Trash2,
+  Settings2,
 } from "lucide-react";
 import type { Remera, RemeraItem } from "@/types/database";
 import { TALLES_DISPONIBLES } from "@/types/database";
+import {
+  REMERA_CONTENT_DEFAULTS,
+  REMERA_ICON_OPTIONS,
+  mergeRemeraContent,
+  uid,
+  type JerseyFeature,
+  type RemeraContentData,
+} from "@/lib/remeraContent";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -98,21 +110,22 @@ export default function AdminRemeraPage() {
   const [comprobanteLoading, setComprobanteLoading] = useState(false);
   const [comprobanteError, setComprobanteError] = useState<string | null>(null);
 
-  // Alias de pago
-  const [aliasInfo, setAliasInfo] = useState("");
-  const [savingAlias, setSavingAlias] = useState(false);
-  const [aliasOpen, setAliasOpen] = useState(false);
+  // Contenido editorial de la sección (antes en /admin/content > tab Remera)
+  const [contenido, setContenido] = useState<RemeraContentData>(REMERA_CONTENT_DEFAULTS);
+  const [savingContenido, setSavingContenido] = useState(false);
+  const [contenidoOpen, setContenidoOpen] = useState(false);
+  const [nuevoTalle, setNuevoTalle] = useState("");
 
-  const isAdmin = ["admin", "superadmin", "owner"].includes(userRole ?? "");
+  const canAccess = ["admin", "superadmin", "owner", "remera"].includes(userRole ?? "");
 
   // Auth guard
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login?returnUrl=/admin/remera");
-    } else if (!authLoading && user && !isAdmin) {
+    } else if (!authLoading && user && !canAccess) {
       router.push("/");
     }
-  }, [authLoading, user, isAdmin, router]);
+  }, [authLoading, user, canAccess, router]);
 
   const fetchPedidos = async (silencioso = false) => {
     if (!silencioso) setLoading(true);
@@ -156,15 +169,13 @@ export default function AdminRemeraPage() {
     }
   };
 
-  const fetchAlias = async () => {
+  const fetchContenido = async () => {
     const { data } = await supabase
       .from("content_settings")
       .select("data")
       .eq("id", "remera")
       .maybeSingle();
-    setAliasInfo(
-      ((data?.data as Record<string, unknown>)?.aliasInfo as string) ?? "",
-    );
+    setContenido(mergeRemeraContent(data?.data as Partial<RemeraContentData>));
   };
 
   const abrirComprobante = async (url: string) => {
@@ -198,10 +209,10 @@ export default function AdminRemeraPage() {
   };
 
   useEffect(() => {
-    if (!user || !isAdmin) return;
+    if (!user || !canAccess) return;
     fetchPedidos();
-    fetchAlias();
-  }, [user, isAdmin]);
+    fetchContenido();
+  }, [user, canAccess]);
 
   // Cambiar estado del pedido
   const toggleEstado = async (pedido: Remera) => {
@@ -228,31 +239,55 @@ export default function AdminRemeraPage() {
     });
   };
 
-  // Guardar alias
-  const guardarAlias = async () => {
-    setSavingAlias(true);
-    const { data: existing } = await supabase
-      .from("content_settings")
-      .select("data")
-      .eq("id", "remera")
-      .maybeSingle();
-
-    const dataActual = (existing?.data as Record<string, unknown>) ?? {};
+  // Guardar contenido editorial completo de la sección
+  const guardarContenido = async () => {
+    setSavingContenido(true);
     const { error } = await supabase
       .from("content_settings")
       .upsert({
         id: "remera",
-        data: { ...dataActual, aliasInfo },
+        data: contenido as unknown as Record<string, unknown>,
         updated_at: new Date().toISOString(),
       });
 
-    setSavingAlias(false);
+    setSavingContenido(false);
     if (error) {
       toast({ title: "Error al guardar", variant: "destructive" });
       return;
     }
-    toast({ title: "Datos de pago guardados" });
-    setAliasOpen(false);
+    toast({ title: "Contenido de la sección Remera guardado" });
+  };
+
+  const agregarFeature = () => {
+    setContenido((prev) => ({
+      ...prev,
+      features: [...prev.features, { id: uid(), title: "", description: "", icon: "BadgeCheck" }],
+    }));
+  };
+
+  const actualizarFeature = (id: string, campo: keyof JerseyFeature, valor: string) => {
+    setContenido((prev) => ({
+      ...prev,
+      features: prev.features.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)),
+    }));
+  };
+
+  const eliminarFeature = (id: string) => {
+    setContenido((prev) => ({ ...prev, features: prev.features.filter((f) => f.id !== id) }));
+  };
+
+  const agregarTalle = () => {
+    const talle = nuevoTalle.trim().toUpperCase();
+    if (!talle || contenido.talles.includes(talle)) {
+      setNuevoTalle("");
+      return;
+    }
+    setContenido((prev) => ({ ...prev, talles: [...prev.talles, talle] }));
+    setNuevoTalle("");
+  };
+
+  const eliminarTalle = (talle: string) => {
+    setContenido((prev) => ({ ...prev, talles: prev.talles.filter((t) => t !== talle) }));
   };
 
   // Filtros aplicados
@@ -324,11 +359,11 @@ export default function AdminRemeraPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setAliasOpen(true)}
+              onClick={() => setContenidoOpen(true)}
               className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10"
             >
-              <CreditCard className="w-4 h-4 mr-1.5" />
-              Datos de pago
+              <Settings2 className="w-4 h-4 mr-1.5" />
+              Editar contenido
             </Button>
             <Button
               variant="outline"
@@ -706,39 +741,209 @@ export default function AdminRemeraPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Modal: alias de pago ─── */}
-      <Dialog open={aliasOpen} onOpenChange={setAliasOpen}>
-        <DialogContent className="bg-zinc-900 border-yellow-400/20 max-w-md">
+      {/* ─── Modal: contenido de la sección remera ─── */}
+      <Dialog open={contenidoOpen} onOpenChange={setContenidoOpen}>
+        <DialogContent className="bg-zinc-900 border-yellow-400/20 max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-yellow-400">
-              Datos de pago para remeras
+              Editar contenido de /pedir-remera
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-zinc-400">
-              Este texto se muestra en el formulario público de pedido de
-              remera.
-            </p>
-            <Textarea
-              value={aliasInfo}
-              onChange={(e) => setAliasInfo(e.target.value)}
-              placeholder={
-                "Alias: grandteam.remera\nCBU: 0000000000000000000000\nTitular: Juan Pérez"
-              }
-              rows={6}
-              className="bg-zinc-800 border-zinc-700 text-white"
-            />
+          <div className="space-y-5">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800 border border-zinc-700">
+              <div>
+                <p className="text-white font-medium text-sm">Mostrar sección en el sitio</p>
+                <p className="text-xs text-zinc-400">Si está desactivada, /pedir-remera no se accede desde el menú</p>
+              </div>
+              <Switch
+                checked={contenido.showSection}
+                onCheckedChange={(v) => setContenido((prev) => ({ ...prev, showSection: v }))}
+              />
+            </div>
+
+            <div>
+              <Label className="text-zinc-300">Texto de la insignia (badge)</Label>
+              <Input
+                value={contenido.badgeText}
+                onChange={(e) => setContenido((p) => ({ ...p, badgeText: e.target.value }))}
+                className="bg-zinc-800 border-zinc-700 text-white"
+                placeholder="Merch oficial del evento"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-zinc-300">Título de la sección</Label>
+                <Input
+                  value={contenido.title}
+                  onChange={(e) => setContenido((p) => ({ ...p, title: e.target.value }))}
+                  className="bg-zinc-800 border-zinc-700 text-white"
+                  placeholder="Remera Oficial"
+                />
+              </div>
+              <div>
+                <Label className="text-zinc-300">Precio de la remera</Label>
+                <Input
+                  value={contenido.price}
+                  onChange={(e) => setContenido((p) => ({ ...p, price: e.target.value }))}
+                  className="bg-zinc-800 border-zinc-700 text-white"
+                  placeholder="$15.000"
+                />
+                <p className="text-xs text-zinc-500 mt-1">Se muestra afuera (público) y dentro del formulario de pedido.</p>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-zinc-300">URL de la imagen de la remera</Label>
+              <Input
+                value={contenido.imageUrl}
+                onChange={(e) => setContenido((p) => ({ ...p, imageUrl: e.target.value }))}
+                className="bg-zinc-800 border-zinc-700 text-white"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <Label className="text-zinc-300">Descripción general</Label>
+              <Textarea
+                value={contenido.description}
+                onChange={(e) => setContenido((p) => ({ ...p, description: e.target.value }))}
+                rows={3}
+                className="bg-zinc-800 border-zinc-700 text-white"
+              />
+            </div>
+
+            <div>
+              <Label className="text-zinc-300 block mb-2">Talles disponibles</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {contenido.talles.map((talle) => (
+                  <span
+                    key={talle}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm"
+                  >
+                    {talle}
+                    <button
+                      type="button"
+                      onClick={() => eliminarTalle(talle)}
+                      className="text-red-400 hover:text-red-300"
+                      aria-label={`Quitar talle ${talle}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={nuevoTalle}
+                  onChange={(e) => setNuevoTalle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      agregarTalle();
+                    }
+                  }}
+                  placeholder="Ej: 6XL"
+                  className="bg-zinc-800 border-zinc-700 text-white max-w-[160px]"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={agregarTalle} className="border-yellow-400/30 text-yellow-400">
+                  <Plus className="w-4 h-4 mr-1" />Agregar talle
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-zinc-300">URL de la foto de la tabla de talles</Label>
+              <Input
+                value={contenido.sizeChartImageUrl}
+                onChange={(e) => setContenido((p) => ({ ...p, sizeChartImageUrl: e.target.value }))}
+                className="bg-zinc-800 border-zinc-700 text-white"
+                placeholder="https://..."
+              />
+              <p className="text-xs text-zinc-500 mt-1">
+                Si se completa, en el sitio público aparece un botón "Ver tabla de talles" que abre esta foto en un modal.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-zinc-300">Título del CTA</Label>
+                <Input
+                  value={contenido.callToActionTitle}
+                  onChange={(e) => setContenido((p) => ({ ...p, callToActionTitle: e.target.value }))}
+                  className="bg-zinc-800 border-zinc-700 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-zinc-300">Descripción del CTA</Label>
+                <Input
+                  value={contenido.callToActionDescription}
+                  onChange={(e) => setContenido((p) => ({ ...p, callToActionDescription: e.target.value }))}
+                  className="bg-zinc-800 border-zinc-700 text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-zinc-300">Datos de pago (alias, CBU, etc.)</Label>
+              <Textarea
+                value={contenido.aliasInfo}
+                onChange={(e) => setContenido((p) => ({ ...p, aliasInfo: e.target.value }))}
+                rows={4}
+                className="bg-zinc-800 border-zinc-700 text-white"
+                placeholder={"Alias: grandteam.remera\nCBU: 0000000000000000000000\nTitular: Juan Pérez"}
+              />
+              <p className="text-xs text-zinc-500 mt-1">Aparece solo dentro del formulario público de pedido de remera.</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-zinc-300">Características</Label>
+                <Button type="button" variant="outline" size="sm" onClick={agregarFeature} className="border-yellow-400/30 text-yellow-400">
+                  <Plus className="w-4 h-4 mr-1" />Agregar
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {contenido.features.map((feat) => (
+                  <div key={feat.id} className="flex gap-2 items-start p-2 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                    <Select
+                      value={feat.icon ?? "BadgeCheck"}
+                      onValueChange={(v) => actualizarFeature(feat.id, "icon", v)}
+                    >
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white w-[120px] flex-shrink-0">
+                        <SelectValue placeholder="Ícono" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-800 border-zinc-700">
+                        {REMERA_ICON_OPTIONS.map((iconName) => (
+                          <SelectItem key={iconName} value={iconName} className="text-white focus:bg-zinc-700">
+                            {iconName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <Input value={feat.title} onChange={(e) => actualizarFeature(feat.id, "title", e.target.value)} placeholder="Título" className="bg-zinc-800 border-zinc-700 text-white" />
+                      <Input value={feat.description} onChange={(e) => actualizarFeature(feat.id, "description", e.target.value)} placeholder="Descripción" className="bg-zinc-800 border-zinc-700 text-white" />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => eliminarFeature(feat.id)} className="text-red-400 hover:bg-red-400/10 flex-shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <Button
-              onClick={guardarAlias}
-              disabled={savingAlias}
+              onClick={guardarContenido}
+              disabled={savingContenido}
               className="w-full bg-yellow-400 text-black hover:bg-yellow-500 font-semibold"
             >
-              {savingAlias ? (
+              {savingContenido ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              Guardar
+              Guardar cambios
             </Button>
           </div>
         </DialogContent>

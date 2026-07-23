@@ -9,11 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import {
-  Shirt,
   Image,
   Users,
   Mail,
@@ -25,23 +23,6 @@ import {
 } from "lucide-react"
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
-
-interface JerseyFeature {
-  id: string
-  title: string
-  description: string
-}
-
-interface RemeraData {
-  title: string
-  description: string
-  imageUrl: string
-  showSection: boolean
-  callToActionTitle: string
-  callToActionDescription: string
-  aliasInfo: string
-  features: JerseyFeature[]
-}
 
 interface Sponsor {
   id: string
@@ -115,12 +96,8 @@ export default function AdminContentPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-yellow-400">Contenido del Sitio</h1>
         </div>
 
-        <Tabs defaultValue="remera">
+        <Tabs defaultValue="sponsors">
           <TabsList className="bg-zinc-900 border border-zinc-800">
-            <TabsTrigger value="remera" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-black">
-              <Shirt className="w-4 h-4 mr-1.5" />
-              Remera
-            </TabsTrigger>
             <TabsTrigger value="sponsors" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-black">
               <Users className="w-4 h-4 mr-1.5" />
               Sponsors
@@ -135,9 +112,6 @@ export default function AdminContentPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="remera">
-            <TabRemera toast={toast} />
-          </TabsContent>
           <TabsContent value="sponsors">
             <TabSponsors toast={toast} />
           </TabsContent>
@@ -150,149 +124,6 @@ export default function AdminContentPage() {
         </Tabs>
       </div>
     </div>
-  )
-}
-
-// ─── Tab: Remera ──────────────────────────────────────────────────────────────
-
-function TabRemera({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
-  const [data, setData] = useState<RemeraData>({
-    title: "",
-    description: "",
-    imageUrl: "",
-    showSection: false,
-    callToActionTitle: "¿Querés tu remera?",
-    callToActionDescription: "",
-    aliasInfo: "",
-    features: [],
-  })
-  const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    cargarSeccion("remera").then((d) => {
-      setData((prev) => ({ ...prev, ...(d as Partial<RemeraData>) }))
-      setLoading(false)
-    })
-  }, [])
-
-  const agregarFeature = () => {
-    setData((prev) => ({
-      ...prev,
-      features: [...prev.features, { id: uid(), title: "", description: "" }],
-    }))
-  }
-
-  const actualizarFeature = (id: string, campo: keyof JerseyFeature, valor: string) => {
-    setData((prev) => ({
-      ...prev,
-      features: prev.features.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)),
-    }))
-  }
-
-  const eliminarFeature = (id: string) => {
-    setData((prev) => ({ ...prev, features: prev.features.filter((f) => f.id !== id) }))
-  }
-
-  const guardar = async () => {
-    setSaving(true)
-    const { error } = await guardarSeccion("remera", data as unknown as Record<string, unknown>)
-    setSaving(false)
-    if (error) {
-      toast({ title: "Error al guardar", variant: "destructive" })
-      return
-    }
-    toast({ title: "Sección Remera guardada" })
-  }
-
-  if (loading) return <TabLoader />
-
-  return (
-    <Card className="bg-gray-800/50 border-yellow-400/20 mt-4">
-      <CardHeader>
-        <CardTitle className="text-yellow-400">Sección Remera</CardTitle>
-        <CardDescription className="text-gray-400">
-          Configurá el contenido de la página /pedir-remera y cómo aparece en el sitio.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800 border border-zinc-700">
-          <div>
-            <p className="text-white font-medium">Mostrar sección en el sitio</p>
-            <p className="text-sm text-zinc-400">Si está desactivada, la página /pedir-remera no se accede desde el menú</p>
-          </div>
-          <Switch
-            checked={data.showSection}
-            onCheckedChange={(v) => setData((prev) => ({ ...prev, showSection: v }))}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-zinc-300">Título de la sección</Label>
-            <Input value={data.title} onChange={(e) => setData((p) => ({ ...p, title: e.target.value }))} className="bg-zinc-800 border-zinc-700 text-white" placeholder="Remera Oficial" />
-          </div>
-          <div>
-            <Label className="text-zinc-300">URL de la imagen de la remera</Label>
-            <Input value={data.imageUrl} onChange={(e) => setData((p) => ({ ...p, imageUrl: e.target.value }))} className="bg-zinc-800 border-zinc-700 text-white" placeholder="https://..." />
-          </div>
-        </div>
-
-        <div>
-          <Label className="text-zinc-300">Descripción general</Label>
-          <Textarea value={data.description} onChange={(e) => setData((p) => ({ ...p, description: e.target.value }))} rows={3} className="bg-zinc-800 border-zinc-700 text-white" />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-zinc-300">Título del CTA</Label>
-            <Input value={data.callToActionTitle} onChange={(e) => setData((p) => ({ ...p, callToActionTitle: e.target.value }))} className="bg-zinc-800 border-zinc-700 text-white" />
-          </div>
-          <div>
-            <Label className="text-zinc-300">Descripción del CTA</Label>
-            <Input value={data.callToActionDescription} onChange={(e) => setData((p) => ({ ...p, callToActionDescription: e.target.value }))} className="bg-zinc-800 border-zinc-700 text-white" />
-          </div>
-        </div>
-
-        <div>
-          <Label className="text-zinc-300">Datos de pago (alias, CBU, etc.)</Label>
-          <Textarea
-            value={data.aliasInfo}
-            onChange={(e) => setData((p) => ({ ...p, aliasInfo: e.target.value }))}
-            rows={4}
-            className="bg-zinc-800 border-zinc-700 text-white"
-            placeholder={"Alias: grandteam.remera\nCBU: 0000000000000000000000\nTitular: Juan Pérez"}
-          />
-          <p className="text-xs text-zinc-500 mt-1">Aparece en el formulario público de pedido de remera.</p>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <Label className="text-zinc-300">Características (máx. 6)</Label>
-            {data.features.length < 6 && (
-              <Button type="button" variant="outline" size="sm" onClick={agregarFeature} className="border-yellow-400/30 text-yellow-400">
-                <Plus className="w-4 h-4 mr-1" />Agregar
-              </Button>
-            )}
-          </div>
-          <div className="space-y-2">
-            {data.features.map((feat) => (
-              <div key={feat.id} className="flex gap-2 items-start">
-                <div className="flex-1 grid grid-cols-2 gap-2">
-                  <Input value={feat.title} onChange={(e) => actualizarFeature(feat.id, "title", e.target.value)} placeholder="Título" className="bg-zinc-800 border-zinc-700 text-white" />
-                  <Input value={feat.description} onChange={(e) => actualizarFeature(feat.id, "description", e.target.value)} placeholder="Descripción" className="bg-zinc-800 border-zinc-700 text-white" />
-                </div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => eliminarFeature(feat.id)} className="text-red-400 hover:bg-red-400/10 flex-shrink-0">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <SaveButton onClick={guardar} saving={saving} />
-      </CardContent>
-    </Card>
   )
 }
 
