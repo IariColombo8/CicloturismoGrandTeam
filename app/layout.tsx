@@ -91,7 +91,7 @@ export const metadata: Metadata = {
     description:
       "50 km de aventura por Entre Ríos. Inscribite al 1er Cicloturismo Ruinas del Viejo Molino.",
 
-    images: ["/METADATOS.png"],
+    images: ["https://grand-team.vercel.app/METADATOS.png"],
   },
 
   robots: {
