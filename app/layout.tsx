@@ -74,7 +74,7 @@ export const metadata: Metadata = {
 
     images: [
       {
-        url: "https://grand-team.vercel.app",
+        url: "https://grand-team.vercel.app/METADATOS.png",
         width: 1200,
         height: 630,
         type: "image/png",
@@ -91,7 +91,7 @@ export const metadata: Metadata = {
     description:
       "50 km de aventura por Entre Ríos. Inscribite al 1er Cicloturismo Ruinas del Viejo Molino.",
 
-    images: ["https://grand-team.vercel.app"],
+    images: ["/METADATOS.png"],
   },
 
   robots: {
