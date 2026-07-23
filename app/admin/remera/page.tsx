@@ -58,18 +58,37 @@ import {
 type RemeraItemConGenero = RemeraItem & { genero?: "hombre" | "mujer" };
 type RemeraConEmail = Remera & { email?: string | null };
 
-function formatItems(items: RemeraItem[]) {
-  return (items as RemeraItemConGenero[])
-    .map((item) => {
-      const modelo =
-        item.genero === "mujer"
-          ? "Mujer"
-          : item.genero === "hombre"
-            ? "Hombre"
-            : "Modelo sin especificar";
-      return `${modelo} · ${item.talle}×${item.cantidad}`;
-    })
-    .join(", ");
+function formatItemLabel(item: RemeraItemConGenero, compacto = false) {
+  const modelo =
+    item.genero === "mujer"
+      ? compacto
+        ? "Muj"
+        : "Mujer"
+      : item.genero === "hombre"
+        ? compacto
+          ? "Hom"
+          : "Hombre"
+        : compacto
+          ? "Sin mod."
+          : "Modelo sin especificar";
+
+  return `${modelo} - ${item.talle} ×${item.cantidad}`;
+}
+
+function ordenarTalles(talles: string[]) {
+  const ordenBase = new Map(
+    TALLES_DISPONIBLES.map((talle, indice) => [talle.toUpperCase(), indice]),
+  );
+
+  return [...talles].sort((a, b) => {
+    const ordenA = ordenBase.get(a.toUpperCase());
+    const ordenB = ordenBase.get(b.toUpperCase());
+
+    if (ordenA !== undefined && ordenB !== undefined) return ordenA - ordenB;
+    if (ordenA !== undefined) return -1;
+    if (ordenB !== undefined) return 1;
+    return a.localeCompare(b, "es", { numeric: true });
+  });
 }
 
 function formatFecha(fecha: string) {
@@ -118,6 +137,10 @@ export default function AdminRemeraPage() {
   const [filtroEnvio, setFiltroEnvio] = useState("todos");
 
   // Modal comprobante
+  const [pedidoSeleccionado, setPedidoSeleccionado] =
+    useState<RemeraConEmail | null>(null);
+  const [detalleOpen, setDetalleOpen] = useState(false);
+
   const [comprobanteUrl, setComprobanteUrl] = useState<string | null>(null);
   const [comprobanteOpen, setComprobanteOpen] = useState(false);
   const [comprobanteLoading, setComprobanteLoading] = useState(false);
@@ -326,16 +349,35 @@ export default function AdminRemeraPage() {
     });
   }, [pedidos, busqueda, filtroEstado, filtroTalle, filtroEnvio]);
 
-  // Resumen por talle
+  // Resumen por modelo y talle
   const resumenPorTalle = useMemo(() => {
-    const totales: Record<string, number> = {};
-    pedidosFiltrados.forEach((p) => {
-      p.items.forEach((i) => {
-        totales[i.talle] = (totales[i.talle] ?? 0) + i.cantidad;
+    const totales = {
+      hombre: {} as Record<string, number>,
+      mujer: {} as Record<string, number>,
+      sinEspecificar: {} as Record<string, number>,
+    };
+
+    pedidosFiltrados.forEach((pedido) => {
+      (pedido.items as RemeraItemConGenero[]).forEach((item) => {
+        const grupo =
+          item.genero === "hombre"
+            ? "hombre"
+            : item.genero === "mujer"
+              ? "mujer"
+              : "sinEspecificar";
+
+        totales[grupo][item.talle] =
+          (totales[grupo][item.talle] ?? 0) + item.cantidad;
       });
     });
+
     return totales;
   }, [pedidosFiltrados]);
+
+  const abrirDetalle = (pedido: RemeraConEmail) => {
+    setPedidoSeleccionado(pedido);
+    setDetalleOpen(true);
+  };
 
   const limpiarFiltros = () => {
     setBusqueda("");
@@ -369,12 +411,12 @@ export default function AdminRemeraPage() {
               Remeras
             </h1>
           </div>
-          <div className="flex gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setContenidoOpen(true)}
-              className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10"
+              className="min-w-0 border-yellow-400/30 px-2 text-yellow-400 hover:bg-yellow-400/10 sm:px-3"
             >
               <Settings2 className="w-4 h-4 mr-1.5" />
               Editar contenido
@@ -384,7 +426,7 @@ export default function AdminRemeraPage() {
               size="sm"
               onClick={() => fetchPedidos(true)}
               disabled={refreshing}
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              className="min-w-0 border-zinc-700 px-2 text-zinc-300 hover:bg-zinc-800 sm:px-3"
             >
               <RefreshCw
                 className={`w-4 h-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`}
@@ -420,32 +462,50 @@ export default function AdminRemeraPage() {
           />
         </div>
 
-        {/* ─── Resumen por talle ─── */}
-        {Object.keys(resumenPorTalle).length > 0 && (
-          <Card className="bg-zinc-900/50 border-yellow-400/20">
+        {/* ─── Resumen por modelo y talle ─── */}
+        {(Object.keys(resumenPorTalle.hombre).length > 0 ||
+          Object.keys(resumenPorTalle.mujer).length > 0 ||
+          Object.keys(resumenPorTalle.sinEspecificar).length > 0) && (
+          <Card className="overflow-hidden bg-zinc-900/60 border-yellow-400/20">
             <CardHeader className="pb-3">
-              <CardTitle className="text-yellow-400 text-base">
+              <CardTitle className="text-yellow-400 text-base sm:text-lg">
                 Resumen por talle
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {TALLES_DISPONIBLES.filter((t) => resumenPorTalle[t]).map(
-                  (talle) => (
-                    <div
-                      key={talle}
-                      className="px-3 py-1.5 bg-zinc-800 rounded-lg border border-zinc-700 text-center"
-                    >
-                      <span className="text-white font-semibold text-sm">
-                        {talle}
-                      </span>
-                      <span className="text-yellow-400 text-sm ml-2">
-                        ×{resumenPorTalle[talle]}
-                      </span>
-                    </div>
-                  ),
-                )}
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ResumenModelo
+                  titulo="Hombre"
+                  totales={resumenPorTalle.hombre}
+                />
+                <ResumenModelo
+                  titulo="Mujer"
+                  totales={resumenPorTalle.mujer}
+                />
               </div>
+
+              {Object.keys(resumenPorTalle.sinEspecificar).length > 0 && (
+                <div className="rounded-xl border border-zinc-700 bg-zinc-950/60 p-4">
+                  <p className="mb-3 text-sm font-semibold text-zinc-300">
+                    Pedidos anteriores sin modelo especificado
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                    {ordenarTalles(
+                      Object.keys(resumenPorTalle.sinEspecificar),
+                    ).map((talle) => (
+                      <div
+                        key={talle}
+                        className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2"
+                      >
+                        <span className="font-medium text-zinc-200">{talle}</span>
+                        <span className="font-bold text-yellow-400">
+                          {resumenPorTalle.sinEspecificar[talle]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -515,184 +575,181 @@ export default function AdminRemeraPage() {
           </CardContent>
         </Card>
 
-        {/* ─── Tabla ─── */}
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        {/* ─── Pedidos: móvil y escritorio ─── */}
+        <Card className="overflow-hidden bg-zinc-900/50 border-zinc-800">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400">
-                    <th className="text-left px-4 py-3 font-medium">
-                      Nombre / DNI
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium">
-                      Teléfono
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium">Talles</th>
-                    <th className="text-left px-4 py-3 font-medium">Entrega</th>
-                    <th className="text-left px-4 py-3 font-medium">
-                      Inscripto
-                    </th>
-                    <th className="text-left px-4 py-3 font-medium">Fecha</th>
-                    <th className="text-left px-4 py-3 font-medium">Estado</th>
-                    <th className="text-right px-4 py-3 font-medium">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pedidosFiltrados.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-10 text-center">
-                        {loadError ? (
-                          <div className="mx-auto max-w-xl space-y-2">
-                            <p className="font-medium text-red-400">
-                              No se pudieron cargar las inscripciones de remera
+            {pedidosFiltrados.length === 0 ? (
+              <div className="px-4 py-12 text-center">
+                {loadError ? (
+                  <div className="mx-auto max-w-xl space-y-2">
+                    <p className="font-medium text-red-400">
+                      No se pudieron cargar las inscripciones de remera
+                    </p>
+                    <p className="break-words text-xs text-red-300/80">
+                      {loadError}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchPedidos(true)}
+                      disabled={refreshing}
+                      className="mt-2 border-red-400/30 text-red-300 hover:bg-red-400/10"
+                    >
+                      <RefreshCw
+                        className={`mr-1.5 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                      />
+                      Reintentar
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="text-zinc-500">
+                    No hay pedidos
+                    {hayFiltros ? " que coincidan con los filtros" : ""}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Vista móvil: tarjetas sin scroll horizontal */}
+                <div className="divide-y divide-zinc-800 lg:hidden">
+                  {pedidosFiltrados.map((pedido) => (
+                    <article key={pedido.id} className="p-4">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                        <div className="min-w-0 space-y-3">
+                          <div>
+                            <p className="truncate font-semibold text-white">
+                              {pedido.nombre}
                             </p>
-                            <p className="break-words text-xs text-red-300/80">
-                              {loadError}
+                            <p className="text-xs text-zinc-500">
+                              DNI {pedido.dni}
                             </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => fetchPedidos(true)}
-                              disabled={refreshing}
-                              className="mt-2 border-red-400/30 text-red-300 hover:bg-red-400/10"
-                            >
-                              <RefreshCw
-                                className={`mr-1.5 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-                              />
-                              Reintentar
-                            </Button>
                           </div>
-                        ) : (
-                          <span className="text-zinc-500">
-                            No hay pedidos
-                            {hayFiltros ? " que coincidan con los filtros" : ""}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ) : (
-                    pedidosFiltrados.map((pedido) => (
-                      <tr
-                        key={pedido.id}
-                        className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <p className="text-white font-medium">
-                            {pedido.nombre}
-                          </p>
-                          <p className="text-zinc-500 text-xs">{pedido.dni}</p>
-                        </td>
-                        <td className="px-4 py-3 text-zinc-300">
-                          <span className="block">{pedido.telefono ?? "—"}</span>
-                          {pedido.email && (
-                            <span className="block text-xs text-yellow-400 break-all">
-                              {pedido.email}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-zinc-300">
-                          {formatItems(pedido.items)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="flex items-center gap-1 text-zinc-300">
-                            {pedido.envio_tipo === "envio" ? (
-                              <>
-                                <MapPin className="w-3 h-3 text-yellow-400" />
-                                <span className="text-xs">
-                                  Envío
-                                  {pedido.direccion && (
-                                    <span className="text-zinc-500 block">
-                                      {pedido.direccion}
+
+                          <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
+                            <div className="min-w-0 rounded-lg border border-zinc-800 bg-black/20 px-3 py-2">
+                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                                Teléfono / email
+                              </p>
+                              <p className="truncate text-sm text-zinc-200">
+                                {pedido.telefono ?? "—"}
+                              </p>
+                              <p className="break-all text-xs text-yellow-400">
+                                {pedido.email ?? "Sin email"}
+                              </p>
+                            </div>
+
+                            <div className="min-w-0 rounded-lg border border-zinc-800 bg-black/20 px-3 py-2">
+                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                                Talle
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(pedido.items as RemeraItemConGenero[]).map(
+                                  (item, index) => (
+                                    <span
+                                      key={`${pedido.id}-${item.genero ?? "sin"}-${item.talle}-${index}`}
+                                      className="rounded-md border border-yellow-400/20 bg-yellow-400/10 px-2 py-1 text-xs font-medium text-yellow-300"
+                                    >
+                                      {formatItemLabel(item, true)}
                                     </span>
-                                  )}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-xs">Retiro</span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {pedido.esta_registrado ? (
-                            <Badge className="bg-green-500/10 text-green-400 border-green-500/20 text-xs">
-                              Sí
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-zinc-500 border-zinc-700 text-xs"
-                            >
-                              No
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-zinc-400 text-xs whitespace-nowrap">
-                          {formatFecha(pedido.fecha_solicitud)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            className={
-                              pedido.estado === "entregado"
-                                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                : "bg-yellow-400/10 text-yellow-400 border-yellow-400/20"
-                            }
-                          >
-                            {pedido.estado === "entregado"
-                              ? "Entregado"
-                              : "Pendiente"}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            {pedido.comprobante_url && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  abrirComprobante(pedido.comprobante_url!)
-                                }
-                                title="Ver comprobante"
-                                className="h-8 w-8 text-zinc-400 hover:text-yellow-400"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleEstado(pedido)}
-                              className={`h-8 text-xs ${
-                                pedido.estado === "pendiente"
-                                  ? "text-green-400 hover:bg-green-400/10"
-                                  : "text-zinc-400 hover:bg-zinc-700"
-                              }`}
-                            >
-                              {pedido.estado === "pendiente" ? (
-                                <>
-                                  <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                                  Entregar
-                                </>
-                              ) : (
-                                <>
-                                  <Clock className="w-3.5 h-3.5 mr-1" />
-                                  Revertir
-                                </>
-                              )}
-                            </Button>
+                                  ),
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </td>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => abrirDetalle(pedido)}
+                          title="Ver todos los detalles"
+                          aria-label={`Ver detalles del pedido de ${pedido.nombre}`}
+                          className="h-10 w-10 shrink-0 border border-zinc-700 text-zinc-300 hover:border-yellow-400/40 hover:bg-yellow-400/10 hover:text-yellow-400"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                {/* Vista escritorio: tabla compacta */}
+                <div className="hidden overflow-x-auto lg:block">
+                  <table className="w-full min-w-[900px] text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-800 bg-black/20 text-zinc-400">
+                        <th className="text-left px-5 py-3 font-medium">
+                          Nombre / DNI
+                        </th>
+                        <th className="text-left px-5 py-3 font-medium">
+                          Teléfono / email
+                        </th>
+                        <th className="text-left px-5 py-3 font-medium">Talle</th>
+                        <th className="w-24 text-center px-5 py-3 font-medium">
+                          Acciones
+                        </th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {pedidosFiltrados.map((pedido) => (
+                        <tr
+                          key={pedido.id}
+                          className="border-b border-zinc-800/60 transition-colors hover:bg-zinc-800/30"
+                        >
+                          <td className="px-5 py-4">
+                            <p className="font-medium text-white">
+                              {pedido.nombre}
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              DNI {pedido.dni}
+                            </p>
+                          </td>
+                          <td className="px-5 py-4">
+                            <p className="text-zinc-200">
+                              {pedido.telefono ?? "—"}
+                            </p>
+                            <p className="max-w-[280px] break-all text-xs text-yellow-400">
+                              {pedido.email ?? "Sin email"}
+                            </p>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex max-w-xl flex-wrap gap-2">
+                              {(pedido.items as RemeraItemConGenero[]).map(
+                                (item, index) => (
+                                  <span
+                                    key={`${pedido.id}-${item.genero ?? "sin"}-${item.talle}-${index}`}
+                                    className="rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-200"
+                                  >
+                                    {formatItemLabel(item)}
+                                  </span>
+                                ),
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => abrirDetalle(pedido)}
+                              title="Ver todos los detalles"
+                              aria-label={`Ver detalles del pedido de ${pedido.nombre}`}
+                              className="h-9 w-9 border border-zinc-700 text-zinc-300 hover:border-yellow-400/40 hover:bg-yellow-400/10 hover:text-yellow-400"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
 
             {pedidosFiltrados.length > 0 && (
-              <div className="px-4 py-3 border-t border-zinc-800 text-xs text-zinc-500">
+              <div className="border-t border-zinc-800 px-4 py-3 text-xs text-zinc-500 sm:px-5">
                 {pedidosFiltrados.length} pedido
                 {pedidosFiltrados.length !== 1 ? "s" : ""}
                 {hayFiltros && ` de ${pedidos.length} total`}
@@ -701,6 +758,162 @@ export default function AdminRemeraPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ─── Modal: detalle completo del pedido ─── */}
+      <Dialog open={detalleOpen} onOpenChange={setDetalleOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-yellow-400/20 bg-zinc-900 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-yellow-400">
+              Detalle del pedido de remera
+            </DialogTitle>
+          </DialogHeader>
+
+          {pedidoSeleccionado && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <DetalleCampo
+                  etiqueta="Nombre y apellido"
+                  valor={pedidoSeleccionado.nombre}
+                />
+                <DetalleCampo
+                  etiqueta="DNI"
+                  valor={pedidoSeleccionado.dni}
+                />
+                <DetalleCampo
+                  etiqueta="Teléfono"
+                  valor={pedidoSeleccionado.telefono ?? "—"}
+                />
+                <DetalleCampo
+                  etiqueta="Email"
+                  valor={pedidoSeleccionado.email ?? "Sin email registrado"}
+                  breakAll
+                />
+              </div>
+
+              <div className="rounded-xl border border-zinc-700 bg-black/20 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Remeras solicitadas
+                </p>
+                <div className="space-y-2">
+                  {(pedidoSeleccionado.items as RemeraItemConGenero[]).map(
+                    (item, index) => (
+                      <div
+                        key={`${pedidoSeleccionado.id}-detalle-${index}`}
+                        className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2"
+                      >
+                        <span className="font-medium text-zinc-200">
+                          {formatItemLabel(item).replace(
+                            ` ×${item.cantidad}`,
+                            "",
+                          )}
+                        </span>
+                        <Badge className="border-yellow-400/20 bg-yellow-400/10 text-yellow-400">
+                          Cantidad: {item.cantidad}
+                        </Badge>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <DetalleCampo
+                  etiqueta="Método de entrega"
+                  valor={
+                    pedidoSeleccionado.envio_tipo === "envio"
+                      ? "Envío a domicilio"
+                      : "Retiro en el evento"
+                  }
+                />
+                <DetalleCampo
+                  etiqueta="Dirección"
+                  valor={pedidoSeleccionado.direccion ?? "No corresponde"}
+                />
+                <DetalleCampo
+                  etiqueta="Fecha del pedido"
+                  valor={formatFecha(pedidoSeleccionado.fecha_solicitud)}
+                />
+                <DetalleCampo
+                  etiqueta="Inscripto al evento"
+                  valor={pedidoSeleccionado.esta_registrado ? "Sí" : "No"}
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 rounded-xl border border-zinc-700 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Estado
+                  </p>
+                  <Badge
+                    className={`mt-2 ${
+                      pedidoSeleccionado.estado === "entregado"
+                        ? "border-green-500/20 bg-green-500/10 text-green-400"
+                        : "border-yellow-400/20 bg-yellow-400/10 text-yellow-400"
+                    }`}
+                  >
+                    {pedidoSeleccionado.estado === "entregado"
+                      ? "Entregado"
+                      : "Pendiente"}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {pedidoSeleccionado.comprobante_url && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        abrirComprobante(
+                          pedidoSeleccionado.comprobante_url as string,
+                        )
+                      }
+                      className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      Ver comprobante
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      toggleEstado(pedidoSeleccionado);
+                      setPedidoSeleccionado((actual) =>
+                        actual
+                          ? {
+                              ...actual,
+                              estado:
+                                actual.estado === "pendiente"
+                                  ? "entregado"
+                                  : "pendiente",
+                            }
+                          : actual,
+                      );
+                    }}
+                    className={
+                      pedidoSeleccionado.estado === "pendiente"
+                        ? "bg-green-500 text-black hover:bg-green-400"
+                        : "bg-zinc-700 text-white hover:bg-zinc-600"
+                    }
+                  >
+                    {pedidoSeleccionado.estado === "pendiente" ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Marcar entregado
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="mr-2 h-4 w-4" />
+                        Volver a pendiente
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ─── Modal: comprobante ─── */}
       <Dialog open={comprobanteOpen} onOpenChange={setComprobanteOpen}>
@@ -967,6 +1180,66 @@ export default function AdminRemeraPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function ResumenModelo({
+  titulo,
+  totales,
+}: {
+  titulo: "Hombre" | "Mujer";
+  totales: Record<string, number>;
+}) {
+  const talles = ordenarTalles(Object.keys(totales));
+
+  return (
+    <section className="rounded-xl border border-zinc-700 bg-zinc-950/60 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-semibold text-white">{titulo}</h3>
+        <Badge className="border-yellow-400/20 bg-yellow-400/10 text-yellow-400">
+          {Object.values(totales).reduce((total, cantidad) => total + cantidad, 0)}
+        </Badge>
+      </div>
+
+      {talles.length > 0 ? (
+        <div className="space-y-2">
+          {talles.map((talle) => (
+            <div
+              key={talle}
+              className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2"
+            >
+              <span className="font-medium text-zinc-200">{talle}</span>
+              <span className="font-bold text-yellow-400">{totales[talle]}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-dashed border-zinc-800 px-3 py-5 text-center text-sm text-zinc-500">
+          Sin pedidos
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DetalleCampo({
+  etiqueta,
+  valor,
+  breakAll = false,
+}: {
+  etiqueta: string;
+  valor: string;
+  breakAll?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border border-zinc-800 bg-black/20 p-3">
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        {etiqueta}
+      </p>
+      <p className={`text-sm text-zinc-200 ${breakAll ? "break-all" : "break-words"}`}>
+        {valor}
+      </p>
     </div>
   );
 }
