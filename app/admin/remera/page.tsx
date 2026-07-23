@@ -55,8 +55,21 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+type RemeraItemConGenero = RemeraItem & { genero?: "hombre" | "mujer" };
+type RemeraConEmail = Remera & { email?: string | null };
+
 function formatItems(items: RemeraItem[]) {
-  return items.map((i) => `${i.talle}×${i.cantidad}`).join(", ");
+  return (items as RemeraItemConGenero[])
+    .map((item) => {
+      const modelo =
+        item.genero === "mujer"
+          ? "Mujer"
+          : item.genero === "hombre"
+            ? "Hombre"
+            : "Modelo sin especificar";
+      return `${modelo} · ${item.talle}×${item.cantidad}`;
+    })
+    .join(", ");
 }
 
 function formatFecha(fecha: string) {
@@ -93,7 +106,7 @@ export default function AdminRemeraPage() {
   const { user, userRole, loading: authLoading } = useSupabaseContext();
   const { toast } = useToast();
 
-  const [pedidos, setPedidos] = useState<Remera[]>([]);
+  const [pedidos, setPedidos] = useState<RemeraConEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -151,7 +164,7 @@ export default function AdminRemeraPage() {
         return;
       }
 
-      setPedidos((data as Remera[]) ?? []);
+      setPedidos((data as RemeraConEmail[]) ?? []);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Error desconocido";
@@ -298,7 +311,8 @@ export default function AdminRemeraPage() {
         textoBusqueda &&
         !p.nombre.toLowerCase().includes(textoBusqueda) &&
         !p.dni.includes(textoBusqueda) &&
-        !(p.telefono ?? "").includes(textoBusqueda)
+        !(p.telefono ?? "").includes(textoBusqueda) &&
+        !(p.email ?? "").toLowerCase().includes(textoBusqueda)
       )
         return false;
       if (filtroEstado !== "todos" && p.estado !== filtroEstado) return false;
@@ -572,7 +586,12 @@ export default function AdminRemeraPage() {
                           <p className="text-zinc-500 text-xs">{pedido.dni}</p>
                         </td>
                         <td className="px-4 py-3 text-zinc-300">
-                          {pedido.telefono ?? "—"}
+                          <span className="block">{pedido.telefono ?? "—"}</span>
+                          {pedido.email && (
+                            <span className="block text-xs text-yellow-400 break-all">
+                              {pedido.email}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-zinc-300">
                           {formatItems(pedido.items)}
