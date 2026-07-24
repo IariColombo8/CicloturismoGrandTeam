@@ -49,15 +49,20 @@ interface RemeroFormModalProps {
 }
 
 type GeneroRemera = "hombre" | "mujer"
+type DestinoEnvio = "domicilio" | "correo"
 type RemeraItemConGenero = RemeraItem & { genero: GeneroRemera }
 type RemeraItemPersistido = RemeraItem & { genero?: GeneroRemera }
 
 interface DireccionEnvioForm {
   pais: "Argentina"
   provincia: string
+  provinciaId: string
   ciudad: string
+  localidadId: string
   barrio: string
   codigoPostal: string
+  destinoEnvio: DestinoEnvio
+  sucursalCorreo: string
   calle: string
   altura: string
   sinNumero: boolean
@@ -70,12 +75,38 @@ interface DireccionEnvioForm {
   longitud: number | null
 }
 
+interface LocalidadOption {
+  id: string
+  nombre: string
+  centroide?: { lat: number; lon: number } | null
+}
+
+interface GeorefLocalidadResponse {
+  localidades?: Array<{
+    id?: string
+    nombre?: string
+    centroide?: { lat?: number; lon?: number } | null
+  }>
+}
+
+interface NominatimResult {
+  lat?: string
+  lon?: string
+  address?: {
+    postcode?: string
+  }
+}
+
 const DIRECCION_INICIAL: DireccionEnvioForm = {
   pais: "Argentina",
   provincia: "",
+  provinciaId: "",
   ciudad: "",
+  localidadId: "",
   barrio: "",
   codigoPostal: "",
+  destinoEnvio: "domicilio",
+  sucursalCorreo: "",
   calle: "",
   altura: "",
   sinNumero: false,
@@ -89,30 +120,30 @@ const DIRECCION_INICIAL: DireccionEnvioForm = {
 }
 
 const PROVINCIAS_ARGENTINA = [
-  "Buenos Aires",
-  "Catamarca",
-  "Chaco",
-  "Chubut",
-  "Ciudad Autónoma de Buenos Aires",
-  "Córdoba",
-  "Corrientes",
-  "Entre Ríos",
-  "Formosa",
-  "Jujuy",
-  "La Pampa",
-  "La Rioja",
-  "Mendoza",
-  "Misiones",
-  "Neuquén",
-  "Río Negro",
-  "Salta",
-  "San Juan",
-  "San Luis",
-  "Santa Cruz",
-  "Santa Fe",
-  "Santiago del Estero",
-  "Tierra del Fuego",
-  "Tucumán",
+  { id: "06", nombre: "Buenos Aires" },
+  { id: "10", nombre: "Catamarca" },
+  { id: "22", nombre: "Chaco" },
+  { id: "26", nombre: "Chubut" },
+  { id: "02", nombre: "Ciudad Autónoma de Buenos Aires" },
+  { id: "14", nombre: "Córdoba" },
+  { id: "18", nombre: "Corrientes" },
+  { id: "30", nombre: "Entre Ríos" },
+  { id: "34", nombre: "Formosa" },
+  { id: "38", nombre: "Jujuy" },
+  { id: "42", nombre: "La Pampa" },
+  { id: "46", nombre: "La Rioja" },
+  { id: "50", nombre: "Mendoza" },
+  { id: "54", nombre: "Misiones" },
+  { id: "58", nombre: "Neuquén" },
+  { id: "62", nombre: "Río Negro" },
+  { id: "66", nombre: "Salta" },
+  { id: "70", nombre: "San Juan" },
+  { id: "74", nombre: "San Luis" },
+  { id: "78", nombre: "Santa Cruz" },
+  { id: "82", nombre: "Santa Fe" },
+  { id: "86", nombre: "Santiago del Estero" },
+  { id: "94", nombre: "Tierra del Fuego" },
+  { id: "90", nombre: "Tucumán" },
 ] as const
 
 interface LookupResult {
@@ -129,9 +160,13 @@ interface LookupResult {
     email: string | null
     pais?: string | null
     provincia?: string | null
+    provincia_id?: string | null
     ciudad?: string | null
+    localidad_id?: string | null
     barrio?: string | null
     codigo_postal?: string | null
+    destino_envio?: DestinoEnvio | null
+    sucursal_correo?: string | null
     calle?: string | null
     altura?: string | null
     sin_numero?: boolean | null
@@ -148,7 +183,7 @@ interface LookupResult {
 }
 
 interface RemeraDraft {
-  version: 1 | 2
+  version: 1 | 2 | 3
   updatedAt: number
   step: number
   dni: string
@@ -191,10 +226,19 @@ function normalizarDireccion(
   data?: Partial<DireccionEnvioForm> | null,
   direccionAnterior = "",
 ): DireccionEnvioForm {
+  const provincia = data?.provincia?.trim() ?? ""
+  const provinciaId =
+    data?.provinciaId?.trim() ||
+    PROVINCIAS_ARGENTINA.find((item) => item.nombre === provincia)?.id ||
+    ""
+
   return {
     ...DIRECCION_INICIAL,
     ...(data ?? {}),
     pais: "Argentina",
+    provincia,
+    provinciaId,
+    destinoEnvio: data?.destinoEnvio === "correo" ? "correo" : "domicilio",
     calle: data?.calle?.trim() || direccionAnterior.trim(),
     latitud:
       typeof data?.latitud === "number" && Number.isFinite(data.latitud)
@@ -208,6 +252,12 @@ function normalizarDireccion(
 }
 
 function direccionPrincipal(direccion: DireccionEnvioForm) {
+  if (direccion.destinoEnvio === "correo") {
+    return `Correo Argentino - ${direccion.sucursalCorreo.trim()}, ${direccion.ciudad.trim()}, ${direccion.provincia.trim()}`
+      .replace(/\s+/g, " ")
+      .slice(0, 300)
+  }
+
   const numero = direccion.sinNumero ? "S/N" : direccion.altura.trim()
   return `${direccion.calle.trim()} ${numero}, ${direccion.ciudad.trim()}, ${direccion.provincia.trim()}`
     .replace(/\s+/g, " ")
@@ -215,6 +265,18 @@ function direccionPrincipal(direccion: DireccionEnvioForm) {
 }
 
 function direccionCompleta(direccion: DireccionEnvioForm) {
+  if (direccion.destinoEnvio === "correo") {
+    return [
+      `Correo Argentino: ${direccion.sucursalCorreo}`,
+      direccion.ciudad,
+      direccion.provincia,
+      `CP ${direccion.codigoPostal}`,
+      direccion.pais,
+    ]
+      .filter(Boolean)
+      .join(", ")
+  }
+
   const partes = [
     `${direccion.calle} ${direccion.sinNumero ? "S/N" : direccion.altura}`,
     direccion.piso ? `Piso ${direccion.piso}` : "",
@@ -227,6 +289,199 @@ function direccionCompleta(direccion: DireccionEnvioForm) {
   ].filter(Boolean)
 
   return partes.join(", ")
+}
+
+interface LeafletLatLng {
+  lat: number
+  lng: number
+}
+
+interface LeafletMarker {
+  addTo: (map: LeafletMap) => LeafletMarker
+  getLatLng: () => LeafletLatLng
+  on: (event: string, callback: () => void) => LeafletMarker
+  setLatLng: (latLng: [number, number]) => LeafletMarker
+}
+
+interface LeafletMap {
+  invalidateSize: () => void
+  on: (
+    event: string,
+    callback: (event: { latlng: LeafletLatLng }) => void,
+  ) => LeafletMap
+  remove: () => void
+  setView: (latLng: [number, number], zoom: number) => LeafletMap
+}
+
+interface LeafletApi {
+  map: (element: HTMLElement) => LeafletMap
+  marker: (
+    latLng: [number, number],
+    options: { draggable: boolean },
+  ) => LeafletMarker
+  tileLayer: (
+    url: string,
+    options: { attribution: string; maxZoom: number },
+  ) => { addTo: (map: LeafletMap) => void }
+}
+
+declare global {
+  interface Window {
+    L?: LeafletApi
+  }
+}
+
+let leafletLoader: Promise<LeafletApi> | null = null
+
+function cargarLeaflet() {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Leaflet solo está disponible en el navegador"))
+  }
+  if (window.L) return Promise.resolve(window.L)
+  if (leafletLoader) return leafletLoader
+
+  leafletLoader = new Promise<LeafletApi>((resolve, reject) => {
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link")
+      link.id = "leaflet-css"
+      link.rel = "stylesheet"
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      document.head.appendChild(link)
+    }
+
+    const existente = document.getElementById("leaflet-js") as HTMLScriptElement | null
+    if (existente) {
+      existente.addEventListener("load", () => {
+        if (window.L) resolve(window.L)
+        else reject(new Error("Leaflet no quedó disponible"))
+      })
+      existente.addEventListener("error", () => reject(new Error("No se pudo cargar Leaflet")))
+      return
+    }
+
+    const script = document.createElement("script")
+    script.id = "leaflet-js"
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    script.async = true
+    script.onload = () => {
+      if (window.L) resolve(window.L)
+      else reject(new Error("Leaflet no quedó disponible"))
+    }
+    script.onerror = () => reject(new Error("No se pudo cargar Leaflet"))
+    document.body.appendChild(script)
+  })
+
+  return leafletLoader
+}
+
+function MapaUbicacionEntrega({
+  latitud,
+  longitud,
+  onChange,
+}: {
+  latitud: number | null
+  longitud: number | null
+  onChange: (latitud: number, longitud: number) => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<LeafletMap | null>(null)
+  const markerRef = useRef<LeafletMarker | null>(null)
+  const onChangeRef = useRef(onChange)
+  const [mapError, setMapError] = useState(false)
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void cargarLeaflet()
+      .then((leaflet) => {
+        if (cancelled || !containerRef.current || mapRef.current) return
+
+        const tieneUbicacion = latitud !== null && longitud !== null
+        const centro: [number, number] = tieneUbicacion
+          ? [latitud, longitud]
+          : [-38.4161, -63.6167]
+        const map = leaflet.map(containerRef.current).setView(
+          centro,
+          tieneUbicacion ? 15 : 4,
+        )
+
+        leaflet
+          .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap contributors",
+            maxZoom: 19,
+          })
+          .addTo(map)
+
+        const marker = leaflet.marker(centro, { draggable: true }).addTo(map)
+        marker.on("dragend", () => {
+          const punto = marker.getLatLng()
+          onChangeRef.current(
+            Number(punto.lat.toFixed(7)),
+            Number(punto.lng.toFixed(7)),
+          )
+        })
+        map.on("click", (event) => {
+          marker.setLatLng([event.latlng.lat, event.latlng.lng])
+          onChangeRef.current(
+            Number(event.latlng.lat.toFixed(7)),
+            Number(event.latlng.lng.toFixed(7)),
+          )
+        })
+
+        mapRef.current = map
+        markerRef.current = marker
+        window.setTimeout(() => map.invalidateSize(), 150)
+      })
+      .catch(() => setMapError(true))
+
+    return () => {
+      cancelled = true
+      mapRef.current?.remove()
+      mapRef.current = null
+      markerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    if (
+      latitud === null ||
+      longitud === null ||
+      !mapRef.current ||
+      !markerRef.current
+    ) {
+      return
+    }
+
+    markerRef.current.setLatLng([latitud, longitud])
+    mapRef.current.setView([latitud, longitud], 16)
+    window.setTimeout(() => mapRef.current?.invalidateSize(), 50)
+  }, [latitud, longitud])
+
+  if (mapError) {
+    return (
+      <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-sm text-zinc-400">
+        No se pudo cargar el mapa. Podés continuar sin geolocalización.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <div
+        ref={containerRef}
+        className="h-64 w-full overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800"
+        aria-label="Mapa para marcar el lugar exacto de entrega"
+      />
+      <p className="text-xs text-zinc-500">
+        Tocá el mapa o arrastrá el pin para marcar la ubicación exacta. Datos del
+        mapa © OpenStreetMap.
+      </p>
+    </div>
+  )
 }
 
 function clampStep(step: number) {
@@ -271,6 +526,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
   const [direccionEnvio, setDireccionEnvio] = useState<DireccionEnvioForm>(
     DIRECCION_INICIAL,
   )
+  const [localidades, setLocalidades] = useState<LocalidadOption[]>([])
+  const [cargandoLocalidades, setCargandoLocalidades] = useState(false)
+  const [cargandoCodigoPostal, setCargandoCodigoPostal] = useState(false)
   const [obteniendoUbicacion, setObteniendoUbicacion] = useState(false)
   const [comprobante, setComprobante] = useState<File | null>(null)
   const [aliasInfo, setAliasInfo] = useState("")
@@ -299,6 +557,9 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     setItems(INITIAL_ITEMS)
     setEnvioTipo("retiro")
     setDireccionEnvio(DIRECCION_INICIAL)
+    setLocalidades([])
+    setCargandoLocalidades(false)
+    setCargandoCodigoPostal(false)
     setObteniendoUbicacion(false)
     setComprobante(null)
     setCurrentStep(1)
@@ -334,7 +595,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
 
       const parsed = JSON.parse(stored) as RemeraDraft
       const isValid =
-        (parsed?.version === 1 || parsed?.version === 2) &&
+        (parsed?.version === 1 || parsed?.version === 2 || parsed?.version === 3) &&
         typeof parsed.updatedAt === "number" &&
         Date.now() - parsed.updatedAt <= DRAFT_MAX_AGE &&
         Array.isArray(parsed.items)
@@ -367,7 +628,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     if (!open || !draftDecisionMade || exito) return
 
     const draft: RemeraDraft = {
-      version: 2,
+      version: 3,
       updatedAt: Date.now(),
       step: currentStep,
       dni,
@@ -376,7 +637,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       email,
       items,
       envioTipo,
-      direccion: direccionPrincipal(direccionEnvio),
+      direccion:
+        envioTipo === "envio" ? direccionPrincipal(direccionEnvio) : "",
       direccionEnvio,
       estaRegistrado,
       pedidoPrevio,
@@ -474,9 +736,14 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               {
                 pais: "Argentina",
                 provincia: data.remera.provincia ?? "",
+                provinciaId: data.remera.provincia_id ?? "",
                 ciudad: data.remera.ciudad ?? "",
+                localidadId: data.remera.localidad_id ?? "",
                 barrio: data.remera.barrio ?? "",
                 codigoPostal: data.remera.codigo_postal ?? "",
+                destinoEnvio:
+                  data.remera.destino_envio === "correo" ? "correo" : "domicilio",
+                sucursalCorreo: data.remera.sucursal_correo ?? "",
                 calle: data.remera.calle ?? "",
                 altura: data.remera.altura ?? "",
                 sinNumero: Boolean(data.remera.sin_numero),
@@ -523,6 +790,178 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     valor: DireccionEnvioForm[K],
   ) => {
     setDireccionEnvio((actual) => ({ ...actual, [campo]: valor }))
+  }
+
+  const cargarLocalidades = useCallback(
+    async (provinciaId: string) => {
+      if (!provinciaId) {
+        setLocalidades([])
+        return
+      }
+
+      setCargandoLocalidades(true)
+      try {
+        const params = new URLSearchParams({
+          provincia: provinciaId,
+          max: "5000",
+          campos: "id,nombre,centroide",
+        })
+        const response = await fetch(
+          `https://apis.datos.gob.ar/georef/api/localidades?${params.toString()}`,
+        )
+        if (!response.ok) throw new Error("No se pudieron cargar las localidades")
+
+        const data = (await response.json()) as GeorefLocalidadResponse
+        const opciones = (data.localidades ?? [])
+          .filter((item) => item.id && item.nombre)
+          .map((item) => ({
+            id: item.id as string,
+            nombre: item.nombre as string,
+            centroide:
+              typeof item.centroide?.lat === "number" &&
+              typeof item.centroide?.lon === "number"
+                ? { lat: item.centroide.lat, lon: item.centroide.lon }
+                : null,
+          }))
+          .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+
+        setLocalidades(opciones)
+        setDireccionEnvio((actual) => {
+          if (actual.localidadId || !actual.ciudad) return actual
+          const coincidencia = opciones.find(
+            (item) =>
+              item.nombre.localeCompare(actual.ciudad, "es", {
+                sensitivity: "base",
+              }) === 0,
+          )
+          return coincidencia
+            ? { ...actual, localidadId: coincidencia.id }
+            : actual
+        })
+      } catch {
+        setLocalidades([])
+        toast({
+          title: "No pudimos cargar las localidades",
+          description: "Reintentá en unos segundos.",
+          variant: "destructive",
+        })
+      } finally {
+        setCargandoLocalidades(false)
+      }
+    },
+    [toast],
+  )
+
+  useEffect(() => {
+    if (!open || envioTipo !== "envio" || !direccionEnvio.provinciaId) return
+    void cargarLocalidades(direccionEnvio.provinciaId)
+  }, [
+    open,
+    envioTipo,
+    direccionEnvio.provinciaId,
+    cargarLocalidades,
+  ])
+
+  const seleccionarProvincia = (provinciaId: string) => {
+    const provincia = PROVINCIAS_ARGENTINA.find((item) => item.id === provinciaId)
+    setLocalidades([])
+    setDireccionEnvio((actual) => ({
+      ...actual,
+      provincia: provincia?.nombre ?? "",
+      provinciaId,
+      ciudad: "",
+      localidadId: "",
+      codigoPostal: "",
+      latitud: null,
+      longitud: null,
+      sucursalCorreo: "",
+    }))
+  }
+
+  const autocompletarCodigoPostal = useCallback(
+    async (localidad: LocalidadOption, provincia: string) => {
+      setCargandoCodigoPostal(true)
+      try {
+        const params = new URLSearchParams({
+          format: "jsonv2",
+          addressdetails: "1",
+          limit: "1",
+          countrycodes: "ar",
+          city: localidad.nombre,
+          state: provincia,
+          country: "Argentina",
+        })
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+          { headers: { "Accept-Language": "es-AR,es;q=0.9" } },
+        )
+        if (!response.ok) return
+
+        const results = (await response.json()) as NominatimResult[]
+        const result = results[0]
+        const latitud = result?.lat ? Number(result.lat) : localidad.centroide?.lat
+        const longitud = result?.lon ? Number(result.lon) : localidad.centroide?.lon
+        const codigoPostal = result?.address?.postcode?.trim().toUpperCase() ?? ""
+
+        setDireccionEnvio((actual) => ({
+          ...actual,
+          codigoPostal: codigoPostal || actual.codigoPostal,
+          latitud:
+            typeof latitud === "number" && Number.isFinite(latitud)
+              ? Number(latitud.toFixed(7))
+              : actual.latitud,
+          longitud:
+            typeof longitud === "number" && Number.isFinite(longitud)
+              ? Number(longitud.toFixed(7))
+              : actual.longitud,
+        }))
+      } catch {
+        // El código postal queda editable para que el usuario pueda completarlo.
+      } finally {
+        setCargandoCodigoPostal(false)
+      }
+    },
+    [],
+  )
+
+  const seleccionarLocalidad = (localidadId: string) => {
+    const localidad = localidades.find((item) => item.id === localidadId)
+    if (!localidad) return
+
+    setDireccionEnvio((actual) => ({
+      ...actual,
+      ciudad: localidad.nombre,
+      localidadId,
+      codigoPostal: "",
+      latitud: localidad.centroide?.lat ?? actual.latitud,
+      longitud: localidad.centroide?.lon ?? actual.longitud,
+      sucursalCorreo: "",
+    }))
+    void autocompletarCodigoPostal(localidad, direccionEnvio.provincia)
+  }
+
+  const abrirBuscadorCorreo = () => {
+    if (!direccionEnvio.ciudad || !direccionEnvio.provincia) {
+      toast({
+        title: "Seleccioná provincia y localidad",
+        description: "Así podemos buscar una sucursal cercana.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const consulta = encodeURIComponent(
+      `Correo Argentino ${direccionEnvio.ciudad} ${direccionEnvio.provincia}`,
+    )
+    const centro =
+      direccionEnvio.latitud !== null && direccionEnvio.longitud !== null
+        ? `/@${direccionEnvio.latitud},${direccionEnvio.longitud},14z`
+        : ""
+    window.open(
+      `https://www.google.com/maps/search/${consulta}${centro}`,
+      "_blank",
+      "noopener,noreferrer",
+    )
   }
 
   const obtenerGeolocalizacion = () => {
@@ -627,37 +1066,56 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         return false
       }
       if (envioTipo === "envio") {
-        const obligatorios: Array<[string, string]> = [
+        const comunes: Array<[string, string]> = [
           [direccionEnvio.provincia, "Seleccioná la provincia"],
-          [direccionEnvio.ciudad, "Ingresá la ciudad o localidad"],
-          [direccionEnvio.barrio, "Ingresá el barrio"],
+          [direccionEnvio.ciudad, "Seleccioná la localidad"],
           [direccionEnvio.codigoPostal, "Ingresá el código postal"],
-          [direccionEnvio.calle, "Ingresá la calle"],
-          [direccionEnvio.lugarEntrega, "Indicá el lugar de entrega"],
-          [direccionEnvio.indicaciones, "Agregá indicaciones para la entrega"],
         ]
-
-        const faltante = obligatorios.find(([valor]) => !valor.trim())
-        if (faltante) {
-          toast({ title: faltante[1], variant: "destructive" })
-          return false
-        }
-
-        if (!direccionEnvio.sinNumero && !direccionEnvio.altura.trim()) {
-          toast({
-            title: "Ingresá la altura o marcá S/N",
-            variant: "destructive",
-          })
+        const faltanteComun = comunes.find(([valor]) => !valor.trim())
+        if (faltanteComun) {
+          toast({ title: faltanteComun[1], variant: "destructive" })
           return false
         }
 
         if (!/^[A-Za-z0-9 -]{4,10}$/.test(direccionEnvio.codigoPostal.trim())) {
           toast({
             title: "Código postal inválido",
-            description: "Ingresá un código postal argentino válido.",
+            description: "Revisalo; podés editar el valor autocompletado.",
             variant: "destructive",
           })
           return false
+        }
+
+        if (direccionEnvio.destinoEnvio === "correo") {
+          if (!direccionEnvio.sucursalCorreo.trim()) {
+            toast({
+              title: "Indicá la sucursal de Correo Argentino",
+              description: "Usá el buscador y escribí la sucursal elegida.",
+              variant: "destructive",
+            })
+            return false
+          }
+        } else {
+          const domicilioObligatorio: Array<[string, string]> = [
+            [direccionEnvio.calle, "Ingresá la calle"],
+            [direccionEnvio.lugarEntrega, "Indicá el lugar de entrega"],
+            [direccionEnvio.indicaciones, "Agregá indicaciones para la entrega"],
+          ]
+          const faltanteDomicilio = domicilioObligatorio.find(
+            ([valor]) => !valor.trim(),
+          )
+          if (faltanteDomicilio) {
+            toast({ title: faltanteDomicilio[1], variant: "destructive" })
+            return false
+          }
+
+          if (!direccionEnvio.sinNumero && !direccionEnvio.altura.trim()) {
+            toast({
+              title: "Ingresá la altura o marcá S/N",
+              variant: "destructive",
+            })
+            return false
+          }
         }
       }
     }
@@ -725,16 +1183,20 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       }
 
       const { error: direccionError } = await supabase.rpc(
-        "guardar_direccion_remera",
+        "guardar_entrega_remera_v2",
         {
           p_dni: dni.trim(),
           p_email: email.trim().toLowerCase(),
           p_es_envio: envioTipo === "envio",
+          p_destino_envio: direccionEnvio.destinoEnvio,
           p_pais: "Argentina",
           p_provincia: direccionEnvio.provincia.trim(),
+          p_provincia_id: direccionEnvio.provinciaId.trim(),
           p_ciudad: direccionEnvio.ciudad.trim(),
+          p_localidad_id: direccionEnvio.localidadId.trim(),
           p_barrio: direccionEnvio.barrio.trim(),
           p_codigo_postal: direccionEnvio.codigoPostal.trim(),
+          p_sucursal_correo: direccionEnvio.sucursalCorreo.trim(),
           p_calle: direccionEnvio.calle.trim(),
           p_altura: direccionEnvio.altura.trim(),
           p_sin_numero: direccionEnvio.sinNumero,
@@ -1115,7 +1577,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                             : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
                         }`}
                       >
-                        Envío a domicilio
+                        Envío en Argentina
                       </button>
                     </div>
                   </div>
@@ -1124,13 +1586,45 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                     <div className="space-y-4 rounded-xl border border-yellow-400/20 bg-black/20 p-3 sm:p-4">
                       <div>
                         <h4 className="font-semibold text-yellow-400">
-                          Dirección de entrega
+                          Datos de entrega
                         </h4>
                         <p className="mt-1 flex items-start gap-1.5 text-xs text-yellow-200/90">
                           <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
                           Solo realizamos envíos dentro de Argentina. No se
                           entregan pedidos en Uruguay ni en otros países.
                         </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-zinc-300">¿Dónde querés recibirla?</Label>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              actualizarDireccion("destinoEnvio", "domicilio")
+                            }
+                            className={`rounded-lg border px-3 py-3 text-sm font-medium transition-colors ${
+                              direccionEnvio.destinoEnvio === "domicilio"
+                                ? "border-yellow-400 bg-yellow-400/10 text-yellow-400"
+                                : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                            }`}
+                          >
+                            Envío a domicilio
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              actualizarDireccion("destinoEnvio", "correo")
+                            }
+                            className={`rounded-lg border px-3 py-3 text-sm font-medium transition-colors ${
+                              direccionEnvio.destinoEnvio === "correo"
+                                ? "border-yellow-400 bg-yellow-400/10 text-yellow-400"
+                                : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                            }`}
+                          >
+                            Enviar al correo más cercano
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1146,10 +1640,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                         <div className="space-y-1.5">
                           <Label className="text-zinc-300">Provincia *</Label>
                           <Select
-                            value={direccionEnvio.provincia}
-                            onValueChange={(value) =>
-                              actualizarDireccion("provincia", value)
-                            }
+                            value={direccionEnvio.provinciaId}
+                            onValueChange={seleccionarProvincia}
                           >
                             <SelectTrigger className="border-zinc-700 bg-zinc-800 text-white">
                               <SelectValue placeholder="Seleccionar provincia" />
@@ -1157,11 +1649,11 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                             <SelectContent className="border-zinc-700 bg-zinc-800">
                               {PROVINCIAS_ARGENTINA.map((provincia) => (
                                 <SelectItem
-                                  key={provincia}
-                                  value={provincia}
+                                  key={provincia.id}
+                                  value={provincia.id}
                                   className="text-white focus:bg-zinc-700"
                                 >
-                                  {provincia}
+                                  {provincia.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1169,31 +1661,59 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Ciudad o localidad *</Label>
-                          <Input
-                            value={direccionEnvio.ciudad}
-                            onChange={(event) =>
-                              actualizarDireccion("ciudad", event.target.value)
+                          <Label className="text-zinc-300">Localidad *</Label>
+                          <Select
+                            value={direccionEnvio.localidadId}
+                            onValueChange={seleccionarLocalidad}
+                            disabled={
+                              !direccionEnvio.provinciaId || cargandoLocalidades
                             }
-                            placeholder="Concepción del Uruguay"
-                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
-                          />
+                          >
+                            <SelectTrigger className="border-zinc-700 bg-zinc-800 text-white">
+                              <SelectValue
+                                placeholder={
+                                  cargandoLocalidades
+                                    ? "Cargando localidades..."
+                                    : "Seleccionar localidad"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72 border-zinc-700 bg-zinc-800">
+                              {localidades.map((localidad) => (
+                                <SelectItem
+                                  key={localidad.id}
+                                  value={localidad.id}
+                                  className="text-white focus:bg-zinc-700"
+                                >
+                                  {localidad.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {!cargandoLocalidades &&
+                            direccionEnvio.provinciaId &&
+                            localidades.length === 0 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void cargarLocalidades(
+                                    direccionEnvio.provinciaId,
+                                  )
+                                }
+                                className="text-xs text-yellow-400 hover:underline"
+                              >
+                                Reintentar carga de localidades
+                              </button>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Barrio *</Label>
-                          <Input
-                            value={direccionEnvio.barrio}
-                            onChange={(event) =>
-                              actualizarDireccion("barrio", event.target.value)
-                            }
-                            placeholder="Centro"
-                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Código postal *</Label>
+                          <Label className="flex items-center gap-2 text-zinc-300">
+                            Código postal *
+                            {cargandoCodigoPostal && (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-yellow-400" />
+                            )}
+                          </Label>
                           <Input
                             value={direccionEnvio.codigoPostal}
                             onChange={(event) =>
@@ -1202,137 +1722,205 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                                 event.target.value.toUpperCase().slice(0, 10),
                               )
                             }
-                            placeholder="3260"
+                            placeholder="Se completa al elegir localidad"
                             className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
                           />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Lugar de entrega *</Label>
-                          <Input
-                            value={direccionEnvio.lugarEntrega}
-                            onChange={(event) =>
-                              actualizarDireccion(
-                                "lugarEntrega",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Casa, portería, comercio, trabajo..."
-                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
-                          />
+                          <p className="text-xs text-zinc-500">
+                            Se intenta autocompletar, pero podés corregirlo.
+                          </p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
-                        <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Calle *</Label>
-                          <Input
-                            value={direccionEnvio.calle}
-                            onChange={(event) =>
-                              actualizarDireccion("calle", event.target.value)
-                            }
-                            placeholder="9 de Julio"
-                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Altura *</Label>
-                          <Input
-                            value={direccionEnvio.sinNumero ? "S/N" : direccionEnvio.altura}
-                            onChange={(event) =>
-                              actualizarDireccion("altura", event.target.value)
-                            }
-                            disabled={direccionEnvio.sinNumero}
-                            inputMode="numeric"
-                            placeholder="1234"
-                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400 disabled:opacity-60"
-                          />
-                          <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
-                            <input
-                              type="checkbox"
-                              checked={direccionEnvio.sinNumero}
-                              onChange={(event) => {
-                                actualizarDireccion("sinNumero", event.target.checked)
-                                if (event.target.checked)
-                                  actualizarDireccion("altura", "")
-                              }}
-                              className="h-4 w-4 accent-yellow-400"
+                      {direccionEnvio.destinoEnvio === "domicilio" ? (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label className="text-zinc-300">Barrio</Label>
+                            <Input
+                              value={direccionEnvio.barrio}
+                              onChange={(event) =>
+                                actualizarDireccion("barrio", event.target.value)
+                              }
+                              placeholder="Opcional"
+                              className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
                             />
-                            La dirección es S/N
-                          </label>
-                        </div>
-                      </div>
+                          </div>
 
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Piso</Label>
-                          <Input
-                            value={direccionEnvio.piso}
-                            onChange={(event) =>
-                              actualizarDireccion("piso", event.target.value)
-                            }
-                            placeholder="Opcional"
-                            className="border-zinc-700 bg-zinc-800 text-white"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Departamento</Label>
-                          <Input
-                            value={direccionEnvio.departamento}
-                            onChange={(event) =>
-                              actualizarDireccion(
-                                "departamento",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Opcional"
-                            className="border-zinc-700 bg-zinc-800 text-white"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-zinc-300">Entre calles</Label>
-                          <Input
-                            value={direccionEnvio.entreCalles}
-                            onChange={(event) =>
-                              actualizarDireccion(
-                                "entreCalles",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Opcional"
-                            className="border-zinc-700 bg-zinc-800 text-white"
-                          />
-                        </div>
-                      </div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+                            <div className="space-y-1.5">
+                              <Label className="text-zinc-300">Calle *</Label>
+                              <Input
+                                value={direccionEnvio.calle}
+                                onChange={(event) =>
+                                  actualizarDireccion("calle", event.target.value)
+                                }
+                                placeholder="9 de Julio"
+                                className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                              />
+                            </div>
 
-                      <div className="space-y-1.5">
-                        <Label className="text-zinc-300">
-                          Indicaciones de entrega *
-                        </Label>
-                        <Textarea
-                          value={direccionEnvio.indicaciones}
-                          onChange={(event) =>
-                            actualizarDireccion(
-                              "indicaciones",
-                              event.target.value,
-                            )
-                          }
-                          rows={3}
-                          placeholder="Color del frente, timbre, horario, referencias o instrucciones para encontrar el domicilio."
-                          className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
-                        />
-                      </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-zinc-300">Altura *</Label>
+                              <Input
+                                value={
+                                  direccionEnvio.sinNumero
+                                    ? "S/N"
+                                    : direccionEnvio.altura
+                                }
+                                onChange={(event) =>
+                                  actualizarDireccion("altura", event.target.value)
+                                }
+                                disabled={direccionEnvio.sinNumero}
+                                inputMode="numeric"
+                                placeholder="1234"
+                                className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400 disabled:opacity-60"
+                              />
+                              <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
+                                <input
+                                  type="checkbox"
+                                  checked={direccionEnvio.sinNumero}
+                                  onChange={(event) => {
+                                    actualizarDireccion(
+                                      "sinNumero",
+                                      event.target.checked,
+                                    )
+                                    if (event.target.checked) {
+                                      actualizarDireccion("altura", "")
+                                    }
+                                  }}
+                                  className="h-4 w-4 accent-yellow-400"
+                                />
+                                La dirección es S/N
+                              </label>
+                            </div>
+                          </div>
 
-                      <div className="rounded-lg border border-zinc-700 bg-zinc-900/70 p-3">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-zinc-300">Piso</Label>
+                              <Input
+                                value={direccionEnvio.piso}
+                                onChange={(event) =>
+                                  actualizarDireccion("piso", event.target.value)
+                                }
+                                placeholder="Opcional"
+                                className="border-zinc-700 bg-zinc-800 text-white"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-zinc-300">Departamento</Label>
+                              <Input
+                                value={direccionEnvio.departamento}
+                                onChange={(event) =>
+                                  actualizarDireccion(
+                                    "departamento",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Opcional"
+                                className="border-zinc-700 bg-zinc-800 text-white"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-zinc-300">Entre calles</Label>
+                              <Input
+                                value={direccionEnvio.entreCalles}
+                                onChange={(event) =>
+                                  actualizarDireccion(
+                                    "entreCalles",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Opcional"
+                                className="border-zinc-700 bg-zinc-800 text-white"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-zinc-300">
+                              Lugar de entrega *
+                            </Label>
+                            <Input
+                              value={direccionEnvio.lugarEntrega}
+                              onChange={(event) =>
+                                actualizarDireccion(
+                                  "lugarEntrega",
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Casa, portería, comercio, trabajo..."
+                              className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-zinc-300">
+                              Indicaciones de entrega *
+                            </Label>
+                            <Textarea
+                              value={direccionEnvio.indicaciones}
+                              onChange={(event) =>
+                                actualizarDireccion(
+                                  "indicaciones",
+                                  event.target.value,
+                                )
+                              }
+                              rows={3}
+                              placeholder="Color del frente, timbre, horario o referencias para encontrar el domicilio."
+                              className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-3 rounded-lg border border-zinc-700 bg-zinc-900/70 p-3">
+                          <div>
+                            <p className="text-sm font-medium text-zinc-200">
+                              Sucursal de Correo Argentino
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              Buscá la más cercana, elegila y escribí su nombre o
+                              dirección para evitar confusiones.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={abrirBuscadorCorreo}
+                            className="w-full border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10 sm:w-auto"
+                          >
+                            <MapPin className="mr-2 h-4 w-4" />
+                            Buscar correo cercano en el mapa
+                          </Button>
+                          <div className="space-y-1.5">
+                            <Label className="text-zinc-300">
+                              Sucursal elegida *
+                            </Label>
+                            <Input
+                              value={direccionEnvio.sucursalCorreo}
+                              onChange={(event) =>
+                                actualizarDireccion(
+                                  "sucursalCorreo",
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Ej.: Correo Argentino - Sucursal Centro, San Martín 123"
+                              className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-3 rounded-lg border border-zinc-700 bg-zinc-900/70 p-3">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <p className="text-sm font-medium text-zinc-200">
-                              Geolocalización del domicilio
+                              {direccionEnvio.destinoEnvio === "correo"
+                                ? "Ubicación de la sucursal"
+                                : "Ubicación exacta del domicilio"}
                             </p>
                             <p className="text-xs text-zinc-500">
-                              Opcional. Ayuda a ubicar con precisión el lugar de
-                              entrega.
+                              Podés usar tu ubicación y después mover el pin.
                             </p>
                           </div>
                           <Button
@@ -1351,10 +1939,23 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                             Usar mi ubicación
                           </Button>
                         </div>
+
+                        <MapaUbicacionEntrega
+                          latitud={direccionEnvio.latitud}
+                          longitud={direccionEnvio.longitud}
+                          onChange={(latitud, longitud) =>
+                            setDireccionEnvio((actual) => ({
+                              ...actual,
+                              latitud,
+                              longitud,
+                            }))
+                          }
+                        />
+
                         {direccionEnvio.latitud !== null &&
                           direccionEnvio.longitud !== null && (
-                            <p className="mt-2 text-xs text-green-400">
-                              ✓ Ubicación registrada: {direccionEnvio.latitud}, {" "}
+                            <p className="text-xs text-green-400">
+                              ✓ Pin registrado: {direccionEnvio.latitud},{" "}
                               {direccionEnvio.longitud}
                             </p>
                           )}

@@ -68,9 +68,13 @@ type RemeraAdmin = Remera & {
   entregado_at?: string | null;
   pais?: string | null;
   provincia?: string | null;
+  provincia_id?: string | null;
   ciudad?: string | null;
+  localidad_id?: string | null;
   barrio?: string | null;
   codigo_postal?: string | null;
+  destino_envio?: "domicilio" | "correo" | null;
+  sucursal_correo?: string | null;
   calle?: string | null;
   altura?: string | null;
   sin_numero?: boolean | null;
@@ -946,7 +950,9 @@ export default function AdminRemeraPage() {
                   etiqueta="Método de entrega"
                   valor={
                     pedidoSeleccionado.envio_tipo === "envio"
-                      ? "Envío a domicilio"
+                      ? pedidoSeleccionado.destino_envio === "correo"
+                        ? "Retiro en Correo Argentino"
+                        : "Envío a domicilio"
                       : "Retiro en el evento"
                   }
                 />
@@ -965,12 +971,17 @@ export default function AdminRemeraPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        Dirección completa de entrega
+                        {pedidoSeleccionado.destino_envio === "correo"
+                          ? "Entrega en Correo Argentino"
+                          : "Dirección completa de entrega"}
                       </p>
                       <p className="mt-1 text-sm font-medium text-white">
-                        {pedidoSeleccionado.calle
-                          ? `${pedidoSeleccionado.calle} ${pedidoSeleccionado.sin_numero ? "S/N" : pedidoSeleccionado.altura ?? ""}`
-                          : pedidoSeleccionado.direccion ?? "Sin dirección"}
+                        {pedidoSeleccionado.destino_envio === "correo"
+                          ? pedidoSeleccionado.sucursal_correo ??
+                            "Sucursal no informada"
+                          : pedidoSeleccionado.calle
+                            ? `${pedidoSeleccionado.calle} ${pedidoSeleccionado.sin_numero ? "S/N" : pedidoSeleccionado.altura ?? ""}`
+                            : pedidoSeleccionado.direccion ?? "Sin dirección"}
                       </p>
                     </div>
                     {pedidoSeleccionado.latitud != null &&
@@ -988,25 +999,81 @@ export default function AdminRemeraPage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    <DetalleCampo etiqueta="País" valor={pedidoSeleccionado.pais ?? "Argentina"} />
-                    <DetalleCampo etiqueta="Provincia" valor={pedidoSeleccionado.provincia ?? "—"} />
-                    <DetalleCampo etiqueta="Ciudad / localidad" valor={pedidoSeleccionado.ciudad ?? "—"} />
-                    <DetalleCampo etiqueta="Barrio" valor={pedidoSeleccionado.barrio ?? "—"} />
-                    <DetalleCampo etiqueta="Código postal" valor={pedidoSeleccionado.codigo_postal ?? "—"} />
-                    <DetalleCampo etiqueta="Lugar de entrega" valor={pedidoSeleccionado.lugar_entrega ?? "—"} />
-                    <DetalleCampo etiqueta="Piso" valor={pedidoSeleccionado.piso ?? "No corresponde"} />
-                    <DetalleCampo etiqueta="Departamento" valor={pedidoSeleccionado.departamento ?? "No corresponde"} />
-                    <DetalleCampo etiqueta="Entre calles" valor={pedidoSeleccionado.entre_calles ?? "No informado"} />
+                    <DetalleCampo
+                      etiqueta="Modalidad"
+                      valor={
+                        pedidoSeleccionado.destino_envio === "correo"
+                          ? "Retiro en sucursal"
+                          : "Entrega a domicilio"
+                      }
+                    />
+                    <DetalleCampo
+                      etiqueta="País"
+                      valor={pedidoSeleccionado.pais ?? "Argentina"}
+                    />
+                    <DetalleCampo
+                      etiqueta="Provincia"
+                      valor={pedidoSeleccionado.provincia ?? "—"}
+                    />
+                    <DetalleCampo
+                      etiqueta="Localidad"
+                      valor={pedidoSeleccionado.ciudad ?? "—"}
+                    />
+                    <DetalleCampo
+                      etiqueta="Código postal"
+                      valor={pedidoSeleccionado.codigo_postal ?? "—"}
+                    />
+                    {pedidoSeleccionado.destino_envio === "correo" ? (
+                      <DetalleCampo
+                        etiqueta="Sucursal elegida"
+                        valor={
+                          pedidoSeleccionado.sucursal_correo ?? "No informada"
+                        }
+                      />
+                    ) : (
+                      <>
+                        <DetalleCampo
+                          etiqueta="Barrio"
+                          valor={pedidoSeleccionado.barrio ?? "No informado"}
+                        />
+                        <DetalleCampo
+                          etiqueta="Lugar de entrega"
+                          valor={pedidoSeleccionado.lugar_entrega ?? "—"}
+                        />
+                        <DetalleCampo
+                          etiqueta="Piso"
+                          valor={pedidoSeleccionado.piso ?? "No corresponde"}
+                        />
+                        <DetalleCampo
+                          etiqueta="Departamento"
+                          valor={
+                            pedidoSeleccionado.departamento ?? "No corresponde"
+                          }
+                        />
+                        <DetalleCampo
+                          etiqueta="Entre calles"
+                          valor={
+                            pedidoSeleccionado.entre_calles ?? "No informado"
+                          }
+                        />
+                      </>
+                    )}
                   </div>
 
-                  <DetalleCampo
-                    etiqueta="Indicaciones de entrega"
-                    valor={pedidoSeleccionado.indicaciones_entrega ?? "Sin indicaciones"}
-                  />
+                  {pedidoSeleccionado.destino_envio !== "correo" && (
+                    <DetalleCampo
+                      etiqueta="Indicaciones de entrega"
+                      valor={
+                        pedidoSeleccionado.indicaciones_entrega ??
+                        "Sin indicaciones"
+                      }
+                    />
+                  )}
                   {pedidoSeleccionado.latitud != null &&
                     pedidoSeleccionado.longitud != null && (
                       <p className="text-xs text-zinc-500">
-                        Coordenadas: {pedidoSeleccionado.latitud}, {pedidoSeleccionado.longitud}
+                        Coordenadas: {pedidoSeleccionado.latitud},{" "}
+                        {pedidoSeleccionado.longitud}
                       </p>
                     )}
                 </div>
