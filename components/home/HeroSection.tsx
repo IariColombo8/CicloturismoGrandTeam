@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronRight, MapPin, Calendar, Users, Shield, Wrench, Droplet } from "lucide-react"
+import { ChevronRight, MapPin, Calendar, Users, Shield, Wrench, Droplet, Shirt, BadgeDollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EVENTO } from "@/lib/constants"
 import { useCuposRestantes } from "@/hooks/useCuposRestantes"
@@ -112,11 +112,20 @@ export default function HeroSection() {
           </h1>
 
           {/* Subtitle - MÁS PEQUEÑO */}
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-100 mb-4 sm:mb-8 max-w-3xl mx-auto leading-relaxed px-2">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-100 mb-3 sm:mb-5 max-w-3xl mx-auto leading-relaxed px-2">
             Únete a la aventura más desafiante del año.{" "}
             <span className="text-yellow-400 font-semibold">50km de pura adrenalina</span> a través de paisajes
             inolvidables.
           </p>
+
+          {/* Precio: visible pero deliberadamente discreto dentro del hero */}
+          <div className="mb-4 sm:mb-6 flex justify-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-black/35 px-3 py-1.5 text-xs sm:text-sm text-zinc-300 backdrop-blur-sm">
+              <BadgeDollarSign className="h-4 w-4 text-yellow-400" aria-hidden="true" />
+              <span>Precio de inscripción</span>
+              <span className="font-bold text-yellow-400">$25.000</span>
+            </div>
+          </div>
 
           {/* Quick info cards - MUCHO MÁS COMPACTO */}
           <div className="grid grid-cols-3 gap-1.5 sm:gap-4 mb-4 sm:mb-8 max-w-3xl mx-auto">
@@ -144,6 +153,15 @@ export default function HeroSection() {
               >
                 Inscríbete Ahora
                 <ChevronRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+            <Link href="/pedir-remera" className="w-full sm:w-auto">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto group px-4 sm:px-8 py-3 sm:py-6 text-sm sm:text-lg font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black hover:scale-105 transition-all duration-300 btn-glow rounded-lg sm:rounded-xl shadow-lg hover:shadow-yellow-500/50"
+              >
+                Pedir Remera
+                <Shirt className="ml-2 w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
               </Button>
             </Link>
             <Button

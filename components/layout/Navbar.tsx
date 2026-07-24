@@ -3,7 +3,22 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Menu, X, User, LayoutDashboard, LogOut, DollarSign, Settings, Home, ChevronDown, Shirt } from "lucide-react"
+import {
+  Menu,
+  X,
+  User,
+  Users,
+  LayoutDashboard,
+  LogOut,
+  DollarSign,
+  Home,
+  ChevronDown,
+  Shirt,
+  ClipboardList,
+  QrCode,
+  Bike,
+  Handshake,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { usePathname, useRouter } from "next/navigation"
@@ -153,9 +168,13 @@ export default function Navbar() {
     }
     return [
       { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/registro-inscripciones", label: "Inscripciones", icon: ClipboardList },
+      { href: "/admin/check-in", label: "Check-in QR", icon: QrCode },
+      { href: "/admin/remera", label: "Remeras", icon: Shirt },
       { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
-      { href: "/admin/grandteam", label: "Grand Team", icon: User },
-      { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
+      { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
+      { href: "/admin/grandteam", label: "Grand Team", icon: Users },
+      { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
     ]
   }, [isRemera])
 
@@ -226,7 +245,7 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8" ref={dropdownRef}>
+            <div className="hidden xl:flex items-center space-x-6" ref={dropdownRef}>
               {isStaff && isInAdminPages ? (
                 // Vista admin en páginas de admin
                 <>
@@ -248,20 +267,26 @@ export default function Navbar() {
                     ))}
                   </DropdownMenu>
 
-                  {adminLinks.map((link) => {
-                    const IconComponent = link.icon
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        className="flex items-center gap-2 text-gray-300 hover:text-yellow-400 transition-colors duration-200 font-medium relative group"
-                      >
-                        <IconComponent size={18} />
-                        {link.label}
-                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-yellow-400 to-yellow-600 group-hover:w-full transition-all duration-300"></span>
-                      </Link>
-                    )
-                  })}
+                  <DropdownMenu
+                    label="Administración"
+                    icon={<LayoutDashboard size={18} />}
+                    isOpen={openDropdown === "admin"}
+                    onToggle={() => toggleDropdown("admin")}
+                  >
+                    {adminLinks.map((link) => {
+                      const IconComponent = link.icon
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
+                        >
+                          <IconComponent size={18} />
+                          {link.label}
+                        </Link>
+                      )
+                    })}
+                  </DropdownMenu>
                 </>
               ) : isStaff ? (
                 // Vista admin en página principal
@@ -335,12 +360,18 @@ export default function Navbar() {
             </div>
 
             {/* CTA Buttons Desktop */}
-            <div className="hidden md:flex items-center space-x-4">
+            <div className="hidden xl:flex items-center gap-2">
               <Link
                 href="/inscripcion"
-                className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50"
+                className="px-5 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50 whitespace-nowrap"
               >
                 Inscribirme
+              </Link>
+              <Link
+                href="/pedir-remera"
+                className="px-5 py-2.5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-yellow-500/50 whitespace-nowrap"
+              >
+                Pedir Remera
               </Link>
 
               {user ? (
@@ -381,7 +412,7 @@ export default function Navbar() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors"
+              className="xl:hidden p-2 text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors"
               aria-label="Toggle menu"
               aria-expanded={isMobileMenuOpen}
             >
@@ -393,7 +424,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${
+        className={`fixed inset-0 z-40 xl:hidden transition-all duration-300 ${
           isMobileMenuOpen ? "visible" : "invisible"
         }`}
       >
@@ -524,6 +555,13 @@ export default function Navbar() {
                 className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
               >
                 Inscribirme
+              </Link>
+              <Link
+                href="/pedir-remera"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
+              >
+                Pedir Remera
               </Link>
 
               {user ? (
