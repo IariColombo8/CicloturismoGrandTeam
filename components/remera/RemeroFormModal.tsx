@@ -39,6 +39,7 @@ import {
   RotateCcw,
   Save,
   Navigation,
+  Search,
 } from "lucide-react"
 import { TALLES_DISPONIBLES, type RemeraItem } from "@/types/database"
 import { supabase } from "@/lib/supabase"
@@ -92,9 +93,47 @@ interface GeorefLocalidadResponse {
 interface NominatimResult {
   lat?: string
   lon?: string
+  display_name?: string
   address?: {
     postcode?: string
   }
+}
+
+const CODIGOS_POSTALES_CONOCIDOS: Record<string, string> = {
+  "entre rios|concepcion del uruguay": "3260",
+}
+
+function normalizarClaveUbicacion(valor: string) {
+  return valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function obtenerCodigoPostalConocido(provincia: string, localidad: string) {
+  const clave = `${normalizarClaveUbicacion(provincia)}|${normalizarClaveUbicacion(localidad)}`
+  return CODIGOS_POSTALES_CONOCIDOS[clave] ?? ""
+}
+
+function distanciaEnKm(
+  latitudA: number,
+  longitudA: number,
+  latitudB: number,
+  longitudB: number,
+) {
+  const radioTierraKm = 6371
+  const aRadianes = (grados: number) => (grados * Math.PI) / 180
+  const diferenciaLatitud = aRadianes(latitudB - latitudA)
+  const diferenciaLongitud = aRadianes(longitudB - longitudA)
+  const valor =
+    Math.sin(diferenciaLatitud / 2) ** 2 +
+    Math.cos(aRadianes(latitudA)) *
+      Math.cos(aRadianes(latitudB)) *
+      Math.sin(diferenciaLongitud / 2) ** 2
+
+  return radioTierraKm * 2 * Math.atan2(Math.sqrt(valor), Math.sqrt(1 - valor))
 }
 
 const DIRECCION_INICIAL: DireccionEnvioForm = {
@@ -377,10 +416,20 @@ function cargarLeaflet() {
 function MapaUbicacionEntrega({
   latitud,
   longitud,
+  provincia,
+  ciudad,
+  calle,
+  altura,
+  sinNumero,
   onChange,
 }: {
   latitud: number | null
   longitud: number | null
+  provincia: string
+  ciudad: string
+  calle: string
+  altura: string
+  sinNumero: boolean
   onChange: (latitud: number, longitud: number) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -388,10 +437,19 @@ function MapaUbicacionEntrega({
   const markerRef = useRef<LeafletMarker | null>(null)
   const onChangeRef = useRef(onChange)
   const [mapError, setMapError] = useState(false)
+  const [busqueda, setBusqueda] = useState("")
+  const [buscandoDireccion, setBuscandoDireccion] = useState(false)
+  const [errorBusqueda, setErrorBusqueda] = useState("")
+  const [resultadoBusqueda, setResultadoBusqueda] = useState("")
 
   useEffect(() => {
     onChangeRef.current = onChange
   }, [onChange])
+
+  useEffect(() => {
+    const numero = sinNumero ? "S/N" : altura.trim()
+    setBusqueda([calle.trim(), numero].filter(Boolean).join(" "))
+  }, [calle, altura, sinNumero])
 
   useEffect(() => {
     let cancelled = false
@@ -461,6 +519,64 @@ function MapaUbicacionEntrega({
     window.setTimeout(() => mapRef.current?.invalidateSize(), 50)
   }, [latitud, longitud])
 
+  const buscarDireccionEnMapa = async () => {
+    const termino = busqueda.trim()
+    if (!termino) {
+      setErrorBusqueda("Ingresá una calle o dirección para buscar.")
+      return
+    }
+    if (!ciudad || !provincia) {
+      setErrorBusqueda("Primero seleccioná la provincia y la localidad.")
+      return
+    }
+
+    setBuscandoDireccion(true)
+    setErrorBusqueda("")
+    setResultadoBusqueda("")
+
+    try {
+      const consulta = [termino, ciudad, provincia, "Argentina"].join(", ")
+      const params = new URLSearchParams({
+        format: "jsonv2",
+        addressdetails: "1",
+        limit: "1",
+        countrycodes: "ar",
+        q: consulta,
+      })
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+        { headers: { "Accept-Language": "es-AR,es;q=0.9" } },
+      )
+      if (!response.ok) throw new Error("No se pudo buscar la dirección")
+
+      const resultados = (await response.json()) as NominatimResult[]
+      const resultado = resultados[0]
+      const nuevaLatitud = resultado?.lat ? Number(resultado.lat) : Number.NaN
+      const nuevaLongitud = resultado?.lon ? Number(resultado.lon) : Number.NaN
+
+      if (!Number.isFinite(nuevaLatitud) || !Number.isFinite(nuevaLongitud)) {
+        setErrorBusqueda(
+          `No encontramos esa dirección en ${ciudad}, ${provincia}. Probá con otra forma de escribir la calle o mové el pin manualmente.`,
+        )
+        return
+      }
+
+      onChange(
+        Number(nuevaLatitud.toFixed(7)),
+        Number(nuevaLongitud.toFixed(7)),
+      )
+      setResultadoBusqueda(
+        resultado.display_name ?? `${termino}, ${ciudad}, ${provincia}`,
+      )
+    } catch {
+      setErrorBusqueda(
+        "No pudimos consultar el mapa. Probá nuevamente o mové el pin manualmente.",
+      )
+    } finally {
+      setBuscandoDireccion(false)
+    }
+  }
+
   if (mapError) {
     return (
       <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 text-sm text-zinc-400">
@@ -470,15 +586,64 @@ function MapaUbicacionEntrega({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <Label className="text-zinc-300">Buscar calle o dirección en el mapa</Label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={busqueda}
+            onChange={(event) => setBusqueda(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault()
+                void buscarDireccionEnMapa()
+              }
+            }}
+            placeholder={
+              ciudad && provincia
+                ? `Ej.: 9 de Julio 123, ${ciudad}`
+                : "Primero seleccioná provincia y localidad"
+            }
+            disabled={!ciudad || !provincia}
+            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void buscarDireccionEnMapa()}
+            disabled={buscandoDireccion || !ciudad || !provincia}
+            className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10"
+          >
+            {buscandoDireccion ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-2 h-4 w-4" />
+            )}
+            Buscar
+          </Button>
+        </div>
+        <p className="text-xs text-zinc-500">
+          La búsqueda se limita automáticamente a {ciudad || "la localidad"},{" "}
+          {provincia || "la provincia seleccionada"}.
+        </p>
+        {errorBusqueda && (
+          <p className="text-xs text-red-400">{errorBusqueda}</p>
+        )}
+        {resultadoBusqueda && (
+          <p className="line-clamp-2 text-xs text-green-400">
+            ✓ Encontrado: {resultadoBusqueda}
+          </p>
+        )}
+      </div>
+
       <div
         ref={containerRef}
         className="h-64 w-full overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800"
         aria-label="Mapa para marcar el lugar exacto de entrega"
       />
       <p className="text-xs text-zinc-500">
-        Tocá el mapa o arrastrá el pin para marcar la ubicación exacta. Datos del
-        mapa © OpenStreetMap.
+        Tocá el mapa o arrastrá el pin para ajustar la ubicación exacta. Datos
+        del mapa © OpenStreetMap.
       </p>
     </div>
   )
@@ -882,6 +1047,10 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     async (localidad: LocalidadOption, provincia: string) => {
       setCargandoCodigoPostal(true)
       try {
+        const codigoPostalConocido = obtenerCodigoPostalConocido(
+          provincia,
+          localidad.nombre,
+        )
         const params = new URLSearchParams({
           format: "jsonv2",
           addressdetails: "1",
@@ -895,17 +1064,53 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
           `https://nominatim.openstreetmap.org/search?${params.toString()}`,
           { headers: { "Accept-Language": "es-AR,es;q=0.9" } },
         )
-        if (!response.ok) return
 
-        const results = (await response.json()) as NominatimResult[]
-        const result = results[0]
-        const latitud = result?.lat ? Number(result.lat) : localidad.centroide?.lat
-        const longitud = result?.lon ? Number(result.lon) : localidad.centroide?.lon
-        const codigoPostal = result?.address?.postcode?.trim().toUpperCase() ?? ""
+        let resultado: NominatimResult | undefined
+        if (response.ok) {
+          const resultados = (await response.json()) as NominatimResult[]
+          resultado = resultados[0]
+        }
+
+        const latitud = resultado?.lat
+          ? Number(resultado.lat)
+          : localidad.centroide?.lat
+        const longitud = resultado?.lon
+          ? Number(resultado.lon)
+          : localidad.centroide?.lon
+        let codigoPostal =
+          resultado?.address?.postcode?.trim().toUpperCase() ?? ""
+
+        // Algunas localidades no devuelven CP en la búsqueda general.
+        // Probamos también una búsqueda inversa sobre el centro oficial.
+        if (
+          !codigoPostal &&
+          typeof latitud === "number" &&
+          Number.isFinite(latitud) &&
+          typeof longitud === "number" &&
+          Number.isFinite(longitud)
+        ) {
+          const reverseParams = new URLSearchParams({
+            format: "jsonv2",
+            addressdetails: "1",
+            zoom: "18",
+            lat: String(latitud),
+            lon: String(longitud),
+          })
+          const reverseResponse = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?${reverseParams.toString()}`,
+            { headers: { "Accept-Language": "es-AR,es;q=0.9" } },
+          )
+          if (reverseResponse.ok) {
+            const reverseResult = (await reverseResponse.json()) as NominatimResult
+            codigoPostal =
+              reverseResult.address?.postcode?.trim().toUpperCase() ?? ""
+          }
+        }
 
         setDireccionEnvio((actual) => ({
           ...actual,
-          codigoPostal: codigoPostal || actual.codigoPostal,
+          codigoPostal:
+            codigoPostalConocido || codigoPostal || actual.codigoPostal,
           latitud:
             typeof latitud === "number" && Number.isFinite(latitud)
               ? Number(latitud.toFixed(7))
@@ -916,6 +1121,16 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               : actual.longitud,
         }))
       } catch {
+        const codigoPostalConocido = obtenerCodigoPostalConocido(
+          provincia,
+          localidad.nombre,
+        )
+        if (codigoPostalConocido) {
+          setDireccionEnvio((actual) => ({
+            ...actual,
+            codigoPostal: codigoPostalConocido,
+          }))
+        }
         // El código postal queda editable para que el usuario pueda completarlo.
       } finally {
         setCargandoCodigoPostal(false)
@@ -977,10 +1192,40 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     setObteniendoUbicacion(true)
     navigator.geolocation.getCurrentPosition(
       (posicion) => {
+        const nuevaLatitud = Number(posicion.coords.latitude.toFixed(7))
+        const nuevaLongitud = Number(posicion.coords.longitude.toFixed(7))
+        const precisionMetros = posicion.coords.accuracy
+        const tieneCentroSeleccionado =
+          direccionEnvio.latitud !== null && direccionEnvio.longitud !== null
+        const distanciaRespectoLocalidad = tieneCentroSeleccionado
+          ? distanciaEnKm(
+              direccionEnvio.latitud as number,
+              direccionEnvio.longitud as number,
+              nuevaLatitud,
+              nuevaLongitud,
+            )
+          : 0
+        const ubicacionMuyImprecisa = precisionMetros > 25000
+        const fueraDeLaLocalidadElegida =
+          Boolean(direccionEnvio.ciudad) &&
+          tieneCentroSeleccionado &&
+          distanciaRespectoLocalidad > Math.max(80, (precisionMetros / 1000) * 2)
+
+        if (ubicacionMuyImprecisa || fueraDeLaLocalidadElegida) {
+          setObteniendoUbicacion(false)
+          toast({
+            title: "La ubicación de esta computadora es aproximada",
+            description: direccionEnvio.ciudad
+              ? `El navegador la ubicó lejos de ${direccionEnvio.ciudad}. Mantuvimos el mapa en la localidad elegida; buscá la calle o mové el pin.`
+              : "Buscá la calle en el mapa o mové el pin manualmente.",
+          })
+          return
+        }
+
         setDireccionEnvio((actual) => ({
           ...actual,
-          latitud: Number(posicion.coords.latitude.toFixed(7)),
-          longitud: Number(posicion.coords.longitude.toFixed(7)),
+          latitud: nuevaLatitud,
+          longitud: nuevaLongitud,
         }))
         setObteniendoUbicacion(false)
         toast({ title: "Ubicación agregada al pedido" })
@@ -1597,7 +1842,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
 
                       <div className="space-y-2">
                         <Label className="text-zinc-300">¿Dónde querés recibirla?</Label>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-2">
                           <button
                             type="button"
                             onClick={() =>
@@ -1611,6 +1856,10 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                           >
                             Envío a domicilio
                           </button>
+
+                          {/*
+                            Opción temporalmente pausada. Se conserva comentada
+                            para poder reactivarla más adelante sin rehacer el flujo.
                           <button
                             type="button"
                             onClick={() =>
@@ -1624,6 +1873,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                           >
                             Enviar al correo más cercano
                           </button>
+                          */}
                         </div>
                       </div>
 
@@ -1920,7 +2170,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                                 : "Ubicación exacta del domicilio"}
                             </p>
                             <p className="text-xs text-zinc-500">
-                              Podés usar tu ubicación y después mover el pin.
+                              El mapa parte de la localidad elegida. También podés
+                              buscar la calle, usar tu ubicación o mover el pin.
                             </p>
                           </div>
                           <Button
@@ -1943,6 +2194,11 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                         <MapaUbicacionEntrega
                           latitud={direccionEnvio.latitud}
                           longitud={direccionEnvio.longitud}
+                          provincia={direccionEnvio.provincia}
+                          ciudad={direccionEnvio.ciudad}
+                          calle={direccionEnvio.calle}
+                          altura={direccionEnvio.altura}
+                          sinNumero={direccionEnvio.sinNumero}
                           onChange={(latitud, longitud) =>
                             setDireccionEnvio((actual) => ({
                               ...actual,
