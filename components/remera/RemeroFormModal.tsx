@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -37,8 +38,10 @@ import {
   ArrowRight,
   RotateCcw,
   Save,
+  Navigation,
 } from "lucide-react"
 import { TALLES_DISPONIBLES, type RemeraItem } from "@/types/database"
+import { supabase } from "@/lib/supabase"
 
 interface RemeroFormModalProps {
   open: boolean
@@ -48,6 +51,69 @@ interface RemeroFormModalProps {
 type GeneroRemera = "hombre" | "mujer"
 type RemeraItemConGenero = RemeraItem & { genero: GeneroRemera }
 type RemeraItemPersistido = RemeraItem & { genero?: GeneroRemera }
+
+interface DireccionEnvioForm {
+  pais: "Argentina"
+  provincia: string
+  ciudad: string
+  barrio: string
+  codigoPostal: string
+  calle: string
+  altura: string
+  sinNumero: boolean
+  piso: string
+  departamento: string
+  entreCalles: string
+  lugarEntrega: string
+  indicaciones: string
+  latitud: number | null
+  longitud: number | null
+}
+
+const DIRECCION_INICIAL: DireccionEnvioForm = {
+  pais: "Argentina",
+  provincia: "",
+  ciudad: "",
+  barrio: "",
+  codigoPostal: "",
+  calle: "",
+  altura: "",
+  sinNumero: false,
+  piso: "",
+  departamento: "",
+  entreCalles: "",
+  lugarEntrega: "",
+  indicaciones: "",
+  latitud: null,
+  longitud: null,
+}
+
+const PROVINCIAS_ARGENTINA = [
+  "Buenos Aires",
+  "Catamarca",
+  "Chaco",
+  "Chubut",
+  "Ciudad Autónoma de Buenos Aires",
+  "Córdoba",
+  "Corrientes",
+  "Entre Ríos",
+  "Formosa",
+  "Jujuy",
+  "La Pampa",
+  "La Rioja",
+  "Mendoza",
+  "Misiones",
+  "Neuquén",
+  "Río Negro",
+  "Salta",
+  "San Juan",
+  "San Luis",
+  "Santa Cruz",
+  "Santa Fe",
+  "Santiago del Estero",
+  "Tierra del Fuego",
+  "Tucumán",
+] as const
 
 interface LookupResult {
   participante: {
@@ -61,13 +127,28 @@ interface LookupResult {
     envio_tipo: "retiro" | "envio"
     direccion: string | null
     email: string | null
+    pais?: string | null
+    provincia?: string | null
+    ciudad?: string | null
+    barrio?: string | null
+    codigo_postal?: string | null
+    calle?: string | null
+    altura?: string | null
+    sin_numero?: boolean | null
+    piso?: string | null
+    departamento?: string | null
+    entre_calles?: string | null
+    lugar_entrega?: string | null
+    indicaciones_entrega?: string | null
+    latitud?: number | null
+    longitud?: number | null
     estado: string
     comprobante_url: string | null
   } | null
 }
 
 interface RemeraDraft {
-  version: 1
+  version: 1 | 2
   updatedAt: number
   step: number
   dni: string
@@ -76,7 +157,8 @@ interface RemeraDraft {
   email: string
   items: RemeraItemPersistido[]
   envioTipo: "retiro" | "envio"
-  direccion: string
+  direccion?: string
+  direccionEnvio?: Partial<DireccionEnvioForm>
   estaRegistrado: boolean
   pedidoPrevio: boolean
   hadComprobante: boolean
@@ -105,6 +187,48 @@ function etiquetaGenero(genero: GeneroRemera) {
   return genero === "mujer" ? "Mujer" : "Hombre"
 }
 
+function normalizarDireccion(
+  data?: Partial<DireccionEnvioForm> | null,
+  direccionAnterior = "",
+): DireccionEnvioForm {
+  return {
+    ...DIRECCION_INICIAL,
+    ...(data ?? {}),
+    pais: "Argentina",
+    calle: data?.calle?.trim() || direccionAnterior.trim(),
+    latitud:
+      typeof data?.latitud === "number" && Number.isFinite(data.latitud)
+        ? data.latitud
+        : null,
+    longitud:
+      typeof data?.longitud === "number" && Number.isFinite(data.longitud)
+        ? data.longitud
+        : null,
+  }
+}
+
+function direccionPrincipal(direccion: DireccionEnvioForm) {
+  const numero = direccion.sinNumero ? "S/N" : direccion.altura.trim()
+  return `${direccion.calle.trim()} ${numero}, ${direccion.ciudad.trim()}, ${direccion.provincia.trim()}`
+    .replace(/\s+/g, " ")
+    .slice(0, 300)
+}
+
+function direccionCompleta(direccion: DireccionEnvioForm) {
+  const partes = [
+    `${direccion.calle} ${direccion.sinNumero ? "S/N" : direccion.altura}`,
+    direccion.piso ? `Piso ${direccion.piso}` : "",
+    direccion.departamento ? `Dpto. ${direccion.departamento}` : "",
+    direccion.barrio ? `Barrio ${direccion.barrio}` : "",
+    direccion.ciudad,
+    direccion.provincia,
+    `CP ${direccion.codigoPostal}`,
+    direccion.pais,
+  ].filter(Boolean)
+
+  return partes.join(", ")
+}
+
 function clampStep(step: number) {
   return Math.min(TOTAL_STEPS, Math.max(1, Math.trunc(step || 1)))
 }
@@ -127,6 +251,7 @@ function isMeaningfulDraft(draft: RemeraDraft) {
       draft.telefono ||
       draft.email ||
       draft.direccion ||
+      Object.values(draft.direccionEnvio ?? {}).some(Boolean) ||
       draft.step > 1 ||
       draft.items.length > 1 ||
       draft.items[0]?.talle !== "M" ||
@@ -143,7 +268,10 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
   const [email, setEmail] = useState("")
   const [items, setItems] = useState<RemeraItemConGenero[]>(INITIAL_ITEMS)
   const [envioTipo, setEnvioTipo] = useState<"retiro" | "envio">("retiro")
-  const [direccion, setDireccion] = useState("")
+  const [direccionEnvio, setDireccionEnvio] = useState<DireccionEnvioForm>(
+    DIRECCION_INICIAL,
+  )
+  const [obteniendoUbicacion, setObteniendoUbicacion] = useState(false)
   const [comprobante, setComprobante] = useState<File | null>(null)
   const [aliasInfo, setAliasInfo] = useState("")
   const [precio, setPrecio] = useState("")
@@ -170,7 +298,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     setEmail("")
     setItems(INITIAL_ITEMS)
     setEnvioTipo("retiro")
-    setDireccion("")
+    setDireccionEnvio(DIRECCION_INICIAL)
+    setObteniendoUbicacion(false)
     setComprobante(null)
     setCurrentStep(1)
     setEstaRegistrado(false)
@@ -205,7 +334,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
 
       const parsed = JSON.parse(stored) as RemeraDraft
       const isValid =
-        parsed?.version === 1 &&
+        (parsed?.version === 1 || parsed?.version === 2) &&
         typeof parsed.updatedAt === "number" &&
         Date.now() - parsed.updatedAt <= DRAFT_MAX_AGE &&
         Array.isArray(parsed.items)
@@ -238,7 +367,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     if (!open || !draftDecisionMade || exito) return
 
     const draft: RemeraDraft = {
-      version: 1,
+      version: 2,
       updatedAt: Date.now(),
       step: currentStep,
       dni,
@@ -247,7 +376,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       email,
       items,
       envioTipo,
-      direccion,
+      direccion: direccionPrincipal(direccionEnvio),
+      direccionEnvio,
       estaRegistrado,
       pedidoPrevio,
       hadComprobante: Boolean(comprobante),
@@ -273,7 +403,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     email,
     items,
     envioTipo,
-    direccion,
+    direccionEnvio,
     estaRegistrado,
     pedidoPrevio,
     comprobante,
@@ -295,7 +425,12 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     setEmail(draftCandidate.email ?? "")
     setItems(normalizarItems(draftCandidate.items))
     setEnvioTipo(draftCandidate.envioTipo === "envio" ? "envio" : "retiro")
-    setDireccion(draftCandidate.direccion ?? "")
+    setDireccionEnvio(
+      normalizarDireccion(
+        draftCandidate.direccionEnvio,
+        draftCandidate.direccion ?? "",
+      ),
+    )
     setEstaRegistrado(Boolean(draftCandidate.estaRegistrado))
     setPedidoPrevio(Boolean(draftCandidate.pedidoPrevio))
     setCurrentStep(clampStep(draftCandidate.step))
@@ -334,7 +469,28 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         if (data.remera) {
           setItems(normalizarItems(data.remera.items))
           setEnvioTipo(data.remera.envio_tipo)
-          setDireccion(data.remera.direccion ?? "")
+          setDireccionEnvio(
+            normalizarDireccion(
+              {
+                pais: "Argentina",
+                provincia: data.remera.provincia ?? "",
+                ciudad: data.remera.ciudad ?? "",
+                barrio: data.remera.barrio ?? "",
+                codigoPostal: data.remera.codigo_postal ?? "",
+                calle: data.remera.calle ?? "",
+                altura: data.remera.altura ?? "",
+                sinNumero: Boolean(data.remera.sin_numero),
+                piso: data.remera.piso ?? "",
+                departamento: data.remera.departamento ?? "",
+                entreCalles: data.remera.entre_calles ?? "",
+                lugarEntrega: data.remera.lugar_entrega ?? "",
+                indicaciones: data.remera.indicaciones_entrega ?? "",
+                latitud: data.remera.latitud ?? null,
+                longitud: data.remera.longitud ?? null,
+              },
+              data.remera.direccion ?? "",
+            ),
+          )
           if (data.remera.email) setEmail(data.remera.email)
           toast({
             title: "Ya tenés un pedido registrado",
@@ -360,6 +516,46 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     if (soloNumeros.length >= 7) {
       lookupTimerRef.current = setTimeout(() => buscarPorDni(soloNumeros), 400)
     }
+  }
+
+  const actualizarDireccion = <K extends keyof DireccionEnvioForm>(
+    campo: K,
+    valor: DireccionEnvioForm[K],
+  ) => {
+    setDireccionEnvio((actual) => ({ ...actual, [campo]: valor }))
+  }
+
+  const obtenerGeolocalizacion = () => {
+    if (!("geolocation" in navigator)) {
+      toast({
+        title: "Geolocalización no disponible",
+        description: "Tu dispositivo o navegador no permite obtener la ubicación.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setObteniendoUbicacion(true)
+    navigator.geolocation.getCurrentPosition(
+      (posicion) => {
+        setDireccionEnvio((actual) => ({
+          ...actual,
+          latitud: Number(posicion.coords.latitude.toFixed(7)),
+          longitud: Number(posicion.coords.longitude.toFixed(7)),
+        }))
+        setObteniendoUbicacion(false)
+        toast({ title: "Ubicación agregada al pedido" })
+      },
+      () => {
+        setObteniendoUbicacion(false)
+        toast({
+          title: "No pudimos obtener tu ubicación",
+          description: "Podés continuar completando la dirección manualmente.",
+          variant: "destructive",
+        })
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    )
   }
 
   const agregarTalle = () => {
@@ -430,9 +626,39 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         toast({ title: "Revisá los talles y cantidades", variant: "destructive" })
         return false
       }
-      if (envioTipo === "envio" && !direccion.trim()) {
-        toast({ title: "Ingresá la dirección de entrega", variant: "destructive" })
-        return false
+      if (envioTipo === "envio") {
+        const obligatorios: Array<[string, string]> = [
+          [direccionEnvio.provincia, "Seleccioná la provincia"],
+          [direccionEnvio.ciudad, "Ingresá la ciudad o localidad"],
+          [direccionEnvio.barrio, "Ingresá el barrio"],
+          [direccionEnvio.codigoPostal, "Ingresá el código postal"],
+          [direccionEnvio.calle, "Ingresá la calle"],
+          [direccionEnvio.lugarEntrega, "Indicá el lugar de entrega"],
+          [direccionEnvio.indicaciones, "Agregá indicaciones para la entrega"],
+        ]
+
+        const faltante = obligatorios.find(([valor]) => !valor.trim())
+        if (faltante) {
+          toast({ title: faltante[1], variant: "destructive" })
+          return false
+        }
+
+        if (!direccionEnvio.sinNumero && !direccionEnvio.altura.trim()) {
+          toast({
+            title: "Ingresá la altura o marcá S/N",
+            variant: "destructive",
+          })
+          return false
+        }
+
+        if (!/^[A-Za-z0-9 -]{4,10}$/.test(direccionEnvio.codigoPostal.trim())) {
+          toast({
+            title: "Código postal inválido",
+            description: "Ingresá un código postal argentino válido.",
+            variant: "destructive",
+          })
+          return false
+        }
       }
     }
 
@@ -484,7 +710,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
           email: email.trim().toLowerCase(),
           items,
           envio_tipo: envioTipo,
-          direccion: envioTipo === "envio" ? direccion.trim() : "",
+          direccion:
+            envioTipo === "envio" ? direccionPrincipal(direccionEnvio) : "",
           estaRegistrado,
           comprobante_base64,
           comprobante_mime,
@@ -495,6 +722,37 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       const result = (await response.json().catch(() => ({}))) as { error?: string }
       if (!response.ok) {
         throw new Error(result.error ?? "No se pudo registrar el pedido")
+      }
+
+      const { error: direccionError } = await supabase.rpc(
+        "guardar_direccion_remera",
+        {
+          p_dni: dni.trim(),
+          p_email: email.trim().toLowerCase(),
+          p_es_envio: envioTipo === "envio",
+          p_pais: "Argentina",
+          p_provincia: direccionEnvio.provincia.trim(),
+          p_ciudad: direccionEnvio.ciudad.trim(),
+          p_barrio: direccionEnvio.barrio.trim(),
+          p_codigo_postal: direccionEnvio.codigoPostal.trim(),
+          p_calle: direccionEnvio.calle.trim(),
+          p_altura: direccionEnvio.altura.trim(),
+          p_sin_numero: direccionEnvio.sinNumero,
+          p_piso: direccionEnvio.piso.trim(),
+          p_departamento: direccionEnvio.departamento.trim(),
+          p_entre_calles: direccionEnvio.entreCalles.trim(),
+          p_lugar_entrega: direccionEnvio.lugarEntrega.trim(),
+          p_indicaciones_entrega: direccionEnvio.indicaciones.trim(),
+          p_latitud: direccionEnvio.latitud,
+          p_longitud: direccionEnvio.longitud,
+        },
+      )
+
+      if (direccionError) {
+        console.error("Error guardando la dirección estructurada:", direccionError)
+        throw new Error(
+          "El pedido se registró, pero faltó guardar la dirección completa. Aplicá la migración SQL y volvé a enviarlo.",
+        )
       }
 
       window.localStorage.removeItem(DRAFT_KEY)
@@ -863,20 +1121,249 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                   </div>
 
                   {envioTipo === "envio" && (
-                    <div className="space-y-1.5">
-                      <Label className="text-zinc-300">
-                        Dirección de entrega
-                      </Label>
-                      <Input
-                        value={direccion}
-                        onChange={(event) => setDireccion(event.target.value)}
-                        placeholder="Calle 123, Piso 4, Dpto A, Ciudad"
-                        className="bg-zinc-800 border-zinc-700 text-white focus:border-yellow-400"
-                      />
+                    <div className="space-y-4 rounded-xl border border-yellow-400/20 bg-black/20 p-3 sm:p-4">
+                      <div>
+                        <h4 className="font-semibold text-yellow-400">
+                          Dirección de entrega
+                        </h4>
+                        <p className="mt-1 flex items-start gap-1.5 text-xs text-yellow-200/90">
+                          <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                          Solo realizamos envíos dentro de Argentina. No se
+                          entregan pedidos en Uruguay ni en otros países.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">País</Label>
+                          <Input
+                            value="Argentina"
+                            readOnly
+                            className="cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-400"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Provincia *</Label>
+                          <Select
+                            value={direccionEnvio.provincia}
+                            onValueChange={(value) =>
+                              actualizarDireccion("provincia", value)
+                            }
+                          >
+                            <SelectTrigger className="border-zinc-700 bg-zinc-800 text-white">
+                              <SelectValue placeholder="Seleccionar provincia" />
+                            </SelectTrigger>
+                            <SelectContent className="border-zinc-700 bg-zinc-800">
+                              {PROVINCIAS_ARGENTINA.map((provincia) => (
+                                <SelectItem
+                                  key={provincia}
+                                  value={provincia}
+                                  className="text-white focus:bg-zinc-700"
+                                >
+                                  {provincia}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Ciudad o localidad *</Label>
+                          <Input
+                            value={direccionEnvio.ciudad}
+                            onChange={(event) =>
+                              actualizarDireccion("ciudad", event.target.value)
+                            }
+                            placeholder="Concepción del Uruguay"
+                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Barrio *</Label>
+                          <Input
+                            value={direccionEnvio.barrio}
+                            onChange={(event) =>
+                              actualizarDireccion("barrio", event.target.value)
+                            }
+                            placeholder="Centro"
+                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Código postal *</Label>
+                          <Input
+                            value={direccionEnvio.codigoPostal}
+                            onChange={(event) =>
+                              actualizarDireccion(
+                                "codigoPostal",
+                                event.target.value.toUpperCase().slice(0, 10),
+                              )
+                            }
+                            placeholder="3260"
+                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Lugar de entrega *</Label>
+                          <Input
+                            value={direccionEnvio.lugarEntrega}
+                            onChange={(event) =>
+                              actualizarDireccion(
+                                "lugarEntrega",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Casa, portería, comercio, trabajo..."
+                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Calle *</Label>
+                          <Input
+                            value={direccionEnvio.calle}
+                            onChange={(event) =>
+                              actualizarDireccion("calle", event.target.value)
+                            }
+                            placeholder="9 de Julio"
+                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Altura *</Label>
+                          <Input
+                            value={direccionEnvio.sinNumero ? "S/N" : direccionEnvio.altura}
+                            onChange={(event) =>
+                              actualizarDireccion("altura", event.target.value)
+                            }
+                            disabled={direccionEnvio.sinNumero}
+                            inputMode="numeric"
+                            placeholder="1234"
+                            className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400 disabled:opacity-60"
+                          />
+                          <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
+                            <input
+                              type="checkbox"
+                              checked={direccionEnvio.sinNumero}
+                              onChange={(event) => {
+                                actualizarDireccion("sinNumero", event.target.checked)
+                                if (event.target.checked)
+                                  actualizarDireccion("altura", "")
+                              }}
+                              className="h-4 w-4 accent-yellow-400"
+                            />
+                            La dirección es S/N
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Piso</Label>
+                          <Input
+                            value={direccionEnvio.piso}
+                            onChange={(event) =>
+                              actualizarDireccion("piso", event.target.value)
+                            }
+                            placeholder="Opcional"
+                            className="border-zinc-700 bg-zinc-800 text-white"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Departamento</Label>
+                          <Input
+                            value={direccionEnvio.departamento}
+                            onChange={(event) =>
+                              actualizarDireccion(
+                                "departamento",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Opcional"
+                            className="border-zinc-700 bg-zinc-800 text-white"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-zinc-300">Entre calles</Label>
+                          <Input
+                            value={direccionEnvio.entreCalles}
+                            onChange={(event) =>
+                              actualizarDireccion(
+                                "entreCalles",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Opcional"
+                            className="border-zinc-700 bg-zinc-800 text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-zinc-300">
+                          Indicaciones de entrega *
+                        </Label>
+                        <Textarea
+                          value={direccionEnvio.indicaciones}
+                          onChange={(event) =>
+                            actualizarDireccion(
+                              "indicaciones",
+                              event.target.value,
+                            )
+                          }
+                          rows={3}
+                          placeholder="Color del frente, timbre, horario, referencias o instrucciones para encontrar el domicilio."
+                          className="border-zinc-700 bg-zinc-800 text-white focus:border-yellow-400"
+                        />
+                      </div>
+
+                      <div className="rounded-lg border border-zinc-700 bg-zinc-900/70 p-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-zinc-200">
+                              Geolocalización del domicilio
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              Opcional. Ayuda a ubicar con precisión el lugar de
+                              entrega.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={obtenerGeolocalizacion}
+                            disabled={obteniendoUbicacion}
+                            className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10"
+                          >
+                            {obteniendoUbicacion ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Navigation className="mr-2 h-4 w-4" />
+                            )}
+                            Usar mi ubicación
+                          </Button>
+                        </div>
+                        {direccionEnvio.latitud !== null &&
+                          direccionEnvio.longitud !== null && (
+                            <p className="mt-2 text-xs text-green-400">
+                              ✓ Ubicación registrada: {direccionEnvio.latitud}, {" "}
+                              {direccionEnvio.longitud}
+                            </p>
+                          )}
+                      </div>
+
                       <p className="flex items-start gap-1.5 text-xs text-yellow-400/90">
-                        <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        El envío tiene un costo adicional; nos vamos a
-                        contactar.
+                        <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                        El envío tiene un costo adicional; nos vamos a contactar
+                        para confirmarlo.
                       </p>
                     </div>
                   )}
@@ -985,7 +1472,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       <p className="text-white">
                         {envioTipo === "retiro"
                           ? "Retiro en el evento"
-                          : `Envío: ${direccion}`}
+                          : `Envío: ${direccionCompleta(direccionEnvio)}`}
                       </p>
                     </div>
                     <div className="p-3">

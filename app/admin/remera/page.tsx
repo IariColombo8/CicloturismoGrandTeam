@@ -41,6 +41,9 @@ import {
   Plus,
   Trash2,
   Settings2,
+  XCircle,
+  Truck,
+  Navigation,
 } from "lucide-react";
 import type { Remera, RemeraItem } from "@/types/database";
 import { TALLES_DISPONIBLES } from "@/types/database";
@@ -56,7 +59,60 @@ import {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 type RemeraItemConGenero = RemeraItem & { genero?: "hombre" | "mujer" };
-type RemeraConEmail = Remera & { email?: string | null };
+type EstadoConfirmacion = "pendiente" | "confirmado" | "anulado";
+
+type RemeraAdmin = Remera & {
+  email?: string | null;
+  estado_confirmacion?: EstadoConfirmacion | null;
+  entregado?: boolean | null;
+  entregado_at?: string | null;
+  pais?: string | null;
+  provincia?: string | null;
+  ciudad?: string | null;
+  barrio?: string | null;
+  codigo_postal?: string | null;
+  calle?: string | null;
+  altura?: string | null;
+  sin_numero?: boolean | null;
+  piso?: string | null;
+  departamento?: string | null;
+  entre_calles?: string | null;
+  lugar_entrega?: string | null;
+  indicaciones_entrega?: string | null;
+  latitud?: number | null;
+  longitud?: number | null;
+};
+
+function obtenerEstadoConfirmacion(pedido: RemeraAdmin): EstadoConfirmacion {
+  if (pedido.estado_confirmacion === "confirmado") return "confirmado";
+  if (pedido.estado_confirmacion === "anulado") return "anulado";
+  if (pedido.estado_confirmacion === "pendiente") return "pendiente";
+  if (pedido.estado === "entregado" || pedido.estado === "confirmado") {
+    return "confirmado";
+  }
+  if (pedido.estado === "anulado") return "anulado";
+  return "pendiente";
+}
+
+function pedidoEntregado(pedido: RemeraAdmin) {
+  return Boolean(pedido.entregado ?? pedido.estado === "entregado");
+}
+
+function etiquetaEstado(estado: EstadoConfirmacion) {
+  if (estado === "confirmado") return "Confirmado";
+  if (estado === "anulado") return "Anulado";
+  return "Pendiente";
+}
+
+function claseEstado(estado: EstadoConfirmacion) {
+  if (estado === "confirmado") {
+    return "border-blue-500/20 bg-blue-500/10 text-blue-300";
+  }
+  if (estado === "anulado") {
+    return "border-red-500/20 bg-red-500/10 text-red-300";
+  }
+  return "border-yellow-400/20 bg-yellow-400/10 text-yellow-300";
+}
 
 function formatItemLabel(item: RemeraItemConGenero, compacto = false) {
   const modelo =
@@ -125,7 +181,7 @@ export default function AdminRemeraPage() {
   const { user, userRole, loading: authLoading } = useSupabaseContext();
   const { toast } = useToast();
 
-  const [pedidos, setPedidos] = useState<RemeraConEmail[]>([]);
+  const [pedidos, setPedidos] = useState<RemeraAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -138,7 +194,7 @@ export default function AdminRemeraPage() {
 
   // Modal comprobante
   const [pedidoSeleccionado, setPedidoSeleccionado] =
-    useState<RemeraConEmail | null>(null);
+    useState<RemeraAdmin | null>(null);
   const [detalleOpen, setDetalleOpen] = useState(false);
 
   const [comprobanteUrl, setComprobanteUrl] = useState<string | null>(null);
@@ -187,7 +243,7 @@ export default function AdminRemeraPage() {
         return;
       }
 
-      setPedidos((data as RemeraConEmail[]) ?? []);
+      setPedidos((data as RemeraAdmin[]) ?? []);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Error desconocido";
@@ -250,28 +306,84 @@ export default function AdminRemeraPage() {
     fetchContenido();
   }, [user, canAccess]);
 
-  // Cambiar estado del pedido
-  const toggleEstado = async (pedido: Remera) => {
-    const nuevoEstado =
-      pedido.estado === "pendiente" ? "entregado" : "pendiente";
+  const actualizarPedidoLocal = (id: string, cambios: Partial<RemeraAdmin>) => {
+    setPedidos((actuales) =>
+      actuales.map((pedido) =>
+        pedido.id === id ? { ...pedido, ...cambios } : pedido,
+      ),
+    );
+    setPedidoSeleccionado((actual) =>
+      actual?.id === id ? { ...actual, ...cambios } : actual,
+    );
+  };
+
+  const actualizarEstadoConfirmacion = async (
+    pedido: RemeraAdmin,
+    nuevoEstado: EstadoConfirmacion,
+  ) => {
+    const entregado = nuevoEstado === "confirmado" ? pedidoEntregado(pedido) : false;
     const { error } = await supabase
       .from("remera")
-      .update({ estado: nuevoEstado, updated_at: new Date().toISOString() })
+      .update({
+        estado_confirmacion: nuevoEstado,
+        entregado,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", pedido.id);
 
     if (error) {
-      toast({ title: "Error al actualizar el estado", variant: "destructive" });
+      toast({
+        title: "No se pudo actualizar la confirmación",
+        description: error.message,
+        variant: "destructive",
+      });
       return;
     }
 
-    setPedidos((prev) =>
-      prev.map((p) => (p.id === pedido.id ? { ...p, estado: nuevoEstado } : p)),
-    );
+    actualizarPedidoLocal(pedido.id, {
+      estado_confirmacion: nuevoEstado,
+      entregado,
+      estado: entregado ? "entregado" : "pendiente",
+    });
+    toast({ title: `Pedido ${etiquetaEstado(nuevoEstado).toLowerCase()}` });
+  };
+
+  const cambiarEntrega = async (pedido: RemeraAdmin) => {
+    if (obtenerEstadoConfirmacion(pedido) !== "confirmado") {
+      toast({
+        title: "Primero confirmá el pedido",
+        description: "Solo un pedido confirmado puede marcarse como entregado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const entregado = !pedidoEntregado(pedido);
+    const { error } = await supabase
+      .from("remera")
+      .update({
+        entregado,
+        entregado_at: entregado ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", pedido.id);
+
+    if (error) {
+      toast({
+        title: "No se pudo actualizar la entrega",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    actualizarPedidoLocal(pedido.id, {
+      entregado,
+      entregado_at: entregado ? new Date().toISOString() : null,
+      estado: entregado ? "entregado" : "pendiente",
+    });
     toast({
-      title:
-        nuevoEstado === "entregado"
-          ? "Marcado como entregado"
-          : "Revertido a pendiente",
+      title: entregado ? "Marcado como entregado" : "Entrega desmarcada",
     });
   };
 
@@ -338,7 +450,13 @@ export default function AdminRemeraPage() {
         !(p.email ?? "").toLowerCase().includes(textoBusqueda)
       )
         return false;
-      if (filtroEstado !== "todos" && p.estado !== filtroEstado) return false;
+      if (filtroEstado === "entregado" && !pedidoEntregado(p)) return false;
+      if (
+        filtroEstado !== "todos" &&
+        filtroEstado !== "entregado" &&
+        obtenerEstadoConfirmacion(p) !== filtroEstado
+      )
+        return false;
       if (
         filtroTalle !== "todos" &&
         !p.items.some((i) => i.talle === filtroTalle)
@@ -374,7 +492,7 @@ export default function AdminRemeraPage() {
     return totales;
   }, [pedidosFiltrados]);
 
-  const abrirDetalle = (pedido: RemeraConEmail) => {
+  const abrirDetalle = (pedido: RemeraAdmin) => {
     setPedidoSeleccionado(pedido);
     setDetalleOpen(true);
   };
@@ -437,7 +555,7 @@ export default function AdminRemeraPage() {
         </div>
 
         {/* ─── Stats generales ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <StatCard
             label="Total pedidos"
             value={pedidos.length}
@@ -445,20 +563,27 @@ export default function AdminRemeraPage() {
           />
           <StatCard
             label="Pendientes"
-            value={pedidos.filter((p) => p.estado === "pendiente").length}
+            value={pedidos.filter((p) => obtenerEstadoConfirmacion(p) === "pendiente").length}
             icon={<Clock className="w-5 h-5" />}
             color="text-yellow-400"
           />
           <StatCard
-            label="Entregados"
-            value={pedidos.filter((p) => p.estado === "entregado").length}
+            label="Confirmados"
+            value={pedidos.filter((p) => obtenerEstadoConfirmacion(p) === "confirmado").length}
             icon={<CheckCircle className="w-5 h-5" />}
+            color="text-blue-300"
+          />
+          <StatCard
+            label="Entregados"
+            value={pedidos.filter(pedidoEntregado).length}
+            icon={<Truck className="w-5 h-5" />}
             color="text-green-400"
           />
           <StatCard
-            label="Con envío"
-            value={pedidos.filter((p) => p.envio_tipo === "envio").length}
-            icon={<MapPin className="w-5 h-5" />}
+            label="Anulados"
+            value={pedidos.filter((p) => obtenerEstadoConfirmacion(p) === "anulado").length}
+            icon={<XCircle className="w-5 h-5" />}
+            color="text-red-400"
           />
         </div>
 
@@ -466,94 +591,85 @@ export default function AdminRemeraPage() {
         {(Object.keys(resumenPorTalle.hombre).length > 0 ||
           Object.keys(resumenPorTalle.mujer).length > 0 ||
           Object.keys(resumenPorTalle.sinEspecificar).length > 0) && (
-          <Card className="overflow-hidden bg-zinc-900/60 border-yellow-400/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-yellow-400 text-base sm:text-lg">
+          <Card className="overflow-hidden border-yellow-400/20 bg-zinc-900/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-yellow-400 sm:text-lg">
                 Resumen por talle
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <ResumenModelo
-                  titulo="Hombre"
-                  totales={resumenPorTalle.hombre}
-                />
-                <ResumenModelo
-                  titulo="Mujer"
-                  totales={resumenPorTalle.mujer}
-                />
-              </div>
+            <CardContent className="space-y-3">
+              <ResumenTallesComparado
+                hombre={resumenPorTalle.hombre}
+                mujer={resumenPorTalle.mujer}
+              />
 
               {Object.keys(resumenPorTalle.sinEspecificar).length > 0 && (
-                <div className="rounded-xl border border-zinc-700 bg-zinc-950/60 p-4">
-                  <p className="mb-3 text-sm font-semibold text-zinc-300">
-                    Pedidos anteriores sin modelo especificado
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                    {ordenarTalles(
-                      Object.keys(resumenPorTalle.sinEspecificar),
-                    ).map((talle) => (
-                      <div
-                        key={talle}
-                        className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2"
-                      >
-                        <span className="font-medium text-zinc-200">{talle}</span>
-                        <span className="font-bold text-yellow-400">
-                          {resumenPorTalle.sinEspecificar[talle]}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-black/20 px-3 py-2">
+                  <span className="text-xs font-semibold text-zinc-400">
+                    Sin modelo:
+                  </span>
+                  {ordenarTalles(
+                    Object.keys(resumenPorTalle.sinEspecificar),
+                  ).map((talle) => (
+                    <span
+                      key={talle}
+                      className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200"
+                    >
+                      {talle}: {resumenPorTalle.sinEspecificar[talle]}
+                    </span>
+                  ))}
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* ─── Filtros ─── */}
-        <Card className="bg-zinc-900/50 border-zinc-800">
-          <CardContent className="pt-4 pb-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 w-4 h-4 text-zinc-500" />
-                <Input
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar nombre, DNI, tel..."
-                  className="pl-9 bg-zinc-800 border-zinc-700 text-white"
-                />
-              </div>
+        {/* ─── Búsqueda y filtros ─── */}
+        <Card className="border-zinc-800 bg-zinc-900/50">
+          <CardContent className="space-y-2 p-3 sm:p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+              <Input
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar nombre, DNI, teléfono o email"
+                className="h-10 border-zinc-700 bg-zinc-800 pl-9 text-white"
+              />
+            </div>
 
+            <div className="hidden grid-cols-3 gap-2 md:grid">
               <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                <SelectTrigger className="h-9 border-zinc-700 bg-zinc-800 text-sm text-white">
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-zinc-700">
+                <SelectContent className="border-zinc-700 bg-zinc-800">
                   <SelectItem value="todos">Todos los estados</SelectItem>
-                  <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="entregado">Entregado</SelectItem>
+                  <SelectItem value="pendiente">Pendientes</SelectItem>
+                  <SelectItem value="confirmado">Confirmados</SelectItem>
+                  <SelectItem value="anulado">Anulados</SelectItem>
+                  <SelectItem value="entregado">Entregados</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={filtroTalle} onValueChange={setFiltroTalle}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                <SelectTrigger className="h-9 border-zinc-700 bg-zinc-800 text-sm text-white">
                   <SelectValue placeholder="Talle" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-zinc-700">
+                <SelectContent className="border-zinc-700 bg-zinc-800">
                   <SelectItem value="todos">Todos los talles</SelectItem>
-                  {TALLES_DISPONIBLES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
+                  {TALLES_DISPONIBLES.map((talle) => (
+                    <SelectItem key={talle} value={talle}>
+                      {talle}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
               <Select value={filtroEnvio} onValueChange={setFiltroEnvio}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                <SelectTrigger className="h-9 border-zinc-700 bg-zinc-800 text-sm text-white">
                   <SelectValue placeholder="Entrega" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-zinc-700">
+                <SelectContent className="border-zinc-700 bg-zinc-800">
                   <SelectItem value="todos">Todas las entregas</SelectItem>
                   <SelectItem value="retiro">Retiro en evento</SelectItem>
                   <SelectItem value="envio">Envío a domicilio</SelectItem>
@@ -566,9 +682,9 @@ export default function AdminRemeraPage() {
                 variant="ghost"
                 size="sm"
                 onClick={limpiarFiltros}
-                className="mt-2 text-zinc-400 hover:text-white"
+                className="h-8 px-2 text-xs text-zinc-400 hover:text-white"
               >
-                <FilterX className="w-4 h-4 mr-1.5" />
+                <FilterX className="mr-1.5 h-3.5 w-3.5" />
                 Limpiar filtros
               </Button>
             )}
@@ -623,6 +739,16 @@ export default function AdminRemeraPage() {
                             <p className="text-xs text-zinc-500">
                               DNI {pedido.dni}
                             </p>
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              <Badge className={claseEstado(obtenerEstadoConfirmacion(pedido))}>
+                                {etiquetaEstado(obtenerEstadoConfirmacion(pedido))}
+                              </Badge>
+                              {pedidoEntregado(pedido) && (
+                                <Badge className="border-green-500/20 bg-green-500/10 text-green-300">
+                                  Entregado
+                                </Badge>
+                              )}
+                            </div>
                           </div>
 
                           <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
@@ -826,10 +952,6 @@ export default function AdminRemeraPage() {
                   }
                 />
                 <DetalleCampo
-                  etiqueta="Dirección"
-                  valor={pedidoSeleccionado.direccion ?? "No corresponde"}
-                />
-                <DetalleCampo
                   etiqueta="Fecha del pedido"
                   valor={formatFecha(pedidoSeleccionado.fecha_solicitud)}
                 />
@@ -839,75 +961,139 @@ export default function AdminRemeraPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-3 rounded-xl border border-zinc-700 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Estado
-                  </p>
-                  <Badge
-                    className={`mt-2 ${
-                      pedidoSeleccionado.estado === "entregado"
-                        ? "border-green-500/20 bg-green-500/10 text-green-400"
-                        : "border-yellow-400/20 bg-yellow-400/10 text-yellow-400"
-                    }`}
-                  >
-                    {pedidoSeleccionado.estado === "entregado"
-                      ? "Entregado"
-                      : "Pendiente"}
-                  </Badge>
+              {pedidoSeleccionado.envio_tipo === "envio" && (
+                <div className="space-y-3 rounded-xl border border-yellow-400/20 bg-black/20 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Dirección completa de entrega
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-white">
+                        {pedidoSeleccionado.calle
+                          ? `${pedidoSeleccionado.calle} ${pedidoSeleccionado.sin_numero ? "S/N" : pedidoSeleccionado.altura ?? ""}`
+                          : pedidoSeleccionado.direccion ?? "Sin dirección"}
+                      </p>
+                    </div>
+                    {pedidoSeleccionado.latitud != null &&
+                      pedidoSeleccionado.longitud != null && (
+                        <a
+                          href={`https://www.google.com/maps?q=${pedidoSeleccionado.latitud},${pedidoSeleccionado.longitud}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-yellow-400/30 px-3 py-2 text-xs font-medium text-yellow-400 hover:bg-yellow-400/10"
+                        >
+                          <Navigation className="h-4 w-4" />
+                          Ver mapa
+                        </a>
+                      )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <DetalleCampo etiqueta="País" valor={pedidoSeleccionado.pais ?? "Argentina"} />
+                    <DetalleCampo etiqueta="Provincia" valor={pedidoSeleccionado.provincia ?? "—"} />
+                    <DetalleCampo etiqueta="Ciudad / localidad" valor={pedidoSeleccionado.ciudad ?? "—"} />
+                    <DetalleCampo etiqueta="Barrio" valor={pedidoSeleccionado.barrio ?? "—"} />
+                    <DetalleCampo etiqueta="Código postal" valor={pedidoSeleccionado.codigo_postal ?? "—"} />
+                    <DetalleCampo etiqueta="Lugar de entrega" valor={pedidoSeleccionado.lugar_entrega ?? "—"} />
+                    <DetalleCampo etiqueta="Piso" valor={pedidoSeleccionado.piso ?? "No corresponde"} />
+                    <DetalleCampo etiqueta="Departamento" valor={pedidoSeleccionado.departamento ?? "No corresponde"} />
+                    <DetalleCampo etiqueta="Entre calles" valor={pedidoSeleccionado.entre_calles ?? "No informado"} />
+                  </div>
+
+                  <DetalleCampo
+                    etiqueta="Indicaciones de entrega"
+                    valor={pedidoSeleccionado.indicaciones_entrega ?? "Sin indicaciones"}
+                  />
+                  {pedidoSeleccionado.latitud != null &&
+                    pedidoSeleccionado.longitud != null && (
+                      <p className="text-xs text-zinc-500">
+                        Coordenadas: {pedidoSeleccionado.latitud}, {pedidoSeleccionado.longitud}
+                      </p>
+                    )}
+                </div>
+              )}
+
+              <div className="space-y-4 rounded-xl border border-zinc-700 bg-black/20 p-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="space-y-2">
+                    <Label className="text-zinc-300">Confirmación del pedido</Label>
+                    <Select
+                      value={obtenerEstadoConfirmacion(pedidoSeleccionado)}
+                      onValueChange={(value) =>
+                        void actualizarEstadoConfirmacion(
+                          pedidoSeleccionado,
+                          value as EstadoConfirmacion,
+                        )
+                      }
+                    >
+                      <SelectTrigger className="border-zinc-700 bg-zinc-800 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-zinc-700 bg-zinc-800">
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="confirmado">Confirmado</SelectItem>
+                        <SelectItem value="anulado">Anulado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">Entrega</p>
+                        <p className="text-xs text-zinc-500">
+                          {pedidoEntregado(pedidoSeleccionado)
+                            ? "Pedido entregado"
+                            : "Todavía no entregado"}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void cambiarEntrega(pedidoSeleccionado)}
+                        disabled={obtenerEstadoConfirmacion(pedidoSeleccionado) !== "confirmado"}
+                        className={
+                          pedidoEntregado(pedidoSeleccionado)
+                            ? "bg-zinc-700 text-white hover:bg-zinc-600"
+                            : "bg-green-500 text-black hover:bg-green-400"
+                        }
+                      >
+                        {pedidoEntregado(pedidoSeleccionado) ? "Desmarcar" : "Marcar entregado"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className={claseEstado(obtenerEstadoConfirmacion(pedidoSeleccionado))}>
+                    {etiquetaEstado(obtenerEstadoConfirmacion(pedidoSeleccionado))}
+                  </Badge>
+                  <Badge
+                    className={
+                      pedidoEntregado(pedidoSeleccionado)
+                        ? "border-green-500/20 bg-green-500/10 text-green-300"
+                        : "border-zinc-700 bg-zinc-800 text-zinc-400"
+                    }
+                  >
+                    {pedidoEntregado(pedidoSeleccionado) ? "Entregado" : "Sin entregar"}
+                  </Badge>
+
                   {pedidoSeleccionado.comprobante_url && (
                     <Button
                       type="button"
                       variant="outline"
+                      size="sm"
                       onClick={() =>
                         abrirComprobante(
                           pedidoSeleccionado.comprobante_url as string,
                         )
                       }
-                      className="border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10"
+                      className="ml-auto border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/10"
                     >
                       <Eye className="mr-2 h-4 w-4" />
                       Ver comprobante
                     </Button>
                   )}
-
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      toggleEstado(pedidoSeleccionado);
-                      setPedidoSeleccionado((actual) =>
-                        actual
-                          ? {
-                              ...actual,
-                              estado:
-                                actual.estado === "pendiente"
-                                  ? "entregado"
-                                  : "pendiente",
-                            }
-                          : actual,
-                      );
-                    }}
-                    className={
-                      pedidoSeleccionado.estado === "pendiente"
-                        ? "bg-green-500 text-black hover:bg-green-400"
-                        : "bg-zinc-700 text-white hover:bg-zinc-600"
-                    }
-                  >
-                    {pedidoSeleccionado.estado === "pendiente" ? (
-                      <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Marcar entregado
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="mr-2 h-4 w-4" />
-                        Volver a pendiente
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
             </div>
@@ -1184,7 +1370,68 @@ export default function AdminRemeraPage() {
   );
 }
 
-function ResumenModelo({
+function ResumenTallesComparado({
+  hombre,
+  mujer,
+}: {
+  hombre: Record<string, number>;
+  mujer: Record<string, number>;
+}) {
+  const talles = ordenarTalles(
+    Array.from(new Set([...Object.keys(hombre), ...Object.keys(mujer)])),
+  );
+
+  return (
+    <>
+      {/* Celular: dos columnas verticales y alineadas por talle. */}
+      <div className="overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950/60 md:hidden">
+        <div className="grid grid-cols-2 border-b border-zinc-700 bg-zinc-900">
+          <p className="px-3 py-2 text-center text-sm font-semibold text-white">
+            Hombre
+          </p>
+          <p className="border-l border-zinc-700 px-3 py-2 text-center text-sm font-semibold text-white">
+            Mujer
+          </p>
+        </div>
+        {talles.map((talle) => (
+          <div key={talle} className="grid grid-cols-2 border-b border-zinc-800 last:border-b-0">
+            <ResumenCelda talle={talle} cantidad={hombre[talle]} />
+            <ResumenCelda talle={talle} cantidad={mujer[talle]} divisoria />
+          </div>
+        ))}
+      </div>
+
+      {/* PC/tablet: cada modelo en una fila horizontal compacta. */}
+      <div className="hidden grid-cols-2 gap-3 md:grid">
+        <ResumenHorizontal titulo="Hombre" totales={hombre} />
+        <ResumenHorizontal titulo="Mujer" totales={mujer} />
+      </div>
+    </>
+  );
+}
+
+function ResumenCelda({
+  talle,
+  cantidad,
+  divisoria = false,
+}: {
+  talle: string;
+  cantidad?: number;
+  divisoria?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between px-3 py-2 text-sm ${divisoria ? "border-l border-zinc-700" : ""}`}
+    >
+      <span className="font-medium text-zinc-300">{talle}</span>
+      <span className={cantidad ? "font-bold text-yellow-400" : "text-zinc-700"}>
+        {cantidad ?? "—"}
+      </span>
+    </div>
+  );
+}
+
+function ResumenHorizontal({
   titulo,
   totales,
 }: {
@@ -1192,33 +1439,33 @@ function ResumenModelo({
   totales: Record<string, number>;
 }) {
   const talles = ordenarTalles(Object.keys(totales));
+  const total = Object.values(totales).reduce(
+    (acumulado, cantidad) => acumulado + cantidad,
+    0,
+  );
 
   return (
-    <section className="rounded-xl border border-zinc-700 bg-zinc-950/60 p-4">
-      <div className="mb-3 flex items-center justify-between">
+    <section className="rounded-xl border border-zinc-700 bg-zinc-950/60 p-3">
+      <div className="mb-2 flex items-center gap-2">
         <h3 className="font-semibold text-white">{titulo}</h3>
         <Badge className="border-yellow-400/20 bg-yellow-400/10 text-yellow-400">
-          {Object.values(totales).reduce((total, cantidad) => total + cantidad, 0)}
+          {total}
         </Badge>
       </div>
-
-      {talles.length > 0 ? (
-        <div className="space-y-2">
-          {talles.map((talle) => (
-            <div
+      <div className="flex flex-wrap gap-1.5">
+        {talles.length > 0 ? (
+          talles.map((talle) => (
+            <span
               key={talle}
-              className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2"
+              className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200"
             >
-              <span className="font-medium text-zinc-200">{talle}</span>
-              <span className="font-bold text-yellow-400">{totales[talle]}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="rounded-lg border border-dashed border-zinc-800 px-3 py-5 text-center text-sm text-zinc-500">
-          Sin pedidos
-        </p>
-      )}
+              <strong className="text-white">{talle}</strong>: {totales[talle]}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-zinc-600">Sin pedidos</span>
+        )}
+      </div>
     </section>
   );
 }
