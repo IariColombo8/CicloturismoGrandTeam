@@ -87,11 +87,10 @@ function obtenerEstadoConfirmacion(pedido: RemeraAdmin): EstadoConfirmacion {
   if (pedido.estado_confirmacion === "confirmado") return "confirmado";
   if (pedido.estado_confirmacion === "anulado") return "anulado";
   if (pedido.estado_confirmacion === "pendiente") return "pendiente";
-  if (pedido.estado === "entregado" || pedido.estado === "confirmado") {
-    return "confirmado";
-  }
-  if (pedido.estado === "anulado") return "anulado";
-  return "pendiente";
+
+  // Compatibilidad con pedidos anteriores a la migración:
+  // `estado` solo admite "pendiente" o "entregado".
+  return pedido.estado === "entregado" ? "confirmado" : "pendiente";
 }
 
 function pedidoEntregado(pedido: RemeraAdmin) {
