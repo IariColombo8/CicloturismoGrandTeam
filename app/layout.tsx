@@ -1,25 +1,27 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Geist, Bebas_Neue } from "next/font/google"
-import "./globals.css"
-import { AppProviders } from "@/components/providers/AppProviders"
+import type React from "react";
+import type { Metadata } from "next";
+import { Geist, Bebas_Neue } from "next/font/google";
+import "./globals.css";
+import { AppProviders } from "@/components/providers/AppProviders";
 
 const geist = Geist({
   subsets: ["latin"],
   display: "swap",
   preload: true,
   variable: "--font-geist",
-})
+});
 
 const bebasNeue = Bebas_Neue({
   subsets: ["latin"],
   weight: "400",
   display: "swap",
   variable: "--font-bebas",
-})
+});
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://grand-team.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://grand-team.vercel.app";
+
+const OG_IMAGE = `${SITE_URL}/METADATOS.png`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -33,7 +35,16 @@ export const metadata: Metadata = {
     "Inscribite al 1er Cicloturismo Ruinas del Viejo Molino en Concepción del Uruguay. 50 km de aventura, seguro incluido, hidratación y apoyo mecánico. Cupos limitados.",
 
   applicationName: "Grand Team Bike",
-  generator: "v0.app",
+
+  generator: "Next.js",
+
+  creator: "Grand Team Bike",
+
+  publisher: "Grand Team Bike",
+
+  category: "Sports",
+
+  manifest: "/site.webmanifest",
 
   keywords: [
     "cicloturismo",
@@ -42,7 +53,8 @@ export const metadata: Metadata = {
     "Entre Ríos",
     "Ruinas del Viejo Molino",
     "bicicleta",
-    "evento ciclismo Argentina",
+    "evento ciclismo",
+    "Argentina",
     "inscripción 2026",
   ],
 
@@ -56,29 +68,39 @@ export const metadata: Metadata = {
     canonical: "/",
   },
 
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+
   icons: {
     icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
 
   openGraph: {
     type: "website",
+
     locale: "es_AR",
+
     url: SITE_URL,
+
     siteName: "Grand Team Bike",
 
-    title: "Grand Team Bike 2026 · Cicloturismo Ruinas del Viejo Molino",
+    title: "Grand Team Bike 2026 · 1er Cicloturismo Ruinas del Viejo Molino",
 
     description:
       "50 km de aventura por Entre Ríos. Inscribite ahora. Cupos limitados.",
 
     images: [
       {
-        url: "https://grand-team.vercel.app/METADATOS.png",
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
         type: "image/png",
-        alt: "Grand Team Bike 2026 - Cicloturismo Ruinas del Viejo Molino",
+        alt: "Grand Team Bike 2026 · Cicloturismo Ruinas del Viejo Molino",
       },
     ],
   },
@@ -86,16 +108,18 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
 
-    title: "Grand Team Bike 2026 · Cicloturismo",
+    title: "Grand Team Bike 2026 · Cicloturismo Ruinas del Viejo Molino",
 
-    description:
-      "50 km de aventura por Entre Ríos. Inscribite al 1er Cicloturismo Ruinas del Viejo Molino.",
+    description: "50 km de aventura por Entre Ríos. Inscribite ahora.",
 
-    images: ["https://grand-team.vercel.app/METADATOS.png"],
+    images: [OG_IMAGE],
+
+    creator: "@GrandTeamBike",
   },
 
   robots: {
     index: true,
+
     follow: true,
 
     googleBot: {
@@ -103,7 +127,16 @@ export const metadata: Metadata = {
       follow: true,
       "max-image-preview": "large",
       "max-snippet": -1,
+      "max-video-preview": -1,
     },
+  },
+
+  other: {
+    "og:image:secure_url": OG_IMAGE,
+    "og:image:type": "image/png",
+    "og:image:width": "1200",
+    "og:image:height": "630",
+    "theme-color": "#000000",
   },
 };
 
@@ -113,15 +146,15 @@ const eventJsonLd = {
 
   name: "1er Cicloturismo Ruinas del Viejo Molino",
 
-  description:
-    "Cicloturismo de 50 km en Concepción del Uruguay, Entre Ríos. Aventura, comunidad y paisajes únicos.",
+  description: "Cicloturismo de 50 km en Concepción del Uruguay, Entre Ríos.",
 
   startDate: "2026-11-15T08:00:00-03:00",
 
   eventStatus: "https://schema.org/EventScheduled",
 
-  eventAttendanceMode:
-    "https://schema.org/OfflineEventAttendanceMode",
+  eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+
+  image: [OG_IMAGE],
 
   location: {
     "@type": "Place",
@@ -136,8 +169,6 @@ const eventJsonLd = {
     },
   },
 
-  image: [`${SITE_URL}/METADATOS.png`],
-
   organizer: {
     "@type": "Organization",
     name: "Grand Team Bike",
@@ -151,13 +182,13 @@ const eventJsonLd = {
     priceCurrency: "ARS",
     validFrom: "2026-01-01",
   },
-}
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="es">
       <body
@@ -173,5 +204,5 @@ export default function RootLayout({
         />
       </body>
     </html>
-  )
+  );
 }
