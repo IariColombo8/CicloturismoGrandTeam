@@ -17,6 +17,19 @@ if (typeof window !== "undefined") {
   emailjs.init(EMAILJS_PUBLIC_KEY)
 }
 
+// Los clientes de correo (Gmail, Outlook) no resuelven rutas relativas:
+// toda imagen del template debe usar una URL absoluta y publica.
+// Se usa el dominio de Vercel a proposito: grandteambike.com.ar todavia no resuelve.
+const SITE_URL = "https://grand-team.vercel.app"
+// Version liviana del logo (~94 KB). El /logo.png original pesa 830 KB y Gmail
+// suele no cargarlo al proxear la imagen.
+const LOGO_URL = `${SITE_URL}/email/logo.png`
+
+/** Genera la URL de la imagen QR (300x300, PNG) para el token indicado. */
+function buildQrUrl(token: string): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=${encodeURIComponent(token)}`
+}
+
 interface EmailParams {
   email: string
   nombreCompleto: string
@@ -41,13 +54,17 @@ export const emailService = {
    */
   async sendConfirmationEmail(params: ConfirmationEmailParams) {
     try {
-      // Generar URL de imagen QR si hay token
-      const qrCodeUrl = params.tokenQR
-        ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(params.tokenQR)}`
-        : params.qrCodeUrl || ""
+      // Generar URL de imagen QR. Si no hay token (inscripciones migradas sin
+      // token_qr) se usa el numero de inscripcion para no mandar un QR vacio.
+      const qrData = params.tokenQR || params.numeroInscripcion || ""
+      const qrCodeUrl = qrData ? buildQrUrl(qrData) : params.qrCodeUrl || ""
 
+      // El spread va primero: los valores calculados abajo no deben ser pisados.
       const templateParams = {
+        ...params,
         to_email: params.email,
+        logo_url: LOGO_URL,
+        site_url: SITE_URL,
         to_name: params.nombreCompleto,
         nombre: params.nombreCompleto.split(" ")[0], // Primer nombre
         apellido: params.nombreCompleto.split(" ").slice(1).join(" "), // Apellidos
@@ -56,7 +73,6 @@ export const emailService = {
         ubicacion: params.ubicacion || "Concepción del Uruguay, Entre Ríos",
         talle_remera: "No incluye",
         qr_code_url: qrCodeUrl,
-        ...params
       }
 
       const response = await emailjs.send(
