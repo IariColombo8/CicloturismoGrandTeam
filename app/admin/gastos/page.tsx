@@ -1,225 +1,43 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { DollarSign, Plus, CheckCircle, XCircle, Eye, Trash2, TrendingDown } from "lucide-react"
+import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Clock } from "lucide-react"
+
+import { MovimientosTable } from "./MovimientosTable"
+import { GastosTable } from "./GastosTable"
+import { IngresosTable } from "./IngresosTable"
+import { PagosTable } from "./PagosTable"
+import { GastoFormModal } from "./GastoFormModal"
+import { IngresoFormModal } from "./IngresoFormModal"
+import { GastoDetalleModal } from "./GastoDetalleModal"
+import { useFinanzas } from "./useFinanzas"
+import { formatARS, mensajeError, type Gasto } from "./tipos"
 
 export default function GastosPage() {
-  const { user, userRole } = useSupabaseContext()
+  const { user, userRole, eventSettings } = useSupabaseContext()
   const { toast } = useToast()
 
-  const [gastos, setGastos] = useState<any[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [selectedGasto, setSelectedGasto] = useState<any>(null)
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
-  const [rejectId, setRejectId] = useState<string | null>(null)
-  const [rejectMotivo, setRejectMotivo] = useState("")
+  const precioBase = eventSettings?.precio ?? 0
+  const esAdmin = userRole === "admin"
 
-  // Form state
-  const [descripcion, setDescripcion] = useState("")
-  const [monto, setMonto] = useState("")
-  const [categoria, setCategoria] = useState("equipamiento")
-  const [comprobante, setComprobante] = useState<File | null>(null)
+  const { gastos, ingresos, inscripciones, cargando, error, recargar, resumen, movimientos } =
+    useFinanzas(precioBase, Boolean(user))
 
-  useEffect(() => {
-    if (!user) return
+  const [isGastoModalOpen, setIsGastoModalOpen] = useState(false)
+  const [isIngresoModalOpen, setIsIngresoModalOpen] = useState(false)
+  const [selectedGasto, setSelectedGasto] = useState<Gasto | null>(null)
 
-    const fetchGastos = async () => {
-      const { data } = await supabase
-        .from("gastos")
-        .select("*")
-        .order("fecha", { ascending: false })
-      setGastos((data || []).map((g: any) => ({
-        id: g.id,
-        descripcion: g.descripcion,
-        monto: g.monto,
-        categoria: g.categoria,
-        estado: g.estado,
-        fecha: g.fecha,
-        comprobante: g.comprobante,
-        creadoPor: g.creado_por,
-        rolCreador: g.rol_creador,
-        aprobadoPor: g.aprobado_por,
-        fechaAprobacion: g.fecha_aprobacion,
-        motivoRechazo: g.motivo_rechazo,
-      })))
-    }
-    fetchGastos()
-
-    const channel = supabase
-      .channel("gastos-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "gastos" }, () => {
-        fetchGastos()
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [user])
-
-  const handleCreateGasto = async () => {
-    if (!descripcion || !monto) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      let comprobanteUrl = null
-
-      // Subir comprobante si existe
-      if (comprobante) {
-        const filePath = `gastos/${Date.now()}_${comprobante.name}`
-        const { error: uploadError } = await supabase.storage
-          .from("comprobantes")
-          .upload(filePath, comprobante)
-        if (uploadError) throw uploadError
-        const { data: urlData } = supabase.storage
-          .from("comprobantes")
-          .getPublicUrl(filePath)
-        comprobanteUrl = urlData.publicUrl
-      }
-
-      const now = new Date().toISOString()
-      const gastoData = {
-        evento_id: "2026",
-        descripcion,
-        monto: Number.parseFloat(monto),
-        categoria,
-        fecha: now,
-        comprobante: comprobanteUrl,
-        estado: userRole === "admin" ? "aprobado" : "pendiente",
-        creado_por: user?.email || "",
-        rol_creador: userRole,
-        aprobado_por: userRole === "admin" ? user?.email : null,
-        fecha_aprobacion: userRole === "admin" ? now : null,
-      }
-
-      const { error } = await supabase.from("gastos").insert(gastoData)
-      if (error) throw error
-
-      toast({
-        title: userRole === "admin" ? "Gasto creado" : "Propuesta enviada",
-        description:
-          userRole === "admin"
-            ? "El gasto ha sido creado y aprobado automáticamente"
-            : "Tu propuesta será revisada por un administrador",
-      })
-
-      // Reset form
-      setDescripcion("")
-      setMonto("")
-      setCategoria("equipamiento")
-      setComprobante(null)
-      setIsModalOpen(false)
-    } catch (error) {
-      console.error("Error creando gasto:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo crear el gasto",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleApprove = async (id: string) => {
-    try {
-      const { error } = await supabase.from("gastos").update({
-        estado: "aprobado",
-        aprobado_por: user?.email,
-        fecha_aprobacion: new Date().toISOString(),
-      }).eq("id", id)
-      if (error) throw error
-
-      toast({
-        title: "Gasto aprobado",
-        description: "El gasto ha sido aprobado exitosamente",
-      })
-      setIsDetailModalOpen(false)
-    } catch (error) {
-      console.error("Error aprobando gasto:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo aprobar el gasto",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleReject = async (id: string, motivo: string) => {
-    try {
-      const { error } = await supabase.from("gastos").update({
-        estado: "rechazado",
-        motivo_rechazo: motivo,
-        aprobado_por: user?.email,
-        fecha_aprobacion: new Date().toISOString(),
-      }).eq("id", id)
-      if (error) throw error
-
-      toast({
-        title: "Gasto rechazado",
-        description: "El gasto ha sido rechazado",
-      })
-      setIsDetailModalOpen(false)
-    } catch (error) {
-      console.error("Error rechazando gasto:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo rechazar el gasto",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const confirmDelete = async () => {
-    if (!deleteConfirmId) return
-    try {
-      const { error } = await supabase.from("gastos").delete().eq("id", deleteConfirmId)
-      if (error) throw error
-      toast({
-        title: "Gasto eliminado",
-        description: "El gasto ha sido eliminado exitosamente",
-      })
-      setIsDetailModalOpen(false)
-    } catch (error) {
-      console.error("Error eliminando gasto:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el gasto",
-        variant: "destructive",
-      })
-    } finally {
-      setDeleteConfirmId(null)
-    }
-  }
-
-  const confirmReject = async () => {
-    if (!rejectId) return
-    await handleReject(rejectId, rejectMotivo)
-    setRejectId(null)
-    setRejectMotivo("")
-  }
+  const pendientes = gastos.filter((g) => g.estado === "pendiente")
+  const aprobados = gastos.filter((g) => g.estado === "aprobado")
+  const rechazados = gastos.filter((g) => g.estado === "rechazado")
+  const confirmadas = inscripciones.filter((i) => i.estado === "confirmada")
 
   const getStatusBadge = (estado: string) => {
     switch (estado) {
@@ -234,13 +52,53 @@ export default function GastosPage() {
     }
   }
 
-  const pendientes = gastos.filter((g) => g.estado === "pendiente")
-  const aprobados = gastos.filter((g) => g.estado === "aprobado")
-  const rechazados = gastos.filter((g) => g.estado === "rechazado")
+  const handleEliminarIngreso = async (id: string) => {
+    try {
+      const { error: errorDelete } = await supabase.from("ingresos").delete().eq("id", id)
+      if (errorDelete) throw errorDelete
+      toast({ title: "Ingreso eliminado" })
+      await recargar()
+    } catch (err) {
+      console.error("Error eliminando ingreso:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    }
+  }
 
-  const totalAprobados = aprobados.reduce((sum, g) => sum + (g.monto || 0), 0)
+  const handleMarcarCobrado = async (id: string) => {
+    try {
+      const { error: errorUpdate } = await supabase
+        .from("ingresos")
+        .update({ estado: "cobrado" })
+        .eq("id", id)
+      if (errorUpdate) throw errorUpdate
+      toast({ title: "Ingreso cobrado", description: "Se sumó al total de ingresos" })
+      await recargar()
+    } catch (err) {
+      console.error("Error actualizando ingreso:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    }
+  }
 
-  if (gastos.length === 0 && !user) {
+  const handleGuardarPago = async (id: string, montoPagado: number | null) => {
+    try {
+      const { error: errorUpdate } = await supabase
+        .from("participantes")
+        .update({ monto_pagado: montoPagado })
+        .eq("id", id)
+      if (errorUpdate) throw errorUpdate
+      toast({
+        title: "Pago actualizado",
+        description:
+          montoPagado === null ? "Se restableció al precio base del evento" : `Registrado ${formatARS(montoPagado)}`,
+      })
+      await recargar()
+    } catch (err) {
+      console.error("Error actualizando pago:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    }
+  }
+
+  if (cargando) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-yellow-400 text-xl">Cargando...</div>
@@ -255,105 +113,194 @@ export default function GastosPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div className="flex items-center gap-3">
             <DollarSign className="w-8 h-8 sm:w-10 sm:h-10 text-yellow-400" />
-            <h1 className="text-2xl sm:text-4xl font-bold text-yellow-400">Gastos</h1>
+            <div>
+              <h1 className="text-2xl sm:text-4xl font-bold text-yellow-400">Finanzas</h1>
+              <p className="text-xs text-gray-500">
+                Precio base por inscripto: {formatARS(precioBase)} · {resumen.confirmados} confirmados de{" "}
+                {resumen.inscriptosTotales} inscriptos
+              </p>
+            </div>
           </div>
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {userRole === "admin" ? "Agregar Gasto" : "Proponer Gasto"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => setIsIngresoModalOpen(true)}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Registrar Ingreso
+            </Button>
+            <Button
+              onClick={() => setIsGastoModalOpen(true)}
+              className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {esAdmin ? "Agregar Gasto" : "Proponer Gasto"}
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        {/* Dashboard */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card className="bg-gray-800/50 border-green-500/20">
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                <TrendingDown className="w-4 h-4" />
-                Total Gastos Aprobados
+                <TrendingUp className="w-4 h-4" />
+                Ingresos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-500">${totalAprobados.toLocaleString("es-AR")}</div>
-              <p className="text-xs text-gray-500 mt-1">{aprobados.length} gastos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800/50 border-yellow-400/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400">Pendientes de Aprobación</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-yellow-400">{pendientes.length}</div>
-              <p className="text-xs text-gray-500 mt-1">Requieren revisión</p>
+              <div className="text-3xl font-bold text-green-500">{formatARS(resumen.totalIngresos)}</div>
+              <p className="text-xs text-gray-500 mt-1">
+                Inscripciones {formatARS(resumen.ingresoInscripciones)} · Otros {formatARS(resumen.ingresosCobrados)}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Proyectado: {formatARS(resumen.totalIngresosProyectado)}
+              </p>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800/50 border-red-500/20">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-400">Rechazados</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <TrendingDown className="w-4 h-4" />
+                Gastos Aprobados
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-red-500">{rechazados.length}</div>
-              <p className="text-xs text-gray-500 mt-1">No aprobados</p>
+              <div className="text-3xl font-bold text-red-400">{formatARS(resumen.gastosAprobados)}</div>
+              <p className="text-xs text-gray-500 mt-1">{aprobados.length} gastos · sobre confirmados</p>
+              <p className="text-xs text-gray-600 mt-1">
+                Con todos los inscriptos: {formatARS(resumen.gastosAprobadosProyectado)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className={`bg-gray-800/50 ${resumen.balance >= 0 ? "border-yellow-400/20" : "border-red-500/40"}`}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <Scale className="w-4 h-4" />
+                Balance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div
+                className={`text-3xl font-bold ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
+              >
+                {resumen.balance < 0 && "-"}
+                {formatARS(Math.abs(resumen.balance))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {resumen.balance >= 0 ? "A favor" : "En déficit"} · ingresos menos gastos
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Proyectado: {resumen.balanceProyectado < 0 ? "-" : ""}
+                {formatARS(Math.abs(resumen.balanceProyectado))}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800/50 border-blue-500/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Sin cerrar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-400">
+                +{formatARS(resumen.ingresosPorCobrar)}
+              </div>
+              <p className="text-xs text-gray-500">Por cobrar</p>
+              <div className="text-2xl font-bold text-orange-400 mt-2">
+                -{formatARS(resumen.gastosPendientes)}
+              </div>
+              <p className="text-xs text-gray-500">
+                {pendientes.length} gastos esperando aprobación
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Gastos Table */}
+        {/* Contenido */}
         <Card className="bg-gray-800/50 border-yellow-400/20">
           <CardHeader>
-            <CardTitle className="text-yellow-400">Gestión de Gastos</CardTitle>
-            <CardDescription className="text-gray-400">Administra los gastos del evento</CardDescription>
+            <CardTitle className="text-yellow-400">Movimientos del evento</CardTitle>
+            <CardDescription className="text-gray-400">
+              Gastos, ingresos y pagos de inscripción
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="todos">
+            <Tabs defaultValue="todo">
               <TabsList className="bg-gray-700 w-full flex flex-wrap h-auto gap-1 p-1">
-                <TabsTrigger value="todos" className="flex-1 min-w-0 text-xs sm:text-sm">Todos ({gastos.length})</TabsTrigger>
-                <TabsTrigger value="pendientes" className="flex-1 min-w-0 text-xs sm:text-sm">Pend. ({pendientes.length})</TabsTrigger>
-                <TabsTrigger value="aprobados" className="flex-1 min-w-0 text-xs sm:text-sm">Aprob. ({aprobados.length})</TabsTrigger>
-                <TabsTrigger value="rechazados" className="flex-1 min-w-0 text-xs sm:text-sm">Rech. ({rechazados.length})</TabsTrigger>
+                <TabsTrigger value="todo" className="flex-1 min-w-0 text-xs sm:text-sm">
+                  Todo ({movimientos.length})
+                </TabsTrigger>
+                <TabsTrigger value="gastos" className="flex-1 min-w-0 text-xs sm:text-sm">
+                  Gastos ({gastos.length})
+                </TabsTrigger>
+                <TabsTrigger value="ingresos" className="flex-1 min-w-0 text-xs sm:text-sm">
+                  Ingresos ({ingresos.length})
+                </TabsTrigger>
+                <TabsTrigger value="pagos" className="flex-1 min-w-0 text-xs sm:text-sm">
+                  Pagos ({confirmadas.length})
+                </TabsTrigger>
+                <TabsTrigger value="rechazados" className="flex-1 min-w-0 text-xs sm:text-sm">
+                  Rech. ({rechazados.length})
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="todos">
+              <TabsContent value="todo">
+                <MovimientosTable movimientos={movimientos} onVerGasto={setSelectedGasto} />
+              </TabsContent>
+
+              <TabsContent value="gastos">
                 <GastosTable
                   gastos={gastos}
-                  onView={(g) => {
-                    setSelectedGasto(g)
-                    setIsDetailModalOpen(true)
-                  }}
+                  confirmados={resumen.confirmados}
+                  onView={setSelectedGasto}
                   getStatusBadge={getStatusBadge}
                 />
               </TabsContent>
-              <TabsContent value="pendientes">
-                <GastosTable
-                  gastos={pendientes}
-                  onView={(g) => {
-                    setSelectedGasto(g)
-                    setIsDetailModalOpen(true)
-                  }}
-                  getStatusBadge={getStatusBadge}
+
+              <TabsContent value="ingresos">
+                <IngresosTable
+                  ingresos={ingresos}
+                  puedeEliminar={esAdmin}
+                  onEliminar={handleEliminarIngreso}
+                  onMarcarCobrado={handleMarcarCobrado}
                 />
               </TabsContent>
-              <TabsContent value="aprobados">
-                <GastosTable
-                  gastos={aprobados}
-                  onView={(g) => {
-                    setSelectedGasto(g)
-                    setIsDetailModalOpen(true)
-                  }}
-                  getStatusBadge={getStatusBadge}
+
+              <TabsContent value="pagos">
+                {resumen.pagosDiferentes.length > 0 && (
+                  <div className="mt-4 rounded-lg border border-orange-500/30 bg-orange-500/10 p-3 text-sm text-orange-300">
+                    {resumen.pagosDiferentes.length} inscripto(s) pagaron distinto al precio base de{" "}
+                    {formatARS(precioBase)}. Diferencia total: {resumen.diferenciaPagos < 0 ? "-" : "+"}
+                    {formatARS(Math.abs(resumen.diferenciaPagos))}
+                  </div>
+                )}
+                <PagosTable
+                  inscripciones={confirmadas}
+                  precioBase={precioBase}
+                  puedeEditar={esAdmin}
+                  onGuardar={handleGuardarPago}
+                  mensajeVacio="Todavía no hay inscripciones confirmadas"
                 />
               </TabsContent>
+
               <TabsContent value="rechazados">
                 <GastosTable
                   gastos={rechazados}
-                  onView={(g) => {
-                    setSelectedGasto(g)
-                    setIsDetailModalOpen(true)
-                  }}
+                  confirmados={resumen.confirmados}
+                  onView={setSelectedGasto}
                   getStatusBadge={getStatusBadge}
                 />
               </TabsContent>
@@ -361,314 +308,34 @@ export default function GastosPage() {
           </CardContent>
         </Card>
 
-        {/* Create/Propose Modal */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="bg-gray-800 border-yellow-400/20 max-w-[calc(100vw-2rem)] sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="text-yellow-400">
-                {userRole === "admin" ? "Agregar Nuevo Gasto" : "Proponer Gasto"}
-              </DialogTitle>
-              <DialogDescription className="text-gray-400">
-                {userRole === "admin"
-                  ? "El gasto será aprobado automáticamente"
-                  : "Tu propuesta será revisada por un administrador"}
-              </DialogDescription>
-            </DialogHeader>
+        <GastoFormModal
+          open={isGastoModalOpen}
+          onOpenChange={setIsGastoModalOpen}
+          esAdmin={esAdmin}
+          confirmados={resumen.confirmados}
+          userEmail={user?.email || ""}
+          userRole={userRole || ""}
+          onGuardado={recargar}
+        />
 
-            <div className="space-y-4">
-              <div>
-                <Label className="text-gray-300">Descripción *</Label>
-                <Input
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Ej: Compra de hidratación"
-                  className="bg-gray-700 border-gray-600 text-white"
-                />
-              </div>
+        <IngresoFormModal
+          open={isIngresoModalOpen}
+          onOpenChange={setIsIngresoModalOpen}
+          userEmail={user?.email || ""}
+          userRole={userRole || ""}
+          onGuardado={recargar}
+        />
 
-              <div>
-                <Label className="text-gray-300">Monto (ARS) *</Label>
-                <Input
-                  type="number"
-                  value={monto}
-                  onChange={(e) => setMonto(e.target.value)}
-                  placeholder="40000"
-                  className="bg-gray-700 border-gray-600 text-white"
-                />
-              </div>
-
-              <div>
-                <Label className="text-gray-300">Categoría *</Label>
-                <Select value={categoria} onValueChange={setCategoria}>
-                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-700 border-gray-600">
-                    <SelectItem value="equipamiento">Equipamiento</SelectItem>
-                    <SelectItem value="premios">Premios</SelectItem>
-                    <SelectItem value="logística">Logística</SelectItem>
-                    <SelectItem value="marketing">Marketing</SelectItem>
-                    <SelectItem value="alimentación">Alimentación</SelectItem>
-                    <SelectItem value="otro">Otro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-gray-300">Comprobante (opcional)</Label>
-                <Input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={(e) => setComprobante(e.target.files?.[0] || null)}
-                  className="bg-gray-700 border-gray-600 text-white"
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateGasto} className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">
-                {userRole === "admin" ? "Crear Gasto" : "Enviar Propuesta"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Detail Modal */}
-        {selectedGasto && (
-          <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-            <DialogContent className="bg-gray-800 border-yellow-400/20 max-w-[calc(100vw-2rem)] sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="text-yellow-400">Detalle del Gasto</DialogTitle>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-gray-400">Descripción</Label>
-                    <p className="text-white font-medium">{selectedGasto.descripcion}</p>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">Monto</Label>
-                    <p className="text-white font-bold text-xl">${selectedGasto.monto?.toLocaleString("es-AR")}</p>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">Categoría</Label>
-                    <p className="text-white capitalize">{selectedGasto.categoria}</p>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">Estado</Label>
-                    {getStatusBadge(selectedGasto.estado)}
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">Creado por</Label>
-                    <p className="text-white text-sm">{selectedGasto.creadoPor}</p>
-                    <p className="text-gray-500 text-xs capitalize">({selectedGasto.rolCreador})</p>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400">Fecha</Label>
-                    <p className="text-white text-sm">
-                      {selectedGasto.fecha
-                        ? new Date(selectedGasto.fecha).toLocaleDateString("es-AR")
-                        : "N/A"}
-                    </p>
-                  </div>
-                </div>
-
-                {selectedGasto.comprobante && (
-                  <div>
-                    <Label className="text-gray-400">Comprobante</Label>
-                    <Button
-                      variant="link"
-                      className="text-yellow-400"
-                      onClick={() => {
-                        const url = selectedGasto.comprobante
-                        if (url && (url.startsWith("https://") || url.startsWith("data:"))) {
-                          window.open(url, "_blank", "noopener,noreferrer")
-                        }
-                      }}
-                    >
-                      Ver comprobante
-                    </Button>
-                  </div>
-                )}
-
-                {selectedGasto.estado === "rechazado" && selectedGasto.motivoRechazo && (
-                  <div>
-                    <Label className="text-gray-400">Motivo de Rechazo</Label>
-                    <p className="text-red-400">{selectedGasto.motivoRechazo}</p>
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter className="flex flex-wrap gap-2">
-                {userRole === "admin" && selectedGasto.estado === "pendiente" && (
-                  <>
-                    <Button onClick={() => handleApprove(selectedGasto.id)} className="bg-green-500 hover:bg-green-600">
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Aprobar
-                    </Button>
-                    <Button
-                      onClick={() => setRejectId(selectedGasto.id)}
-                      variant="destructive"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Rechazar
-                    </Button>
-                  </>
-                )}
-
-                {userRole === "admin" && (
-                  <Button
-                    onClick={() => setDeleteConfirmId(selectedGasto.id)}
-                    variant="outline"
-                    className="border-red-500 text-red-500"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Eliminar
-                  </Button>
-                )}
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Diálogo de confirmación de eliminación */}
-        <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
-          <DialogContent className="bg-gray-800 border-gray-700">
-            <DialogHeader>
-              <DialogTitle className="text-white">Confirmar eliminación</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                ¿Estás seguro de que querés eliminar este gasto? Esta acción no se puede deshacer.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex gap-2">
-              <Button variant="outline" onClick={() => setDeleteConfirmId(null)} className="border-gray-600 text-gray-300">
-                Cancelar
-              </Button>
-              <Button variant="destructive" onClick={confirmDelete}>
-                Eliminar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Diálogo de motivo de rechazo */}
-        <Dialog open={!!rejectId} onOpenChange={() => { setRejectId(null); setRejectMotivo("") }}>
-          <DialogContent className="bg-gray-800 border-gray-700">
-            <DialogHeader>
-              <DialogTitle className="text-white">Rechazar gasto</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Indicá el motivo del rechazo (opcional).
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <Input
-                value={rejectMotivo}
-                onChange={(e) => setRejectMotivo(e.target.value)}
-                placeholder="Motivo del rechazo..."
-                className="bg-gray-700 border-gray-600 text-white"
-              />
-            </div>
-            <DialogFooter className="flex gap-2">
-              <Button variant="outline" onClick={() => { setRejectId(null); setRejectMotivo("") }} className="border-gray-600 text-gray-300">
-                Cancelar
-              </Button>
-              <Button variant="destructive" onClick={confirmReject}>
-                Rechazar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <GastoDetalleModal
+          gasto={selectedGasto}
+          onClose={() => setSelectedGasto(null)}
+          esAdmin={esAdmin}
+          confirmados={resumen.confirmados}
+          userEmail={user?.email || ""}
+          getStatusBadge={getStatusBadge}
+          onCambio={recargar}
+        />
       </div>
-    </div>
-  )
-}
-
-function GastosTable({ gastos, onView, getStatusBadge }: { gastos: any[]; onView: (g: any) => void; getStatusBadge: (estado: string) => React.ReactNode }) {
-  const [page, setPage] = useState(1)
-  const PAGE_SIZE = 15
-  const totalPages = Math.ceil(gastos.length / PAGE_SIZE)
-  const pageItems = gastos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  if (gastos.length === 0) {
-    return <div className="text-center py-8 text-gray-400">No hay gastos en esta categoría</div>
-  }
-
-  return (
-    <div className="mt-4 space-y-3">
-      <div className="rounded-lg border border-gray-700 overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-gray-700">
-            <TableRow>
-              <TableHead className="text-yellow-400">Descripción</TableHead>
-              <TableHead className="text-yellow-400 hidden sm:table-cell">Categoría</TableHead>
-              <TableHead className="text-yellow-400">Monto</TableHead>
-              <TableHead className="text-yellow-400 hidden md:table-cell">Creado por</TableHead>
-              <TableHead className="text-yellow-400">Estado</TableHead>
-              <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageItems.map((gasto: any) => (
-              <TableRow key={gasto.id} className="border-gray-700">
-                <TableCell className="text-white font-medium">
-                  {gasto.descripcion}
-                  <span className="block text-xs text-gray-500 capitalize sm:hidden">{gasto.categoria}</span>
-                </TableCell>
-                <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{gasto.categoria}</TableCell>
-                <TableCell className="text-white font-bold">${gasto.monto?.toLocaleString("es-AR")}</TableCell>
-                <TableCell className="text-gray-400 text-sm hidden md:table-cell">
-                  {gasto.creadoPor}
-                  <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
-                </TableCell>
-                <TableCell>{getStatusBadge(gasto.estado)}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-blue-500/50 text-blue-400 bg-transparent"
-                    onClick={() => onView(gasto)}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs text-gray-400">
-            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, gastos.length)} de {gastos.length}
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-gray-600 text-gray-300 h-7 w-7 p-0"
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              ‹
-            </Button>
-            <span className="text-xs text-gray-400 px-2">{page} / {totalPages}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-gray-600 text-gray-300 h-7 w-7 p-0"
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              ›
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
