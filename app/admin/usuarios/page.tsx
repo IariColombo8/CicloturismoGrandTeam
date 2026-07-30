@@ -1,14 +1,17 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
 import {
   Loader2, Search, ShieldCheck, Shield, User as UserIcon,
-  RefreshCw, Crown, Users as UsersIcon,
+  RefreshCw, Crown, Users as UsersIcon, UserPlus, Trash2, Shirt, X,
 } from "lucide-react"
 
 interface UsuarioAuth {
@@ -16,9 +19,10 @@ interface UsuarioAuth {
   email: string
   nombre: string
   avatar_url: string | null
-  rol: "admin" | "grandteam" | "usuario"
+  rol: Rol
   creado: string
   ultimo_acceso: string | null
+  pendiente: boolean
 }
 
 const ROL_CONFIG = {
@@ -32,6 +36,11 @@ const ROL_CONFIG = {
     icon: ShieldCheck,
     badge: "bg-blue-400/20 text-blue-300 border-blue-400/30",
   },
+  remera: {
+    label: "Remeras",
+    icon: Shirt,
+    badge: "bg-emerald-400/20 text-emerald-300 border-emerald-400/30",
+  },
   usuario: {
     label: "Usuario",
     icon: UserIcon,
@@ -40,19 +49,31 @@ const ROL_CONFIG = {
 } as const
 
 type Rol = keyof typeof ROL_CONFIG
-const ROLES: Rol[] = ["admin", "grandteam", "usuario"]
+const ROLES: Rol[] = ["admin", "grandteam", "remera", "usuario"]
+// Roles que se pueden asignar al invitar a alguien nuevo
+const ROLES_ASIGNABLES: Rol[] = ["admin", "grandteam", "remera"]
 
 export default function AdminUsuariosPage() {
-  const { user, userRole, session, loading: authLoading } = useSupabaseContext()
+  const router = useRouter()
+  const { user, session, loading: authLoading } = useSupabaseContext()
+  const { toast } = useToast()
+
   const [usuarios, setUsuarios] = useState<UsuarioAuth[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // La autoridad sobre el acceso es el servidor: si el GET responde 403,
+  // se muestra la pantalla de acceso restringido.
+  const [denegado, setDenegado] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRol, setFilterRol] = useState<string>("all")
   const [updatingEmail, setUpdatingEmail] = useState<string | null>(null)
 
-  // Solo admin puede gestionar roles
-  const isAuthorized = userRole === "admin"
+  // Formulario de alta
+  const [mostrarAlta, setMostrarAlta] = useState(false)
+  const [nuevoNombre, setNuevoNombre] = useState("")
+  const [nuevoEmail, setNuevoEmail] = useState("")
+  const [nuevoRol, setNuevoRol] = useState<Rol>("grandteam")
+  const [creando, setCreando] = useState(false)
 
   const fetchUsuarios = useCallback(async () => {
     const token = session?.access_token
@@ -65,9 +86,11 @@ export default function AdminUsuariosPage() {
       })
       const data = await res.json()
       if (!res.ok) {
+        setDenegado(res.status === 403)
         setError(data.error || "Error al cargar usuarios")
         setUsuarios([])
       } else {
+        setDenegado(false)
         setUsuarios(data.usuarios || [])
       }
     } catch {
@@ -79,20 +102,41 @@ export default function AdminUsuariosPage() {
 
   useEffect(() => {
     if (authLoading) return
-    if (!isAuthorized || !user) {
-      setLoading(false)
+    if (!user) {
+      router.push("/login?returnUrl=/admin/usuarios")
       return
     }
     fetchUsuarios()
-  }, [authLoading, isAuthorized, user, fetchUsuarios])
+  }, [authLoading, user, router, fetchUsuarios])
 
-  const cambiarRol = async (usuario: UsuarioAuth, nuevoRol: Rol) => {
-    if (usuario.rol === nuevoRol) return
+  const guardarRol = async (
+    usuario: Pick<UsuarioAuth, "email" | "nombre"> & { id?: string },
+    rol: Rol
+  ) => {
     const token = session?.access_token
-    if (!token) return
+    if (!token) return { ok: false }
 
-    // Evitar que el admin se quite a si mismo el rol admin sin querer
-    if (usuario.email === user?.email && nuevoRol !== "admin") {
+    const res = await fetch("/api/admin/usuarios", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        email: usuario.email,
+        role: rol,
+        authUserId: usuario.id?.startsWith("pendiente:") ? undefined : usuario.id,
+        nombre: usuario.nombre,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    return { ok: res.ok, error: data?.error as string | undefined }
+  }
+
+  const cambiarRol = async (usuario: UsuarioAuth, nuevoRolSel: Rol) => {
+    if (usuario.rol === nuevoRolSel) return
+
+    if (usuario.email === user?.email?.toLowerCase() && nuevoRolSel !== "admin") {
       const ok = confirm(
         "Estas por quitarte el rol admin a vos mismo. Perderas acceso al panel. Continuar?"
       )
@@ -100,34 +144,78 @@ export default function AdminUsuariosPage() {
     }
 
     setUpdatingEmail(usuario.email)
-    // Optimista
-    const prev = usuarios
+    const previo = usuarios
     setUsuarios((list) =>
-      list.map((u) => (u.email === usuario.email ? { ...u, rol: nuevoRol } : u))
+      list.map((u) => (u.email === usuario.email ? { ...u, rol: nuevoRolSel } : u))
     )
 
     try {
-      const res = await fetch("/api/admin/usuarios", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          email: usuario.email,
-          role: nuevoRol,
-          authUserId: usuario.id,
-          nombre: usuario.nombre,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setUsuarios(prev) // rollback
-        alert(data.error || "No se pudo cambiar el rol")
+      const { ok, error: err } = await guardarRol(usuario, nuevoRolSel)
+      if (!ok) {
+        setUsuarios(previo)
+        toast({ title: "No se pudo cambiar el rol", description: err, variant: "destructive" })
+      } else if (nuevoRolSel === "usuario" && usuario.pendiente) {
+        // Un pendiente sin rol ya no tiene por que figurar en la lista
+        setUsuarios((list) => list.filter((u) => u.email !== usuario.email))
       }
     } catch {
-      setUsuarios(prev) // rollback
-      alert("Error de red al cambiar el rol")
+      setUsuarios(previo)
+      toast({ title: "Error de red al cambiar el rol", variant: "destructive" })
+    } finally {
+      setUpdatingEmail(null)
+    }
+  }
+
+  const agregarUsuario = async () => {
+    const email = nuevoEmail.trim().toLowerCase()
+    const nombre = nuevoNombre.trim()
+
+    if (!nombre) {
+      toast({ title: "Falta el nombre", variant: "destructive" })
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "El email no es valido", variant: "destructive" })
+      return
+    }
+
+    setCreando(true)
+    const { ok, error: err } = await guardarRol({ email, nombre }, nuevoRol)
+    setCreando(false)
+
+    if (!ok) {
+      toast({ title: "No se pudo agregar", description: err, variant: "destructive" })
+      return
+    }
+
+    toast({
+      title: `${nombre} agregado como ${ROL_CONFIG[nuevoRol].label}`,
+      description: "Va a tener acceso cuando inicie sesion con Google usando ese email.",
+    })
+    setNuevoNombre("")
+    setNuevoEmail("")
+    setMostrarAlta(false)
+    fetchUsuarios()
+  }
+
+  const eliminarPendiente = async (usuario: UsuarioAuth) => {
+    const token = session?.access_token
+    if (!token) return
+    if (!confirm(`Eliminar la invitacion de ${usuario.email}?`)) return
+
+    setUpdatingEmail(usuario.email)
+    try {
+      const res = await fetch(
+        `/api/admin/usuarios?email=${encodeURIComponent(usuario.email)}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast({ title: "No se pudo eliminar", description: data?.error, variant: "destructive" })
+        return
+      }
+      setUsuarios((list) => list.filter((u) => u.email !== usuario.email))
+      toast({ title: "Invitacion eliminada" })
     } finally {
       setUpdatingEmail(null)
     }
@@ -146,6 +234,7 @@ export default function AdminUsuariosPage() {
   const conteo = {
     admin: usuarios.filter((u) => u.rol === "admin").length,
     grandteam: usuarios.filter((u) => u.rol === "grandteam").length,
+    remera: usuarios.filter((u) => u.rol === "remera").length,
     usuario: usuarios.filter((u) => u.rol === "usuario").length,
   }
 
@@ -170,17 +259,22 @@ export default function AdminUsuariosPage() {
     )
   }
 
-  if (!isAuthorized) {
+  if (denegado) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black flex items-center justify-center px-4">
         <Card className="bg-zinc-900/80 border-zinc-800 max-w-md">
           <CardContent className="p-6 text-center">
             <Shield className="w-10 h-10 text-red-400 mx-auto mb-3" />
             <h2 className="text-white font-bold text-lg mb-1">Acceso restringido</h2>
-            <p className="text-zinc-400 text-sm">
+            <p className="text-zinc-400 text-sm mb-4">
               Solo los usuarios con rol <span className="text-yellow-400 font-semibold">admin</span> pueden
               gestionar roles.
             </p>
+            {error && <p className="text-red-300/80 text-xs mb-4">{error}</p>}
+            <Button onClick={fetchUsuarios} variant="outline" className="border-zinc-700 text-zinc-300">
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              Reintentar
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -198,31 +292,118 @@ export default function AdminUsuariosPage() {
                 <span className="gradient-text">Usuarios y Roles</span>
               </h1>
               <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-                {usuarios.length} usuario{usuarios.length !== 1 ? "s" : ""} registrado
-                {usuarios.length !== 1 ? "s" : ""} con Google
+                {usuarios.length} usuario{usuarios.length !== 1 ? "s" : ""} en el sistema
               </p>
             </div>
-            <Button
-              onClick={fetchUsuarios}
-              variant="outline"
-              className="border-zinc-700 text-zinc-300 hover:text-white text-sm"
-            >
-              <RefreshCw className="w-4 h-4 mr-1.5" />
-              Actualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setMostrarAlta((v) => !v)}
+                className="bg-yellow-400 text-black hover:bg-yellow-500 font-semibold text-sm"
+              >
+                {mostrarAlta ? (
+                  <><X className="w-4 h-4 mr-1.5" />Cerrar</>
+                ) : (
+                  <><UserPlus className="w-4 h-4 mr-1.5" />Agregar</>
+                )}
+              </Button>
+              <Button
+                onClick={fetchUsuarios}
+                variant="outline"
+                className="border-zinc-700 text-zinc-300 hover:text-white text-sm"
+              >
+                <RefreshCw className="w-4 h-4 mr-1.5" />
+                Actualizar
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {error && (
+        {error && !denegado && (
           <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
             {error}
           </div>
         )}
 
+        {/* Alta de usuario */}
+        {mostrarAlta && (
+          <Card className="bg-zinc-900/80 border-yellow-400/30 mb-6">
+            <CardContent className="p-4 sm:p-5 space-y-4">
+              <div>
+                <h2 className="text-white font-bold">Agregar admin o miembro del Grand Team</h2>
+                <p className="text-zinc-400 text-xs mt-0.5">
+                  Se guarda el permiso por email. La persona obtiene acceso al iniciar sesion con
+                  Google usando ese mismo correo.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-zinc-300 text-xs">Nombre</Label>
+                  <Input
+                    value={nuevoNombre}
+                    onChange={(e) => setNuevoNombre(e.target.value)}
+                    placeholder="Nombre y apellido"
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-zinc-300 text-xs">Email</Label>
+                  <Input
+                    type="email"
+                    value={nuevoEmail}
+                    onChange={(e) => setNuevoEmail(e.target.value)}
+                    placeholder="persona@gmail.com"
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-zinc-300 text-xs block mb-1.5">Rol</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {ROLES_ASIGNABLES.map((rol) => {
+                    const RolIcon = ROL_CONFIG[rol].icon
+                    const activo = nuevoRol === rol
+                    return (
+                      <Button
+                        key={rol}
+                        type="button"
+                        size="sm"
+                        variant={activo ? "default" : "outline"}
+                        onClick={() => setNuevoRol(rol)}
+                        className={
+                          activo
+                            ? "bg-yellow-400 text-black hover:bg-yellow-500"
+                            : "border-zinc-700 text-zinc-400 hover:text-white"
+                        }
+                      >
+                        <RolIcon className="w-3.5 h-3.5 mr-1.5" />
+                        {ROL_CONFIG[rol].label}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <Button
+                onClick={agregarUsuario}
+                disabled={creando}
+                className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700 font-semibold"
+              >
+                {creando ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
+                ) : (
+                  <><UserPlus className="w-4 h-4 mr-2" />Agregar usuario</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats por rol */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {ROLES.map((rol) => {
             const config = ROL_CONFIG[rol]
             const Icon = config.icon
@@ -280,7 +461,7 @@ export default function AdminUsuariosPage() {
           <div className="grid gap-3">
             {filtered.map((usuario) => {
               const config = ROL_CONFIG[usuario.rol]
-              const esYoMismo = usuario.email === user?.email
+              const esYoMismo = usuario.email === user?.email?.toLowerCase()
               return (
                 <Card
                   key={usuario.id}
@@ -316,6 +497,11 @@ export default function AdminUsuariosPage() {
                               Vos
                             </Badge>
                           )}
+                          {usuario.pendiente && (
+                            <Badge variant="outline" className="text-[10px] text-amber-300 border-amber-500/40">
+                              Pendiente de ingreso
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-zinc-400 text-xs sm:text-sm truncate">{usuario.email}</p>
                         <p className="text-zinc-600 text-[11px] mt-0.5">
@@ -328,28 +514,41 @@ export default function AdminUsuariosPage() {
                         {updatingEmail === usuario.email ? (
                           <Loader2 className="w-4 h-4 text-yellow-400 animate-spin mx-3" />
                         ) : (
-                          ROLES.map((rol) => {
-                            const activo = usuario.rol === rol
-                            const RolIcon = ROL_CONFIG[rol].icon
-                            return (
+                          <>
+                            {ROLES.map((rol) => {
+                              const activo = usuario.rol === rol
+                              const RolIcon = ROL_CONFIG[rol].icon
+                              return (
+                                <Button
+                                  key={rol}
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => cambiarRol(usuario, rol)}
+                                  title={`Cambiar a ${ROL_CONFIG[rol].label}`}
+                                  className={[
+                                    "h-8 px-2 text-xs",
+                                    activo
+                                      ? "bg-yellow-400/15 text-yellow-400"
+                                      : "text-zinc-500 hover:text-white",
+                                  ].join(" ")}
+                                >
+                                  <RolIcon className="w-3.5 h-3.5 lg:mr-1" />
+                                  <span className="hidden lg:inline">{ROL_CONFIG[rol].label}</span>
+                                </Button>
+                              )
+                            })}
+                            {usuario.pendiente && (
                               <Button
-                                key={rol}
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => cambiarRol(usuario, rol)}
-                                title={`Cambiar a ${ROL_CONFIG[rol].label}`}
-                                className={[
-                                  "h-8 px-2 text-xs",
-                                  activo
-                                    ? "bg-yellow-400/15 text-yellow-400"
-                                    : "text-zinc-500 hover:text-white",
-                                ].join(" ")}
+                                onClick={() => eliminarPendiente(usuario)}
+                                title="Eliminar invitacion"
+                                className="h-8 px-2 text-red-400 hover:bg-red-400/10"
                               >
-                                <RolIcon className="w-3.5 h-3.5 sm:mr-1" />
-                                <span className="hidden sm:inline">{ROL_CONFIG[rol].label}</span>
+                                <Trash2 className="w-3.5 h-3.5" />
                               </Button>
-                            )
-                          })
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
