@@ -17,7 +17,7 @@ import {
   Bike,
   LogOut,
   Shirt,
-  LayoutTemplate,
+  Images,
   QrCode,
   Handshake,
   UserCog,
@@ -42,7 +42,7 @@ const navItems: NavItem[] = [
   { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
   { href: "/admin/grandteam", label: "Grand Team", icon: Users },
   { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
-  { href: "/admin/content", label: "Contenido", icon: LayoutTemplate },
+  { href: "/admin/galeria", label: "Galeria", icon: Images },
   { href: "/admin/usuarios", label: "Usuarios y Roles", icon: UserCog },
   { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
 ]

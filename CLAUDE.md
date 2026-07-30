@@ -140,7 +140,7 @@ public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url,
 /admin/dashboard             -> Dashboard principal con stats y graficos
 /admin/registro-inscripciones -> Listado y gestion de inscripciones
 /admin/remera                -> Panel de pedidos de remeras
-/admin/content               -> Editor de contenido del sitio (remera/sponsors/fotos/contacto)
+/admin/galeria               -> Publicacion de fotos de la seccion #galeria del sitio
 /admin/settings              -> Configuracion avanzada del evento y ciclos
 /admin/configuraciones       -> Configuracion legacy (puede redirigir a /admin/settings)
 /admin/gastos                -> Gestion de gastos del evento
@@ -158,6 +158,7 @@ POST /api/remera/submit          -> Guarda/actualiza pedido de remera (UPSERT po
 GET  /api/remera/settings        -> Retorna alias/datos de pago para el formulario publico
 POST /api/inscripcion/submit     -> Guarda inscripcion (si se crean rutas API)
 POST /api/sponsors/upload-logo   -> Sube logo de sponsor a Supabase Storage (max 2MB, jpg/png/webp/svg/gif)
+POST /api/galeria/upload         -> Sube foto de galeria al bucket publico `galeria` (max 6MB, jpg/png/webp/avif)
 POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y participantes a "pendiente"
 ```
 
