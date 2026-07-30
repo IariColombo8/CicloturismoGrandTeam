@@ -235,8 +235,9 @@ export default function Navbar() {
               <div className="relative w-12 h-12 transition-transform group-hover:scale-110 duration-300">
                 <Image 
                   src="/logo.png" 
-                  alt="Grand Team Bike Logo" 
-                  fill 
+                  alt="Grand Team Bike Logo"
+                  fill
+                  sizes="48px"
                   className="object-contain"
                   priority
                 />

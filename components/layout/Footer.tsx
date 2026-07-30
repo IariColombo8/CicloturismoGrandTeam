@@ -53,9 +53,10 @@ export default function Footer() {
               <div className="relative w-12 h-12 transition-transform group-hover:scale-110 duration-300">
                 <Image 
                   src="/logo.png" 
-                  alt="Grand Team Bike Logo" 
-                  fill 
-                  className="object-contain" 
+                  alt="Grand Team Bike Logo"
+                  fill
+                  sizes="48px"
+                  className="object-contain"
                 />
               </div>
               <span className="text-xl font-bold gradient-text">Grand Team Bike</span>
