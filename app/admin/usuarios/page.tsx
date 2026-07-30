@@ -50,6 +50,18 @@ const ROL_CONFIG = {
 
 type Rol = keyof typeof ROL_CONFIG
 const ROLES: Rol[] = ["admin", "grandteam", "remera", "usuario"]
+
+/**
+ * La base puede tener roles viejos o escritos distinto ("Admin", "grand_team").
+ * Se normaliza para no romper el render con un rol desconocido.
+ */
+const normalizarRol = (rol: string | null | undefined): Rol => {
+  const limpio = (rol || "").trim().toLowerCase().replace(/[\s_-]/g, "")
+  const encontrado = ROLES.find((r) => r === limpio)
+  return encontrado ?? "usuario"
+}
+
+const configDeRol = (rol: string | null | undefined) => ROL_CONFIG[normalizarRol(rol)]
 // Roles que se pueden asignar al invitar a alguien nuevo
 const ROLES_ASIGNABLES: Rol[] = ["admin", "grandteam", "remera"]
 
@@ -91,7 +103,8 @@ export default function AdminUsuariosPage() {
         setUsuarios([])
       } else {
         setDenegado(false)
-        setUsuarios(data.usuarios || [])
+        const lista = (data.usuarios || []) as UsuarioAuth[]
+        setUsuarios(lista.map((u) => ({ ...u, rol: normalizarRol(u.rol) })))
       }
     } catch {
       setError("Error de red al cargar usuarios")
@@ -445,7 +458,7 @@ export default function AdminUsuariosPage() {
                     : "border-zinc-700 text-zinc-400 hover:text-white"
                 }
               >
-                {rol === "all" ? "Todos" : ROL_CONFIG[rol as Rol].label}
+                {rol === "all" ? "Todos" : configDeRol(rol).label}
               </Button>
             ))}
           </div>
@@ -460,7 +473,7 @@ export default function AdminUsuariosPage() {
         ) : (
           <div className="grid gap-3">
             {filtered.map((usuario) => {
-              const config = ROL_CONFIG[usuario.rol]
+              const config = configDeRol(usuario.rol)
               const esYoMismo = usuario.email === user?.email?.toLowerCase()
               return (
                 <Card

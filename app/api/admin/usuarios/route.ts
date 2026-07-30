@@ -7,6 +7,12 @@ const ROLES_VALIDOS: Rol[] = ["admin", "grandteam", "remera", "usuario"]
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/** Normaliza roles guardados con otra grafia ("Admin", "grand_team"). */
+function normalizarRol(rol: string | null | undefined): Rol {
+  const limpio = (rol || "").trim().toLowerCase().replace(/[\s_-]/g, "")
+  return ROLES_VALIDOS.find((r) => r === limpio) ?? "usuario"
+}
+
 interface AutorizacionOk {
   supabase: SupabaseClient
   email: string
@@ -132,7 +138,7 @@ export async function GET(req: NextRequest) {
           email.split("@")[0] ||
           "Sin nombre",
         avatar_url: (meta.avatar_url as string) || (meta.picture as string) || null,
-        rol: (fila?.role as Rol) || "usuario",
+        rol: normalizarRol(fila?.role),
         creado: u.created_at,
         ultimo_acceso: u.last_sign_in_at || null,
         pendiente: false,
@@ -147,7 +153,7 @@ export async function GET(req: NextRequest) {
         email,
         nombre: fila.display_name || email.split("@")[0],
         avatar_url: null,
-        rol: fila.role as Rol,
+        rol: normalizarRol(fila.role),
         creado: "",
         ultimo_acceso: null,
         pendiente: true,
