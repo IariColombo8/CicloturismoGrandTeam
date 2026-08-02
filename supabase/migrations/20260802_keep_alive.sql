@@ -67,11 +67,10 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 SELECT cron.unschedule('keep-alive-diario')
  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'keep-alive-diario');
 
-SELECT cron.schedule(
-  'keep-alive-diario',
-  '0 12 * * *',
-  $cron$ SELECT public.keep_alive_tick(); $cron$
-);
+-- Ojo: el comando va como string simple y SIN punto y coma adentro. El SQL
+-- Editor de Supabase parte los statements por ";" y no entiende los
+-- dollar-quotes con etiqueta ($cron$...$cron$), así que romperia la linea.
+SELECT cron.schedule('keep-alive-diario', '0 12 * * *', 'SELECT public.keep_alive_tick()');
 
 -- ─── Verificación ────────────────────────────────────────────────────────────
 -- SELECT * FROM public.keep_alive;                    -- estado del contador
