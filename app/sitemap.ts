@@ -4,7 +4,7 @@ const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://grand-team.vercel.app"
 
 /**
- * Sitemap del sitio público. Excluimos rutas /admin/* y /firebase-setup/*
+ * Sitemap del sitio público. Excluimos rutas /admin/* y /login
  * (esas se bloquean también vía robots.ts).
  */
 export default function sitemap(): MetadataRoute.Sitemap {

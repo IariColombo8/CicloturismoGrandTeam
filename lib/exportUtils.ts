@@ -1,4 +1,5 @@
 // Utilidades para exportar datos a CSV
+import { formatDate } from "@/lib/format"
 export const exportToCSV = (data: Record<string, unknown>[], filename: string) => {
   if (!data || data.length === 0) return
 
@@ -60,8 +61,6 @@ export const formatInscripcionForExport = (inscripcion: Record<string, unknown>)
     "Método Pago": inscripcion.metodoPago || "",
     "N° Referencia": inscripcion.numeroReferencia || "",
     Estado: (inscripcion.estado as string) || "pendiente",
-    "Fecha Inscripción": (inscripcion.fechaInscripcion as { seconds?: number })?.seconds
-      ? new Date(((inscripcion.fechaInscripcion as { seconds: number }).seconds) * 1000).toLocaleDateString("es-AR")
-      : "",
+    "Fecha Inscripción": formatDate(inscripcion.fechaInscripcion as string | null | undefined),
   }
 }

@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/admin/", "/firebase-setup", "/login"],
+        disallow: ["/admin", "/admin/", "/login"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

@@ -53,9 +53,10 @@ function processChartData(inscripciones: any[]) {
   // Inscripciones por fecha
   const byDate: Record<string, number> = {}
   inscripciones.forEach((i) => {
-    const fecha = i.fechaInscripcion?.toDate?.()
-      ? i.fechaInscripcion.toDate().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
-      : i.fechaInscripcion || "Sin fecha"
+    const parsed = i.fechaInscripcion ? new Date(i.fechaInscripcion) : null
+    const fecha = parsed && !isNaN(parsed.getTime())
+      ? parsed.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
+      : "Sin fecha"
     byDate[fecha] = (byDate[fecha] || 0) + 1
   })
   const chartData = Object.entries(byDate)

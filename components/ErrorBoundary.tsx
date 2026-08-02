@@ -40,11 +40,11 @@ export class ErrorBoundary extends Component<Props, State> {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-gray-400">Hubo un problema al conectar con Firebase. Por favor verifica:</p>
+              <p className="text-gray-400">Hubo un problema al conectar con Supabase. Por favor verifica:</p>
               <ul className="list-disc list-inside text-gray-400 text-sm space-y-2">
-                <li>El dominio está autorizado en Firebase Console</li>
-                <li>Las reglas de Firestore están configuradas correctamente</li>
-                <li>La configuración de Firebase es válida</li>
+                <li>Tu conexión a internet está activa</li>
+                <li>Las políticas RLS de las tablas están configuradas correctamente</li>
+                <li>Las variables NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY son válidas</li>
               </ul>
               <Button
                 onClick={() => this.setState({ hasError: false, error: null })}

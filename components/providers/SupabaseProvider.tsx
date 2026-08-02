@@ -34,9 +34,6 @@ const SupabaseContext = createContext<SupabaseContextType>({
 
 export const useSupabaseContext = () => useContext(SupabaseContext)
 
-// Alias de compatibilidad con el nombre anterior
-export const useFirebaseContext = useSupabaseContext
-
 // Cache del rol en sessionStorage: evita que cada carga del admin espere
 // el viaje a la base solo para saber el rol (es solo un hint de UI; la
 // autorizacion real la aplica RLS en el servidor).
@@ -262,7 +259,6 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
       loading,
       eventSettings,
       isSupabaseAvailable,
-      isFirebaseAvailable: isSupabaseAvailable, // Alias de compatibilidad
       userRole,
     }),
     [user, session, loading, eventSettings, isSupabaseAvailable, userRole]
@@ -274,6 +270,3 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
     </SupabaseContext.Provider>
   )
 }
-
-// Alias de compatibilidad
-export const FirebaseProvider = SupabaseProvider

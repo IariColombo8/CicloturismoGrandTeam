@@ -34,15 +34,14 @@ export function formatNumber(n: number | null | undefined): string {
 }
 
 /**
- * Formatea una fecha de Firestore (Timestamp o ISO string) a dd/mm/aaaa.
+ * Formatea una fecha (ISO string o Date) a dd/mm/aaaa.
  */
-export function formatDate(value: any): string {
+export function formatDate(value: string | number | Date | null | undefined): string {
   if (!value) return "-"
   try {
-    if (typeof value === "object" && "seconds" in value) {
-      return new Date(value.seconds * 1000).toLocaleDateString("es-AR")
-    }
-    return new Date(value).toLocaleDateString("es-AR")
+    const date = new Date(value)
+    if (isNaN(date.getTime())) return "-"
+    return date.toLocaleDateString("es-AR")
   } catch {
     return "-"
   }

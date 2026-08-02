@@ -31,7 +31,7 @@ No hay tests configurados en este proyecto.
 
 ### Antes de hacer cambios
 - Analizar el codigo existente antes de modificar.
-- Mantener la arquitectura actual (App Router, client-side Firebase).
+- Mantener la arquitectura actual (App Router, client-side Supabase).
 - No romper estilos ni componentes existentes.
 - Respetar el tema Negro (#000) + Amarillo Dorado (#ffd700) + Blanco (#fff).
 
@@ -43,7 +43,8 @@ No hay tests configurados en este proyecto.
 - Hacer commit si el proyecto no compila.
 - Introducir codigo sin probar el build.
 - Modificar variables de entorno o credenciales.
-- Eliminar colecciones o documentos de Firestore sin confirmacion.
+- Eliminar tablas o registros de Supabase sin confirmacion.
+- Reintroducir Firebase o cualquier dependencia de Firebase/Firestore en el proyecto.
 - Usar `SUPABASE_SERVICE_ROLE_KEY` en componentes cliente o codigo frontend (solo en `app/api/**`).
 - Exponer claves secretas en el cliente bajo ningun concepto.
 
@@ -54,7 +55,7 @@ No hay tests configurados en este proyecto.
 
 ## Architecture Overview
 
-**Grand Team Bike 2026** es un sitio Next.js 15 (App Router) para inscripcion a un evento de cicloturismo en Concepcion del Uruguay, Argentina. Combina landing page publica con panel admin protegido, respaldado por Firebase (legacy) y Supabase (nuevo).
+**Grand Team Bike 2026** es un sitio Next.js 15 (App Router) para inscripcion a un evento de cicloturismo en Concepcion del Uruguay, Argentina. Combina landing page publica con panel admin protegido, respaldado 100% por Supabase (Auth, Postgres y Storage).
 
 ### Tech Stack
 
@@ -63,7 +64,6 @@ No hay tests configurados en este proyecto.
 | Next.js 15 + React 19 | Framework principal (App Router) |
 | Tailwind CSS v4 | Estilos con tema negro/dorado |
 | shadcn/ui (new-york) | Componentes UI en `components/ui/` |
-| Firebase 12.5 | Auth (login admin) + Firestore (legacy settings/inscripciones) |
 | Supabase | Base de datos principal (inscripciones, participantes, sponsors, remera, gastos, administradores) |
 | EmailJS | Emails transaccionales (confirmacion, rechazo) |
 | react-hook-form + zod | Formularios con validacion |
@@ -74,8 +74,8 @@ No hay tests configurados en este proyecto.
 
 ### Arquitectura clave
 
-- **Todo es client-side**: Firebase se inicializa en el cliente. `"use client"` es obligatorio en componentes que usen Firebase, hooks, o estado.
-- **SupabaseProvider** (`components/providers/SupabaseProvider.tsx`): contexto global que provee `user`, `session`, `userRole`, `loading`, `eventSettings`, `isSupabaseAvailable` via `useSupabaseContext()`. Incluye cache de `eventSettings` en sessionStorage (TTL 5 min). Exporta alias `useFirebaseContext` y `FirebaseProvider` para compatibilidad.
+- **Todo es client-side**: Supabase se inicializa en el cliente. `"use client"` es obligatorio en componentes que usen Supabase, hooks, o estado.
+- **SupabaseProvider** (`components/providers/SupabaseProvider.tsx`): contexto global que provee `user`, `session`, `userRole`, `loading`, `eventSettings`, `isSupabaseAvailable` via `useSupabaseContext()`. Incluye cache de `eventSettings` en sessionStorage (TTL 5 min). 
 - **Autenticacion**: Supabase Auth (Google OAuth con implicit flow). Post-login se busca el email en tabla `administradores` de Supabase para determinar rol. Funcion RPC `link_auth_user` (SECURITY DEFINER) vincula auth_user_id automaticamente.
 - **Roles**: `admin` (acceso total), `grandteam` (acceso parcial), `usuario` (sin acceso admin). Usuarios no autenticados redirigen a `/login?returnUrl=<ruta>`.
 - **Admin layout**: sidebar colapsable con `AdminLayoutContext`. El sidebar es fixed en desktop (con margin en main) y overlay en movil.
@@ -85,19 +85,6 @@ No hay tests configurados en este proyecto.
 - **Avatar de usuario**: Se muestra en Navbar (landing) y AdminSidebar. Usa `user.user_metadata.avatar_url` (Google OAuth) con fallback a iniciales.
 - **Cache headers**: Granulares en `next.config.mjs` — API sin cache, assets estaticos 1 ano, sponsors 1 dia, paginas s-maxage=60.
 - **Optimizaciones**: Dynamic import de librerias pesadas (html5-qrcode, recharts), memoizacion de navLinks/callbacks, sessionStorage cache para event_settings.
-
-### Colecciones Firestore (Legacy)
-
-```
-administrador/{emailKey}     -> email, displayName, role, lastLogin
-  emailKey = email.replace(/[@.]/g, "_")
-inscripciones/{id}           -> datos personales, pago, estado, fechaInscripcion
-  ID formato: "Inscripciones_2026 - XXX-NombreApellido"
-counters/inscripciones_2026  -> count (auto-incremental)
-eventos/2026                 -> configuracion del evento (precio, cupo, datos pago)
-settings/eventSettings       -> cupoMaximo, precio, inscripcionesAbiertas
-gastos_2026/{id}             -> gastos con aprobacion
-```
 
 ### Tablas Supabase (Principal)
 
@@ -129,7 +116,7 @@ public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url,
 /inscripcion/exito           -> Pagina de confirmacion post-inscripcion
 /pedir-remera                -> Formulario publico para pedir remera del evento
 /contacto                    -> Pagina de contacto
-/login                       -> Login admin (Firebase Auth)
+/login                       -> Login admin (Supabase Auth / Google OAuth)
 /grand-team                  -> Pagina Grand Team (dashboard publico)
 /grand-team/dashboard        -> Stats Grand Team
 ```
@@ -221,13 +208,6 @@ POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y part
 ### Variables de Entorno (.env.local)
 
 ```
-NEXT_PUBLIC_FIREBASE_API_KEY
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-NEXT_PUBLIC_FIREBASE_PROJECT_ID        # cicloturismo-35fd8
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-NEXT_PUBLIC_FIREBASE_APP_ID
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 NEXT_PUBLIC_EMAILJS_SERVICE_ID
 NEXT_PUBLIC_EMAILJS_TEMPLATE_ID
 NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
@@ -243,11 +223,12 @@ SUPABASE_SERVICE_ROLE_KEY              # Solo en servidor (API routes). NUNCA ex
 - **Build antes de commit**: Siempre ejecutar `npm run build` antes de commitear.
 - **Actualizar CLAUDE.md**: Mantener este archivo actualizado con cambios significativos.
 
-## Datos Migrados de Firestore
+## Datos Migrados desde Firestore (historico)
 
 - 271 inscripciones migradas desde Firestore. Los campos `nombres` y `apellidos` fueron reparados (estaban vacios, se extrajeron del campo `id`).
 - Participantes migrados con sus datos de check-in.
 - Administradores, gastos, event_settings y counters migrados.
+- El proyecto **ya no contiene codigo ni dependencias de Firebase**. Los datos originales siguen existiendo en Firebase pero el sitio no los consulta.
 - Sponsors hardcodeados migrados a tabla Supabase via SQL seed.
 
 ## Recordatorio Final

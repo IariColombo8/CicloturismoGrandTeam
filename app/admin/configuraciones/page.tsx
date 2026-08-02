@@ -134,7 +134,7 @@ export default function ConfiguracionesPage() {
     await loadConfigForYear(year)
   }
 
-  // Toggle inscripciones con guardado inmediato en Firebase
+  // Toggle inscripciones con guardado inmediato en Supabase
   const handleToggleInscripciones = async (value: boolean) => {
     setInscripcionesAbiertas(value)
     try {
