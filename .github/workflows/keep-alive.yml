@@ -1,0 +1,27 @@
+# Ping diario a Supabase para que el proyecto no se pause por inactividad.
+# Llama a la funcion keep_alive_tick(), que suma 1 al contador (una vez por dia).
+#
+# Requiere dos secrets en GitHub (Settings > Secrets and variables > Actions):
+#   SUPABASE_URL       -> el valor de NEXT_PUBLIC_SUPABASE_URL
+#   SUPABASE_ANON_KEY  -> el valor de NEXT_PUBLIC_SUPABASE_ANON_KEY
+name: Keep Alive Supabase
+
+on:
+  schedule:
+    # 12:00 UTC = 09:00 Argentina. Todos los dias.
+    - cron: "0 12 * * *"
+  # Permite ejecutarlo a mano desde la pestaña Actions para probar.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar a keep_alive_tick()
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/keep_alive_tick" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
