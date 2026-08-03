@@ -61,16 +61,27 @@ GRANT EXECUTE ON FUNCTION public.keep_alive_tick() TO anon, authenticated;
 
 -- ─── Cron interno (pg_cron): corre todos los días a las 12:00 UTC ────────────
 -- 12:00 UTC = 09:00 Argentina. pg_cron siempre trabaja en UTC.
-CREATE EXTENSION IF NOT EXISTS pg_cron;
+--
+-- pg_cron no está disponible en todos los proyectos/planes de Supabase por
+-- SQL directo: en algunos hay que activarlo primero a mano desde
+-- Database > Extensions en el dashboard. Este bloque intenta crearlo y
+-- programar el job, pero si la extensión no existe en este proyecto lo
+-- salta sin romper el resto de la migración. El mecanismo que realmente
+-- garantiza la actividad es el ping externo (GitHub Actions, ver README
+-- del repo) — esto es solo un respaldo extra.
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_cron;
 
--- Borra el job si ya existía, para poder re-ejecutar esta migración sin duplicar.
-SELECT cron.unschedule('keep-alive-diario')
- WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'keep-alive-diario');
+  PERFORM cron.unschedule('keep-alive-diario')
+   WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'keep-alive-diario');
 
--- Ojo: el comando va como string simple y SIN punto y coma adentro. El SQL
--- Editor de Supabase parte los statements por ";" y no entiende los
--- dollar-quotes con etiqueta ($cron$...$cron$), así que romperia la linea.
-SELECT cron.schedule('keep-alive-diario', '0 12 * * *', 'SELECT public.keep_alive_tick()');
+  PERFORM cron.schedule('keep-alive-diario', '0 12 * * *', 'SELECT public.keep_alive_tick()');
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'pg_cron no disponible en este proyecto, se omite el cron interno (%). Usar el ping externo por GitHub Actions.', SQLERRM;
+END;
+$$;
 
 -- ─── Verificación ────────────────────────────────────────────────────────────
 -- SELECT * FROM public.keep_alive;                    -- estado del contador
