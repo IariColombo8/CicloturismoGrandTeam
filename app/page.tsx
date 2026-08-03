@@ -1,7 +1,7 @@
 import dynamic from "next/dynamic"
 import Hero from "@/components/home/HeroSection"
 import Navbar from "@/components/layout/Navbar"
-import { getGaleriaFotos } from "@/lib/galeria"
+import { getGaleriaFotos, getGaleriaFotografos } from "@/lib/galeria"
 
 // Componentes below-the-fold: carga diferida para no bloquear el render inicial
 const AboutTeam = dynamic(() => import("@/components/home/AboutTeam"), { ssr: true })
@@ -20,7 +20,7 @@ export default async function Home() {
   // Se leen en el servidor (build/SSR): primero las fotos publicadas desde
   // /admin/galeria, luego public/fotos equipo. Si no hay nada, la galería usa
   // su respaldo interno.
-  const teamPhotos = await getGaleriaFotos()
+  const [teamPhotos, fotografos] = await Promise.all([getGaleriaFotos(), getGaleriaFotografos()])
 
   return (
     <main className="min-h-screen">
@@ -29,7 +29,7 @@ export default async function Home() {
       <AboutTeam />
       <RemeraSection />
       <RouteMap />
-      <Gallery images={teamPhotos} />
+      <Gallery images={teamPhotos} fotografos={fotografos} />
       <Sponsors />
       <CallToAction />
       <Footer />

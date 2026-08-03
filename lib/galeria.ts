@@ -17,6 +17,20 @@ interface FotoGuardada {
   alt?: string
 }
 
+export interface FotografoGuardado {
+  id?: string
+  name?: string
+  link?: string
+  description?: string
+}
+
+export interface Fotografo {
+  id: string
+  name: string
+  link: string
+  description: string
+}
+
 /**
  * Fotos de la seccion #galeria. Prioridad:
  * 1. Fotos publicadas desde /admin/galeria (content_settings.id = "fotos")
@@ -48,4 +62,36 @@ export async function getGaleriaFotos(): Promise<GalleryImage[]> {
   }
 
   return getTeamPhotos()
+}
+
+/**
+ * Fotógrafos publicados desde /admin/galeria (content_settings.id = "fotos",
+ * campo data.fotografos). Son tarjetas con link externo a su álbum
+ * (Drive/Photos/etc.), no imágenes propias.
+ */
+export async function getGaleriaFotografos(): Promise<Fotografo[]> {
+  try {
+    const { data, error } = await createServerClient()
+      .from("content_settings")
+      .select("data")
+      .eq("id", "fotos")
+      .maybeSingle()
+
+    if (error) throw error
+
+    const fotografos = (data?.data as { fotografos?: FotografoGuardado[] } | null)?.fotografos ?? []
+    return fotografos
+      .filter((f): f is FotografoGuardado & { name: string; link: string } =>
+        Boolean(f?.name?.trim() && f?.link?.trim())
+      )
+      .map((f, index) => ({
+        id: f.id || `fotografo-${index}`,
+        name: f.name.trim(),
+        link: f.link.trim(),
+        description: f.description?.trim() || "",
+      }))
+  } catch (error) {
+    console.error("No se pudieron cargar los fotografos de la galeria:", error)
+    return []
+  }
 }

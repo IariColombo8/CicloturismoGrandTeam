@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
-import { Camera, X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react"
+import { Camera, X, ZoomIn, ChevronLeft, ChevronRight, ExternalLink, Aperture } from "lucide-react"
 import type { GalleryImage } from "@/lib/teamPhotos"
+import type { Fotografo } from "@/lib/galeria"
 
 // Respaldo: si no hay fotos del equipo en public/fotos equipo, se muestran
 // estas imágenes genéricas del evento.
@@ -43,9 +44,10 @@ const FALLBACK_IMAGES: GalleryImage[] = [
 
 interface GalleryProps {
   images?: GalleryImage[]
+  fotografos?: Fotografo[]
 }
 
-export default function Gallery({ images }: GalleryProps) {
+export default function Gallery({ images, fotografos = [] }: GalleryProps) {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
@@ -116,6 +118,37 @@ export default function Gallery({ images }: GalleryProps) {
             Revive la emoción de nuestros eventos anteriores
           </p>
         </div>
+
+        {/* Fotógrafos del evento - tarjetas con link externo al álbum completo */}
+        {fotografos.length > 0 && (
+          <div className="mb-8 sm:mb-16 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {fotografos.map((fotografo) => (
+                <div
+                  key={fotografo.id}
+                  className="group bg-black/60 border border-yellow-400/20 hover:border-yellow-400/50 rounded-xl p-5 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Aperture className="w-4 h-4 text-yellow-400 flex-shrink-0" aria-hidden="true" />
+                    <h3 className="text-white font-bold text-base sm:text-lg">{fotografo.name}</h3>
+                  </div>
+                  {fotografo.description && (
+                    <p className="text-gray-400 text-sm mb-4 leading-relaxed">{fotografo.description}</p>
+                  )}
+                  <a
+                    href={fotografo.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-black bg-gradient-to-r from-yellow-400 to-amber-600 px-4 py-2 rounded-lg hover:scale-[1.03] transition-transform"
+                  >
+                    <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                    Ver Galería Completa
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Gallery grid - 2 COLUMNAS EN MÓVIL */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-7xl mx-auto">

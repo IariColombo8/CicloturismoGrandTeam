@@ -8,6 +8,8 @@ import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import {
   Images,
@@ -18,6 +20,7 @@ import {
   Upload,
   ArrowUp,
   ArrowDown,
+  Aperture,
 } from "lucide-react"
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -29,27 +32,36 @@ interface Foto {
   alt: string
 }
 
+interface Fotografo {
+  id: string
+  name: string
+  link: string
+  description: string
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function uid() {
   return Math.random().toString(36).slice(2)
 }
 
-async function cargarFotos(): Promise<Foto[]> {
+async function cargarContenido(): Promise<{ fotos: Foto[]; fotografos: Fotografo[] }> {
   const { data } = await supabase
     .from("content_settings")
     .select("data")
     .eq("id", "fotos")
     .maybeSingle()
-  const fotos = (data?.data as { fotos?: Foto[] } | null)?.fotos ?? []
+  const raw = data?.data as { fotos?: Foto[]; fotografos?: Fotografo[] } | null
   // Compatibilidad con registros viejos sin id
-  return fotos.map((f) => ({ ...f, id: f.id || uid() }))
+  const fotos = (raw?.fotos ?? []).map((f) => ({ ...f, id: f.id || uid() }))
+  const fotografos = (raw?.fotografos ?? []).map((f) => ({ ...f, id: f.id || uid() }))
+  return { fotos, fotografos }
 }
 
-async function guardarFotos(fotos: Foto[]) {
+async function guardarContenido(fotos: Foto[], fotografos: Fotografo[]) {
   return supabase.from("content_settings").upsert({
     id: "fotos",
-    data: { fotos },
+    data: { fotos, fotografos },
     updated_at: new Date().toISOString(),
   })
 }
@@ -63,6 +75,7 @@ export default function AdminGaleriaPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [fotos, setFotos] = useState<Foto[]>([])
+  const [fotografos, setFotografos] = useState<Fotografo[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -75,8 +88,9 @@ export default function AdminGaleriaPage() {
   }, [authLoading, user, isAdmin, router])
 
   useEffect(() => {
-    cargarFotos().then((f) => {
-      setFotos(f)
+    cargarContenido().then(({ fotos, fotografos }) => {
+      setFotos(fotos)
+      setFotografos(fotografos)
       setLoading(false)
     })
   }, [])
@@ -91,6 +105,25 @@ export default function AdminGaleriaPage() {
 
   const mover = (index: number, delta: number) =>
     setFotos((prev) => {
+      const destino = index + delta
+      if (destino < 0 || destino >= prev.length) return prev
+      const copia = [...prev]
+      const [item] = copia.splice(index, 1)
+      copia.splice(destino, 0, item)
+      return copia
+    })
+
+  const agregarFotografo = () =>
+    setFotografos((prev) => [...prev, { id: uid(), name: "", link: "", description: "" }])
+
+  const eliminarFotografo = (id: string) =>
+    setFotografos((prev) => prev.filter((f) => f.id !== id))
+
+  const actualizarFotografo = (id: string, campo: keyof Fotografo, valor: string) =>
+    setFotografos((prev) => prev.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)))
+
+  const moverFotografo = (index: number, delta: number) =>
+    setFotografos((prev) => {
       const destino = index + delta
       if (destino < 0 || destino >= prev.length) return prev
       const copia = [...prev]
@@ -144,15 +177,19 @@ export default function AdminGaleriaPage() {
   }
 
   const guardar = async () => {
-    const validas = fotos.filter((f) => f.url.trim() !== "")
+    const fotosValidas = fotos.filter((f) => f.url.trim() !== "")
+    const fotografosValidos = fotografos.filter(
+      (f) => f.name.trim() !== "" && f.link.trim() !== ""
+    )
     setSaving(true)
-    const { error } = await guardarFotos(validas)
+    const { error } = await guardarContenido(fotosValidas, fotografosValidos)
     setSaving(false)
     if (error) {
       toast({ title: "Error al guardar", variant: "destructive" })
       return
     }
-    setFotos(validas)
+    setFotos(fotosValidas)
+    setFotografos(fotografosValidos)
     toast({ title: "Galeria guardada", description: "Ya se ve en el sitio publico." })
   }
 
@@ -177,6 +214,20 @@ export default function AdminGaleriaPage() {
           </div>
         </div>
 
+        <Tabs defaultValue="fotos" className="space-y-4">
+          <TabsList className="bg-gray-800/50 border border-yellow-400/20">
+            <TabsTrigger value="fotos" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-black">
+              <Images className="w-4 h-4 mr-1.5" />Fotos destacadas
+            </TabsTrigger>
+            <TabsTrigger
+              value="fotografos"
+              className="data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+            >
+              <Aperture className="w-4 h-4 mr-1.5" />Fotógrafos
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="fotos">
         <Card className="bg-gray-800/50 border-yellow-400/20">
           <CardHeader>
             <CardTitle className="text-yellow-400">Fotos publicadas</CardTitle>
@@ -308,20 +359,117 @@ export default function AdminGaleriaPage() {
                 </p>
               )}
             </div>
-
-            <Button
-              onClick={guardar}
-              disabled={saving}
-              className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700 font-semibold"
-            >
-              {saving ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
-              ) : (
-                <><Save className="w-4 h-4 mr-2" />Guardar cambios</>
-              )}
-            </Button>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="fotografos">
+            <Card className="bg-gray-800/50 border-yellow-400/20">
+              <CardHeader>
+                <CardTitle className="text-yellow-400">Fotógrafos del evento</CardTitle>
+                <CardDescription className="text-gray-400">
+                  Tarjetas con nombre, descripción opcional y link a su álbum externo (Google
+                  Drive, Photos, etc.). No se suben imágenes acá, solo se linkea.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={agregarFotografo}
+                  className="border-yellow-400/30 text-yellow-400"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />Agregar fotógrafo
+                </Button>
+
+                <div className="space-y-3">
+                  {fotografos.map((fotografo, index) => (
+                    <div
+                      key={fotografo.id}
+                      className="flex flex-col sm:flex-row gap-3 p-3 bg-zinc-800 rounded-lg border border-zinc-700"
+                    >
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          value={fotografo.name}
+                          onChange={(e) => actualizarFotografo(fotografo.id, "name", e.target.value)}
+                          placeholder="Nombre del fotógrafo o estudio"
+                          className="bg-zinc-900 border-zinc-700 text-white"
+                        />
+                        <Input
+                          value={fotografo.link}
+                          onChange={(e) => actualizarFotografo(fotografo.id, "link", e.target.value)}
+                          placeholder="Link al álbum completo (Drive, Photos, etc.)"
+                          className="bg-zinc-900 border-zinc-700 text-white"
+                        />
+                        <Textarea
+                          value={fotografo.description}
+                          onChange={(e) =>
+                            actualizarFotografo(fotografo.id, "description", e.target.value)
+                          }
+                          placeholder="Descripción opcional"
+                          className="bg-zinc-900 border-zinc-700 text-white min-h-[60px]"
+                        />
+                      </div>
+
+                      <div className="flex sm:flex-col gap-1 justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moverFotografo(index, -1)}
+                          disabled={index === 0}
+                          aria-label="Subir en el orden"
+                          className="text-zinc-300 hover:bg-zinc-700 disabled:opacity-30"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moverFotografo(index, 1)}
+                          disabled={index === fotografos.length - 1}
+                          aria-label="Bajar en el orden"
+                          className="text-zinc-300 hover:bg-zinc-700 disabled:opacity-30"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => eliminarFotografo(fotografo.id)}
+                          aria-label="Eliminar fotógrafo"
+                          className="text-red-400 hover:bg-red-400/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {fotografos.length === 0 && (
+                    <p className="text-zinc-500 text-sm py-6 text-center">
+                      No hay fotógrafos cargados.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <Button
+          onClick={guardar}
+          disabled={saving}
+          className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700 font-semibold"
+        >
+          {saving ? (
+            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
+          ) : (
+            <><Save className="w-4 h-4 mr-2" />Guardar cambios</>
+          )}
+        </Button>
       </div>
     </div>
   )
