@@ -36,7 +36,7 @@ export interface RemeraContentData {
   badgeText: string
   title: string
   description: string
-  imageUrl: string
+  images: string[]
   price: string
   callToActionTitle: string
   callToActionDescription: string
@@ -54,7 +54,7 @@ export const REMERA_CONTENT_DEFAULTS: RemeraContentData = {
   title: "Remera Grand Team Bike",
   description:
     "Llevate la remera oficial de la edición 2026. Elegí tu talle, adjuntá el comprobante y el equipo coordina la entrega con vos.",
-  imageUrl: "/remera.png",
+  images: ["/remera.png"],
   price: "",
   callToActionTitle: "¿Querés tu remera?",
   callToActionDescription: "",
@@ -73,12 +73,20 @@ export const REMERA_CONTENT_DEFAULTS: RemeraContentData = {
 // Combina lo guardado en Supabase con los valores por defecto: un campo vacío
 // o ausente en la base cae al valor que ya se muestra hoy en el sitio.
 export function mergeRemeraContent(remote: Partial<RemeraContentData> | null | undefined): RemeraContentData {
-  const r = remote ?? {}
+  // "imageUrl" es el campo legado (una sola imagen) de antes de soportar
+  // varios diseños de remera. Si el registro guardado en la base todavía
+  // no tiene "images", lo migramos a partir de "imageUrl" sin perder la foto.
+  const r = (remote ?? {}) as Partial<RemeraContentData> & { imageUrl?: string }
+  const images = r.images && r.images.length > 0
+    ? r.images
+    : r.imageUrl
+      ? [r.imageUrl]
+      : REMERA_CONTENT_DEFAULTS.images
   return {
     badgeText: r.badgeText || REMERA_CONTENT_DEFAULTS.badgeText,
     title: r.title || REMERA_CONTENT_DEFAULTS.title,
     description: r.description || REMERA_CONTENT_DEFAULTS.description,
-    imageUrl: r.imageUrl || REMERA_CONTENT_DEFAULTS.imageUrl,
+    images,
     price: r.price ?? REMERA_CONTENT_DEFAULTS.price,
     callToActionTitle: r.callToActionTitle || REMERA_CONTENT_DEFAULTS.callToActionTitle,
     callToActionDescription: r.callToActionDescription ?? REMERA_CONTENT_DEFAULTS.callToActionDescription,

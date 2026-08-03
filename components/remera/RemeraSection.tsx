@@ -51,6 +51,7 @@ export default function RemeraSection() {
   const [contenido, setContenido] = useState<RemeraContentData>(REMERA_CONTENT_DEFAULTS)
   const [modalOpen, setModalOpen] = useState(false)
   const [sizeChartOpen, setSizeChartOpen] = useState(false)
+  const [imagenActiva, setImagenActiva] = useState(0)
 
   useEffect(() => {
     supabase
@@ -94,7 +95,7 @@ export default function RemeraSection() {
             <div className="relative aspect-square max-w-md mx-auto rounded-3xl bg-gradient-to-b from-zinc-800/60 to-zinc-900/60 border border-white/10 overflow-hidden shadow-2xl">
               {/* eslint-disable-next-line @next/next/no-img-element -- URL arbitraria cargada desde el admin, no un dominio conocido de antemano */}
               <img
-                src={contenido.imageUrl}
+                src={contenido.images[imagenActiva] ?? contenido.images[0]}
                 alt={contenido.title}
                 className="absolute inset-0 w-full h-full object-contain p-6"
               />
@@ -102,6 +103,27 @@ export default function RemeraSection() {
                 Edición 2026
               </div>
             </div>
+
+            {contenido.images.length > 1 && (
+              <div className="flex justify-center gap-3 mt-4 flex-wrap">
+                {contenido.images.map((url, index) => (
+                  <button
+                    key={url + index}
+                    type="button"
+                    onClick={() => setImagenActiva(index)}
+                    aria-label={`Ver diseño ${index + 1}`}
+                    className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${
+                      index === imagenActiva
+                        ? "border-yellow-400"
+                        : "border-white/10 hover:border-yellow-400/50"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="w-full h-full object-contain p-1.5 bg-zinc-900" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Info + CTA */}

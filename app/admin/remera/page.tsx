@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider";
@@ -60,6 +60,10 @@ import {
   Users,
   ShieldCheck,
   Maximize2,
+  Upload,
+  ArrowUp,
+  ArrowDown,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import type { Remera, RemeraItem } from "@/types/database";
@@ -227,6 +231,10 @@ export default function AdminRemeraPage() {
   const [savingContenido, setSavingContenido] = useState(false);
   const [contenidoOpen, setContenidoOpen] = useState(false);
   const [nuevoTalle, setNuevoTalle] = useState("");
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [subiendoTablaTalles, setSubiendoTablaTalles] = useState(false);
+  const imagenesInputRef = useRef<HTMLInputElement>(null);
+  const tallaChartInputRef = useRef<HTMLInputElement>(null);
 
   const canAccess = ["admin", "superadmin", "owner", "remera"].includes(userRole ?? "");
 
@@ -424,6 +432,65 @@ export default function AdminRemeraPage() {
       return;
     }
     toast({ title: "Contenido de la sección Remera guardado" });
+  };
+
+  const subirImagenAlServidor = async (file: File): Promise<string | null> => {
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const res = await fetch("/api/remera-content/upload", { method: "POST", body });
+      const json = await res.json();
+      if (!res.ok) {
+        toast({
+          title: `No se pudo subir ${file.name}`,
+          description: json?.error ?? "Error desconocido",
+          variant: "destructive",
+        });
+        return null;
+      }
+      return json.url as string;
+    } catch {
+      toast({ title: `No se pudo subir ${file.name}`, description: "Error de red", variant: "destructive" });
+      return null;
+    }
+  };
+
+  // Sube una o más fotos de remera/diseño y las agrega al final de la lista.
+  const subirImagenesRemera = async (files: FileList) => {
+    setSubiendoImagen(true);
+    const nuevas: string[] = [];
+    for (const file of Array.from(files)) {
+      const url = await subirImagenAlServidor(file);
+      if (url) nuevas.push(url);
+    }
+    if (nuevas.length > 0) {
+      setContenido((prev) => ({ ...prev, images: [...prev.images, ...nuevas] }));
+      toast({ title: `${nuevas.length} imagen(es) subida(s)`, description: "Acordate de guardar los cambios." });
+    }
+    setSubiendoImagen(false);
+  };
+
+  const eliminarImagenRemera = (index: number) => {
+    setContenido((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
+  };
+
+  const moverImagenRemera = (index: number, delta: number) => {
+    setContenido((prev) => {
+      const destino = index + delta;
+      if (destino < 0 || destino >= prev.images.length) return prev;
+      const copia = [...prev.images];
+      const [item] = copia.splice(index, 1);
+      copia.splice(destino, 0, item);
+      return { ...prev, images: copia };
+    });
+  };
+
+  // Sube (y reemplaza) la foto de la tabla de talles.
+  const subirTablaTalles = async (file: File) => {
+    setSubiendoTablaTalles(true);
+    const url = await subirImagenAlServidor(file);
+    if (url) setContenido((prev) => ({ ...prev, sizeChartImageUrl: url }));
+    setSubiendoTablaTalles(false);
   };
 
   const agregarFeature = () => {
@@ -1244,7 +1311,7 @@ export default function AdminRemeraPage() {
 
       {/* ─── Modal: contenido de la sección remera ─── */}
       <Dialog open={contenidoOpen} onOpenChange={setContenidoOpen}>
-        <DialogContent className="bg-zinc-900 border-yellow-400/20 max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-zinc-900 border-yellow-400/20 w-[calc(100%-1.5rem)] sm:w-full max-w-[calc(100%-1.5rem)] sm:max-w-6xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-yellow-400">
               Editar contenido de /pedir-remera
@@ -1314,27 +1381,32 @@ export default function AdminRemeraPage() {
                     </div>
                     <div className="space-y-2">
                       {contenido.features.map((feat) => (
-                        <div key={feat.id} className="flex gap-2 items-start p-2 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                          <Select
-                            value={feat.icon ?? "BadgeCheck"}
-                            onValueChange={(v) => actualizarFeature(feat.id, "icon", v)}
-                          >
-                            <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white w-[120px] flex-shrink-0">
-                              <SelectValue placeholder="Ícono" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-zinc-800 border-zinc-700">
-                              {REMERA_ICON_OPTIONS.map((iconName) => (
-                                <SelectItem key={iconName} value={iconName} className="text-white focus:bg-zinc-700">
-                                  {iconName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <div className="flex-1 grid grid-cols-2 gap-2">
+                        <div key={feat.id} className="flex flex-col sm:flex-row gap-2 sm:items-start p-2 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                          <div className="flex gap-2">
+                            <Select
+                              value={feat.icon ?? "BadgeCheck"}
+                              onValueChange={(v) => actualizarFeature(feat.id, "icon", v)}
+                            >
+                              <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white w-full sm:w-[120px] flex-shrink-0">
+                                <SelectValue placeholder="Ícono" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-800 border-zinc-700">
+                                {REMERA_ICON_OPTIONS.map((iconName) => (
+                                  <SelectItem key={iconName} value={iconName} className="text-white focus:bg-zinc-700">
+                                    {iconName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => eliminarFeature(feat.id)} className="text-red-400 hover:bg-red-400/10 flex-shrink-0 sm:hidden">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Input value={feat.title} onChange={(e) => actualizarFeature(feat.id, "title", e.target.value)} placeholder="Título" className="bg-zinc-800 border-zinc-700 text-white" />
                             <Input value={feat.description} onChange={(e) => actualizarFeature(feat.id, "description", e.target.value)} placeholder="Descripción" className="bg-zinc-800 border-zinc-700 text-white" />
                           </div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => eliminarFeature(feat.id)} className="text-red-400 hover:bg-red-400/10 flex-shrink-0">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => eliminarFeature(feat.id)} className="text-red-400 hover:bg-red-400/10 flex-shrink-0 hidden sm:inline-flex">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -1370,28 +1442,145 @@ export default function AdminRemeraPage() {
                 </TabsContent>
 
                 {/* ── Imágenes ── */}
-                <TabsContent value="imagenes" className="space-y-5 pt-4">
+                <TabsContent value="imagenes" className="space-y-6 pt-4">
                   <div>
-                    <Label className="text-zinc-300 mb-1.5 block">URL de la imagen de la remera</Label>
-                    <Input
-                      value={contenido.imageUrl}
-                      onChange={(e) => setContenido((p) => ({ ...p, imageUrl: e.target.value }))}
-                      className="bg-zinc-800 border-zinc-700 text-white"
-                      placeholder="https://..."
-                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <Label className="text-zinc-300">Imágenes de las remeras</Label>
+                      <input
+                        ref={imagenesInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.length) subirImagenesRemera(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => imagenesInputRef.current?.click()}
+                        disabled={subiendoImagen}
+                        className="bg-yellow-400 text-black hover:bg-yellow-500 font-semibold"
+                      >
+                        {subiendoImagen ? (
+                          <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Subiendo...</>
+                        ) : (
+                          <><Upload className="w-4 h-4 mr-1.5" />Subir imagen</>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-zinc-500 mb-3">
+                      Subí una foto por cada diseño/modelo de remera (hasta 6MB, JPG/PNG/WEBP/AVIF). La
+                      primera es la que se muestra por defecto en el sitio.
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {contenido.images.map((url, index) => (
+                        <div
+                          key={url + index}
+                          className="group relative aspect-square rounded-lg overflow-hidden bg-zinc-800 border border-zinc-700"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Diseño ${index + 1}`} className="w-full h-full object-contain p-2" />
+                          {index === 0 && (
+                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-yellow-400 text-black text-[10px] font-bold">
+                              Principal
+                            </span>
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 p-1 bg-black/70 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moverImagenRemera(index, -1)}
+                              disabled={index === 0}
+                              aria-label="Mover antes"
+                              className="h-7 w-7 text-zinc-200 hover:bg-white/10 disabled:opacity-30"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moverImagenRemera(index, 1)}
+                              disabled={index === contenido.images.length - 1}
+                              aria-label="Mover después"
+                              className="h-7 w-7 text-zinc-200 hover:bg-white/10 disabled:opacity-30"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => eliminarImagenRemera(index)}
+                              aria-label="Eliminar imagen"
+                              className="h-7 w-7 text-red-400 hover:bg-red-400/10"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {contenido.images.length === 0 && (
+                        <p className="col-span-full text-zinc-500 text-sm py-6 text-center">
+                          No hay imágenes cargadas todavía.
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div>
-                    <Label className="text-zinc-300 mb-1.5 block">URL de la foto de la tabla de talles</Label>
-                    <Input
-                      value={contenido.sizeChartImageUrl}
-                      onChange={(e) => setContenido((p) => ({ ...p, sizeChartImageUrl: e.target.value }))}
-                      className="bg-zinc-800 border-zinc-700 text-white"
-                      placeholder="https://..."
-                    />
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Si se completa, en el sitio público aparece un botón "Ver tabla de talles" que abre esta foto en un modal.
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <Label className="text-zinc-300">Foto de la tabla de talles</Label>
+                      <input
+                        ref={tallaChartInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) subirTablaTalles(e.target.files[0]);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => tallaChartInputRef.current?.click()}
+                        disabled={subiendoTablaTalles}
+                        className="border-yellow-400/30 text-yellow-400"
+                      >
+                        {subiendoTablaTalles ? (
+                          <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Subiendo...</>
+                        ) : (
+                          <><Upload className="w-4 h-4 mr-1.5" />{contenido.sizeChartImageUrl ? "Reemplazar" : "Subir foto"}</>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-zinc-500 mb-2">
+                      Si hay una foto cargada, en el sitio público aparece un botón "Ver tabla de talles"
+                      que la abre en un modal.
                     </p>
+                    {contenido.sizeChartImageUrl && (
+                      <div className="relative w-full max-w-[220px] rounded-lg overflow-hidden bg-zinc-800 border border-zinc-700">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={contenido.sizeChartImageUrl} alt="Tabla de talles" className="w-full h-auto" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setContenido((p) => ({ ...p, sizeChartImageUrl: "" }))}
+                          aria-label="Quitar tabla de talles"
+                          className="absolute top-1 right-1 h-7 w-7 bg-black/60 text-red-400 hover:bg-black/80"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 
@@ -1416,7 +1605,7 @@ export default function AdminRemeraPage() {
                       </span>
                     ))}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Input
                       value={nuevoTalle}
                       onChange={(e) => setNuevoTalle(e.target.value)}
@@ -1427,7 +1616,7 @@ export default function AdminRemeraPage() {
                         }
                       }}
                       placeholder="Ej: 6XL"
-                      className="bg-zinc-800 border-zinc-700 text-white max-w-[160px]"
+                      className="bg-zinc-800 border-zinc-700 text-white w-full sm:max-w-[160px]"
                     />
                     <Button type="button" variant="outline" size="sm" onClick={agregarTalle} className="border-yellow-400/30 text-yellow-400">
                       <Plus className="w-4 h-4 mr-1" />Agregar talle
@@ -1511,10 +1700,10 @@ function PreviewRemera({ contenido }: { contenido: RemeraContentData }) {
 
       {/* Imagen */}
       <div className="relative aspect-square max-w-[220px] mx-auto rounded-2xl bg-gradient-to-b from-zinc-800/60 to-zinc-900/60 border border-white/10 overflow-hidden shadow-2xl mb-6">
-        {contenido.imageUrl ? (
+        {contenido.images[0] ? (
           // eslint-disable-next-line @next/next/no-img-element -- URL arbitraria del admin
           <img
-            src={contenido.imageUrl}
+            src={contenido.images[0]}
             alt={contenido.title}
             className="absolute inset-0 w-full h-full object-contain p-5"
           />
