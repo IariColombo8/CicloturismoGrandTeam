@@ -113,6 +113,7 @@ export default function InscripcionPage() {
   const [formData, setFormData] = useState(defaultFormData)
   const [buscandoDNI, setBuscandoDNI] = useState(false)
   const ultimoDniBuscadoRef = useRef<string>("")
+  const [gruposGuardados, setGruposGuardados] = useState<string[]>([])
 
   // Cargar draft del localStorage en el primer mount.
   useEffect(() => {
@@ -248,6 +249,27 @@ export default function InscripcionPage() {
     }
     
     loadEventConfig()
+  }, [])
+
+  // Grupos de ciclistas cargados una sola vez para alimentar el combo
+  // autocompletable del paso 2. Se guardan en content_settings.id = "grupos".
+  useEffect(() => {
+    const loadGrupos = async () => {
+      try {
+        const { data } = await supabase
+          .from("content_settings")
+          .select("data")
+          .eq("id", "grupos")
+          .maybeSingle()
+
+        const lista = (data as { data?: { lista?: string[] } } | null)?.data?.lista
+        if (Array.isArray(lista)) setGruposGuardados(lista)
+      } catch (error) {
+        console.error("Error cargando grupos de ciclistas:", error)
+      }
+    }
+
+    loadGrupos()
   }, [])
 
   const totalSteps = 4
@@ -507,7 +529,9 @@ export default function InscripcionPage() {
                   buscandoDNI={buscandoDNI}
                 />
               )}
-              {currentStep === 2 && <CategoryStep formData={formData} updateFormData={updateFormData} />}
+              {currentStep === 2 && (
+                <CategoryStep formData={formData} updateFormData={updateFormData} gruposGuardados={gruposGuardados} />
+              )}
               {currentStep === 3 && <PaymentStep formData={formData} updateFormData={updateFormData} eventConfig={eventConfig} />}
               {currentStep === 4 && <ReviewStep formData={formData} eventConfig={eventConfig} />}
 

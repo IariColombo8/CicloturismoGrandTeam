@@ -65,6 +65,30 @@ function normalizeGrupoCiclistas(value: string) {
   return aliases[key] || clean
 }
 
+// Da de alta un grupo de ciclistas nuevo en content_settings.id = "grupos"
+// para que quede disponible en el combo del próximo que se inscriba.
+// Relee la lista actual de la DB (en vez de confiar en un valor cacheado en
+// el cliente) para minimizar pisadas entre altas concurrentes.
+async function guardarGrupoNuevoSiCorresponde(
+  supabase: ReturnType<typeof createAdminClient>,
+  grupo: string
+) {
+  if (!grupo || grupo === "Sin grupo") return
+
+  const { data: currentConfig } = await supabase
+    .from("content_settings")
+    .select("data")
+    .eq("id", "grupos")
+    .maybeSingle()
+
+  const listaActual: string[] = (currentConfig?.data as { lista?: string[] } | null)?.lista ?? []
+  if (listaActual.some((g) => g.toLowerCase() === grupo.toLowerCase())) return
+
+  await supabase
+    .from("content_settings")
+    .upsert({ id: "grupos", data: { lista: [...listaActual, grupo] } })
+}
+
 const MIME_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -201,6 +225,8 @@ export async function POST(req: NextRequest) {
   if (upsertError) {
     return NextResponse.json({ error: upsertError.message }, { status: 500 })
   }
+
+  await guardarGrupoNuevoSiCorresponde(supabase, normalizeGrupoCiclistas(formData.grupoCiclistas))
 
   return NextResponse.json({ ok: true, numeroInscripcion, tokenQR })
 }

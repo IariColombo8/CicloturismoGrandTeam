@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,9 +11,37 @@ import { AlertCircle } from "lucide-react"
 interface CategoryStepProps {
   formData: any
   updateFormData: (data: any) => void
+  gruposGuardados?: string[]
 }
 
-export default function CategoryStep({ formData, updateFormData }: CategoryStepProps) {
+// Semilla local: grupos conocidos que sirven de fallback si la lista de la
+// base de datos todavía está vacía o no cargó a tiempo.
+const GRUPOS_SEMILLA = [
+  "Grand Team Bike CdelU",
+  "Kamikaze MTB",
+  "Empujando Límites",
+  "Xtralarge Team",
+  "Chicas Trek",
+]
+
+const SIN_GRUPO = "Sin grupo"
+
+export default function CategoryStep({ formData, updateFormData, gruposGuardados = [] }: CategoryStepProps) {
+  const [grupoOpen, setGrupoOpen] = useState(false)
+
+  const todosLosGrupos = [...new Set([...GRUPOS_SEMILLA, ...gruposGuardados])]
+  const q = formData.grupoCiclistas.toLowerCase().trim()
+
+  const opcionesFiltradas = q
+    ? todosLosGrupos.filter((g) => g.toLowerCase().includes(q))
+    : todosLosGrupos
+
+  const mostrarSinGrupo = !q || SIN_GRUPO.toLowerCase().includes(q)
+
+  const exactMatch = todosLosGrupos.some((g) => g.toLowerCase() === q) || q === SIN_GRUPO.toLowerCase()
+  const sugerido =
+    !exactMatch && q.length >= 3 ? todosLosGrupos.find((g) => g.toLowerCase().includes(q)) : null
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -50,15 +79,77 @@ export default function CategoryStep({ formData, updateFormData }: CategoryStepP
           <Label htmlFor="grupoCiclistas" className="text-gray-300">
             Grupo de ciclistas <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="grupoCiclistas"
-            value={formData.grupoCiclistas}
-            onChange={(e) => updateFormData({ grupoCiclistas: e.target.value })}
-            placeholder="Ej.: Grand Team Bike o Sin grupo"
-            className="bg-zinc-900 border-yellow-400/30 text-white"
-            required
-          />
-          <p className="text-xs text-gray-500">Si no pertenecés a un grupo, escribí “Sin grupo”.</p>
+          <div className="relative">
+            <Input
+              id="grupoCiclistas"
+              value={formData.grupoCiclistas}
+              onChange={(e) => {
+                updateFormData({ grupoCiclistas: e.target.value })
+                setGrupoOpen(true)
+              }}
+              onFocus={() => setGrupoOpen(true)}
+              onBlur={() => setTimeout(() => setGrupoOpen(false), 150)}
+              placeholder="Escribí o seleccioná tu grupo"
+              className="bg-zinc-900 border-yellow-400/30 text-white"
+              autoComplete="off"
+              required
+            />
+            {grupoOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-yellow-400/30 rounded-md shadow-lg max-h-[220px] overflow-y-auto p-1">
+                {sugerido && (
+                  <div className="border-b border-zinc-700 mb-1 pb-1">
+                    <p className="text-xs text-gray-500 px-2 pt-1">¿Quisiste decir?</p>
+                    <button
+                      type="button"
+                      className="w-full text-left px-2 py-1.5 text-sm font-medium text-yellow-400 hover:bg-yellow-400/10 rounded"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        updateFormData({ grupoCiclistas: sugerido })
+                        setGrupoOpen(false)
+                      }}
+                    >
+                      → {sugerido}
+                    </button>
+                  </div>
+                )}
+                {mostrarSinGrupo && (
+                  <button
+                    type="button"
+                    className="w-full text-left px-2 py-1.5 text-sm text-gray-300 hover:bg-zinc-800 rounded"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      updateFormData({ grupoCiclistas: SIN_GRUPO })
+                      setGrupoOpen(false)
+                    }}
+                  >
+                    {SIN_GRUPO}
+                  </button>
+                )}
+                {opcionesFiltradas.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className="w-full text-left px-2 py-1.5 text-sm text-gray-300 hover:bg-zinc-800 rounded"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      updateFormData({ grupoCiclistas: g })
+                      setGrupoOpen(false)
+                    }}
+                  >
+                    {g}
+                  </button>
+                ))}
+                {q && opcionesFiltradas.length === 0 && !mostrarSinGrupo && (
+                  <p className="text-xs text-gray-500 px-2 py-2">
+                    No se encontraron grupos. Se guardará &quot;{formData.grupoCiclistas}&quot; al inscribirte.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-500">
+            Escribí el nombre de tu grupo o elegí uno de la lista. Si no existe, se guarda automáticamente. Si no pertenecés a ninguno, elegí “Sin grupo”.
+          </p>
         </div>
       </div>
 
