@@ -665,7 +665,7 @@ export default function AdminSponsorsPage() {
                         value={editingSponsor.whatsapp || ""}
                         onChange={(e) => setEditingSponsor({ ...editingSponsor, whatsapp: e.target.value })}
                         className="bg-zinc-800 border-zinc-700 text-white"
-                        placeholder="5493442123456"
+                        placeholder="5493442654257"
                       />
                     </div>
                     <div>

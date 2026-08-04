@@ -355,7 +355,7 @@ export default function Sponsors() {
     { icon: Star, text: "Presencia en redes sociales", description: "Alcance a miles de seguidores" },
   ]
 
-  const whatsappNumber = "5493442123456"
+  const whatsappNumber = "5493442654257"
   const whatsappMessage = encodeURIComponent(
     "Hola! Me interesa ser patrocinador del evento Grand Team Bike 2026. Me gustaría recibir más información.",
   )

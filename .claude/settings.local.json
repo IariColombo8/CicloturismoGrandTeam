@@ -23,7 +23,10 @@
       "Bash(git add *)",
       "Bash(git commit -m 'fix: revertir Next 16 a 15.5.6 para resolver error de build \\(createContext\\) *)",
       "Bash(git push *)",
-      "Bash(npx --yes sharp-cli --input public/logo.png --output public/ resize 300)"
+      "Bash(npx --yes sharp-cli --input public/logo.png --output public/ resize 300)",
+      "Bash(npm run *)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel ls *)"
     ]
   }
 }
