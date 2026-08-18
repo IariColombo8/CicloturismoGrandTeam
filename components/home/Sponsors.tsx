@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
+import { EVENTO } from "@/lib/constants"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Award, Heart, MessageCircle, Handshake, Star, Sparkles, Trophy,
@@ -355,7 +356,10 @@ export default function Sponsors() {
     { icon: Star, text: "Presencia en redes sociales", description: "Alcance a miles de seguidores" },
   ]
 
-  const whatsappNumber = "5493442654257"
+  // Fuente unica de verdad: lib/constants.ts. Evita que este numero quede
+  // desincronizado con el resto del sitio (era la causa del hydration mismatch
+  // cuando el chunk cliente cacheado tenia un numero viejo).
+  const whatsappNumber = EVENTO.contacto.whatsapp
   const whatsappMessage = encodeURIComponent(
     "Hola! Me interesa ser patrocinador del evento Grand Team Bike 2026. Me gustaría recibir más información.",
   )

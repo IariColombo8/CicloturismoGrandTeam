@@ -8,6 +8,8 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${PORT}`
 
 export default defineConfig({
   testDir: "./e2e",
+  // Los unitarios corren con playwright.unit.config.ts (sin dev server).
+  testIgnore: "**/unit/**",
   // CI: sin reintentos engañosos; local: igual. Fail rápido si algo se rompe.
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

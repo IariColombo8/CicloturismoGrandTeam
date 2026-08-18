@@ -1,69 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase-admin"
+import {
+  CURRENT_YEAR,
+  MAX_COMPROBANTE_BYTES,
+  normalizeGrupoCiclistas,
+  parseDataUrl,
+  submitSchema,
+} from "@/lib/inscripcion-schema"
 
-const CURRENT_YEAR = 2026
 const BUCKET = "comprobantes"
-
-const submitSchema = z.object({
-  nombre: z.string().trim().min(1),
-  apellido: z.string().trim().min(1),
-  dni: z.string().regex(/^\d{7,8}$/),
-  email: z.string().trim().email(),
-  telefono: z.string().trim().min(1),
-  fechaNacimiento: z.string().min(1),
-  pais: z.enum(["Argentina", "Uruguay"]),
-  localidad: z.string().trim().min(1),
-
-  nombreEmergencia: z.string().trim().min(1),
-  telefonoEmergencia: z.string().trim().min(1),
-  relacionEmergencia: z.string().trim().optional().default(""),
-
-  haRecorridoDistancia: z.enum(["si", "no"]),
-  grupoCiclistas: z.string().trim().min(1),
-  grupoSanguineo: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "DESCONOCIDO"]),
-  esCeliaco: z.enum(["si", "no"]),
-  tieneAlergias: z.enum(["si", "no"]),
-  alergias: z.string().trim().optional().default(""),
-  tieneProblemasSalud: z.enum(["si", "no"]),
-  condicionSalud: z.string().trim().optional().default(""),
-
-  numeroReferencia: z.string().trim().min(1),
-  comprobanteBase64: z.string().min(1),
-})
-
-
-function normalizeLookupKey(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ")
-}
-
-function normalizeGrupoCiclistas(value: string) {
-  const clean = value.trim().replace(/\s+/g, " ")
-  const key = normalizeLookupKey(clean)
-
-  const aliases: Record<string, string> = {
-    "sin grupo": "Sin grupo",
-    "ninguno": "Sin grupo",
-    "ninguna": "Sin grupo",
-    "no pertenezco": "Sin grupo",
-    "no pertenezco a ninguno": "Sin grupo",
-    "kamikaze mtb": "Kamikaze MTB",
-    "empujando limites": "Empujando Límites",
-    "xtralage team": "Xtralarge Team",
-    "xtralarge team": "Xtralarge Team",
-    "chicas treck": "Chicas Trek",
-    "chicas trek": "Chicas Trek",
-    "grand team bike cdelu": "Grand Team Bike CdelU",
-  }
-
-  return aliases[key] || clean
-}
 
 // Da de alta un grupo de ciclistas nuevo en content_settings.id = "grupos"
 // para que quede disponible en el combo del próximo que se inscriba.
@@ -87,26 +32,6 @@ async function guardarGrupoNuevoSiCorresponde(
   await supabase
     .from("content_settings")
     .upsert({ id: "grupos", data: { lista: [...listaActual, grupo] } })
-}
-
-const MIME_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "application/pdf": "pdf",
-}
-
-function parseDataUrl(dataUrl: string) {
-  const match = dataUrl.match(/^data:([^;]+);base64,([\s\S]+)$/)
-  if (!match) {
-    return { mimeType: "image/jpeg", base64Data: dataUrl, extension: "jpg" }
-  }
-
-  const mimeType = match[1].toLowerCase()
-  const extension = MIME_EXTENSIONS[mimeType]
-  if (!extension) throw new Error("Formato de comprobante no permitido")
-
-  return { mimeType, base64Data: match[2], extension }
 }
 
 export async function POST(req: NextRequest) {
@@ -158,7 +83,7 @@ export async function POST(req: NextRequest) {
     const { mimeType, base64Data, extension } = parseDataUrl(formData.comprobanteBase64)
     const buffer = Buffer.from(base64Data, "base64")
 
-    if (!buffer.length || buffer.length > 5 * 1024 * 1024) {
+    if (!buffer.length || buffer.length > MAX_COMPROBANTE_BYTES) {
       return NextResponse.json(
         { error: "El comprobante está vacío o supera los 5 MB" },
         { status: 400 }

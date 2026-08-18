@@ -15,8 +15,8 @@ test.describe("Landing pública", () => {
 
   test("el navbar muestra el CTA de inscripción", async ({ page }) => {
     await page.goto("/")
-    // En desktop el navbar tiene el botón "Inscribirse".
-    await expect(page.getByRole("link", { name: /inscribirse/i }).first()).toBeVisible()
+    // En desktop el navbar tiene el CTA "Inscribirme".
+    await expect(page.getByRole("link", { name: /inscribirme/i }).first()).toBeVisible()
   })
 
   test("navegar a inscripción desde el Hero", async ({ page }) => {
