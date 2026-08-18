@@ -430,17 +430,18 @@ export default function RegistroInscripciones() {
 
       // El numero de inscripcion se otorga recien al confirmar, para que la
       // numeracion quede correlativa (1, 2, 3...) entre los confirmados.
-      // La RPC es idempotente: si ya tenia numero, devuelve el mismo.
-      let numeroInscripcion = selectedInscripcion.numeroInscripcion
-      if (newStatus === "confirmada") {
-        const { data: numeroAsignado, error: numeroError } = await supabase.rpc(
-          "assign_inscription_number",
-          { p_dni: selectedInscripcion.dni, p_year: String(EDICION_ACTUAL) }
-        )
+      // Si la inscripcion deja de estar confirmada, el numero se libera y
+      // queda disponible para el proximo que se confirme.
+      // Ambas RPC son idempotentes.
+      const confirmada = newStatus === "confirmada"
+      const { data: numeroAsignado, error: numeroError } = await supabase.rpc(
+        confirmada ? "assign_inscription_number" : "release_inscription_number",
+        { p_dni: selectedInscripcion.dni, p_year: String(EDICION_ACTUAL) }
+      )
 
-        if (numeroError) throw numeroError
-        numeroInscripcion = numeroAsignado
-      }
+      if (numeroError) throw numeroError
+      // `release` devuelve el numero que libero; la fila queda sin numero.
+      const numeroInscripcion = confirmada ? numeroAsignado : null
 
       // Enviar email de confirmacion con QR recien acá, al aprobar.
       // Evita reenviarlo si ya estaba confirmada (edicion de nota, etc).

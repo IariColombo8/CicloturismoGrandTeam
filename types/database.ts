@@ -442,11 +442,17 @@ export interface Database {
         Args: { p_year?: string }
         Returns: number
       }
-      // Asigna el correlativo al confirmar la inscripcion. Idempotente:
+      // Asigna el menor numero libre de la edicion al confirmar. Idempotente:
       // si el participante ya tiene numero, devuelve el mismo.
       assign_inscription_number: {
         Args: { p_dni: string; p_year?: string }
         Returns: number
+      }
+      // Libera el numero cuando la inscripcion deja de estar confirmada, para
+      // que lo reutilice el proximo confirmado. Devuelve el numero liberado.
+      release_inscription_number: {
+        Args: { p_dni: string; p_year?: string }
+        Returns: number | null
       }
     }
   }

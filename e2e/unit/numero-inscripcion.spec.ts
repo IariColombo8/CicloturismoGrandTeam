@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test"
-import { SIN_NUMERO, debeTenerNumero, formatNumeroInscripcion } from "@/lib/numeroInscripcion"
+import {
+  SIN_NUMERO,
+  debeTenerNumero,
+  formatNumeroInscripcion,
+  menorNumeroLibre,
+} from "@/lib/numeroInscripcion"
 
 test.describe("formatNumeroInscripcion", () => {
   test("formatea con 3 dígitos", () => {
@@ -28,5 +33,53 @@ test.describe("debeTenerNumero", () => {
     expect(debeTenerNumero("confirmada")).toBe(true)
     expect(debeTenerNumero("pendiente")).toBe(false)
     expect(debeTenerNumero("rechazada")).toBe(false)
+  })
+})
+
+test.describe("menorNumeroLibre", () => {
+  test("con la edición vacía arranca en 1", () => {
+    expect(menorNumeroLibre([])).toBe(1)
+  })
+
+  test("sigue la secuencia cuando no hay huecos", () => {
+    expect(menorNumeroLibre([1, 2, 3, 4, 5])).toBe(6)
+  })
+
+  test("reutiliza el hueco que deja una inscripción despublicada", () => {
+    // Estaban 1..6 y el 3 volvió a pendiente: el próximo confirmado toma el 3.
+    expect(menorNumeroLibre([1, 2, 4, 5, 6])).toBe(3)
+  })
+
+  test("toma el hueco más bajo cuando hay varios", () => {
+    expect(menorNumeroLibre([1, 4, 5])).toBe(2)
+  })
+
+  test("si se liberó el 1, ese es el próximo", () => {
+    expect(menorNumeroLibre([2, 3, 4])).toBe(1)
+  })
+
+  test("ignora los null de los pendientes", () => {
+    expect(menorNumeroLibre([1, null, 2, undefined, null])).toBe(3)
+  })
+
+  test("no se confunde con el orden de la lista", () => {
+    expect(menorNumeroLibre([5, 1, 4, 2])).toBe(3)
+  })
+
+  test("un ciclo confirmar → despublicar → confirmar no salta números", () => {
+    const asignados: (number | null)[] = [1, 2, 3, 4, 5]
+
+    // Entra alguien nuevo: se lleva el 6.
+    const nuevo = menorNumeroLibre(asignados)
+    expect(nuevo).toBe(6)
+    asignados.push(nuevo)
+
+    // El 3 vuelve a pendiente: libera su número.
+    asignados[2] = null
+    expect(menorNumeroLibre(asignados)).toBe(3)
+
+    // Se confirma otro: ocupa el 3, no el 7.
+    asignados[2] = 3
+    expect(menorNumeroLibre(asignados)).toBe(7)
   })
 })
