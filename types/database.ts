@@ -442,6 +442,12 @@ export interface Database {
         Args: { p_year?: string }
         Returns: number
       }
+      // Asigna el correlativo al confirmar la inscripcion. Idempotente:
+      // si el participante ya tiene numero, devuelve el mismo.
+      assign_inscription_number: {
+        Args: { p_dni: string; p_year?: string }
+        Returns: number
+      }
     }
   }
 }

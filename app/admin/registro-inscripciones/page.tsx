@@ -7,6 +7,7 @@ import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { useIsMobile } from "@/components/ui/use-mobile"
 import { exportToCSV } from "@/lib/exportUtils"
 import { emailService } from "@/lib/emailService"
+import { SIN_NUMERO } from "@/lib/numeroInscripcion"
 import {
   Users,
   CheckCircle,
@@ -427,6 +428,20 @@ export default function RegistroInscripciones() {
 
       if (updateError) throw updateError
 
+      // El numero de inscripcion se otorga recien al confirmar, para que la
+      // numeracion quede correlativa (1, 2, 3...) entre los confirmados.
+      // La RPC es idempotente: si ya tenia numero, devuelve el mismo.
+      let numeroInscripcion = selectedInscripcion.numeroInscripcion
+      if (newStatus === "confirmada") {
+        const { data: numeroAsignado, error: numeroError } = await supabase.rpc(
+          "assign_inscription_number",
+          { p_dni: selectedInscripcion.dni, p_year: String(EDICION_ACTUAL) }
+        )
+
+        if (numeroError) throw numeroError
+        numeroInscripcion = numeroAsignado
+      }
+
       // Enviar email de confirmacion con QR recien acá, al aprobar.
       // Evita reenviarlo si ya estaba confirmada (edicion de nota, etc).
       if (newStatus === "confirmada" && selectedInscripcion.estado !== "confirmada") {
@@ -434,7 +449,7 @@ export default function RegistroInscripciones() {
           await emailService.sendConfirmationEmail({
             email: selectedInscripcion.email,
             nombreCompleto: `${selectedInscripcion.nombres} ${selectedInscripcion.apellidos}`,
-            numeroInscripcion: String(selectedInscripcion.numeroInscripcion),
+            numeroInscripcion: String(numeroInscripcion),
             tokenQR: selectedInscripcion.tokenQR,
             ubicacion: "Concepcion del Uruguay, Entre Rios",
           })
@@ -447,7 +462,7 @@ export default function RegistroInscripciones() {
       setInscripciones((prev) =>
         prev.map((insc) =>
           insc.id === selectedInscripcion.id
-            ? { ...insc, estado: newStatus, nota: statusNote }
+            ? { ...insc, estado: newStatus, nota: statusNote, numeroInscripcion }
             : insc
         )
       )
@@ -673,10 +688,18 @@ export default function RegistroInscripciones() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-yellow-400/10">
-                  {inscripciones.map((insc, index) => (
+                  {inscripciones.map((insc) => (
                     <tr key={insc.id} className="hover:bg-zinc-800/30 transition-colors">
                       <td className="px-4 py-3 text-sm text-gray-400">
-                        {insc.numeroInscripcion || (indexOfFirst + index)}
+                        {/* Solo los confirmados tienen numero. Los pendientes
+                            y rechazados muestran un guion. */}
+                        {insc.numeroInscripcion == null ? (
+                          <span className="text-gray-600" title="Se asigna al confirmar">
+                            {SIN_NUMERO}
+                          </span>
+                        ) : (
+                          insc.numeroInscripcion
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="font-semibold text-yellow-400 text-sm">

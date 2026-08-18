@@ -62,21 +62,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: existingError.message }, { status: 500 })
   }
 
-  const yaInscriptoEsteAnio =
-    !!existente?.numero_inscripcion && (existente?.anios ?? []).includes(CURRENT_YEAR)
-  let numeroInscripcion = existente?.numero_inscripcion ?? null
-
-  if (!yaInscriptoEsteAnio) {
-    const { data: nuevoNumero, error: numberError } = await supabase.rpc(
-      "next_inscription_number",
-      { p_year: String(CURRENT_YEAR) }
-    )
-
-    if (numberError) {
-      return NextResponse.json({ error: numberError.message }, { status: 500 })
-    }
-    numeroInscripcion = nuevoNumero
-  }
+  // El numero de inscripcion NO se asigna acá. Se otorga recien cuando el
+  // admin confirma la inscripcion (RPC assign_inscription_number), asi la
+  // numeracion queda correlativa 1,2,3... entre los confirmados y los
+  // pendientes no ocupan un numero.
+  const numeroInscripcion = existente?.numero_inscripcion ?? null
 
   let comprobantePagoUrl: string
   try {

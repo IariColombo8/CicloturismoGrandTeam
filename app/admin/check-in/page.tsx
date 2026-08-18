@@ -22,13 +22,16 @@ import {
   AlertTriangle,
   RefreshCw,
 } from "lucide-react"
+import { formatNumeroInscripcion } from "@/lib/numeroInscripcion"
 
 interface CheckInRecord {
   id: string
   nombre: string
   apellido: string
   dni: string
-  numeroInscripcion: number
+  // Null mientras la inscripcion no este confirmada: el numero se asigna
+  // recien al confirmarla.
+  numeroInscripcion: number | null
   estado: string
   checkedIn: boolean
   checkedInAt: any
@@ -205,7 +208,7 @@ export default function CheckInPage() {
 
       setResultado({
         tipo: "exito",
-        mensaje: `Check-in exitoso para ${data.nombre} ${data.apellido} (#${String(data.numeroInscripcion).padStart(3, "0")})`,
+        mensaje: `Check-in exitoso para ${data.nombre} ${data.apellido} (${formatNumeroInscripcion(data.numeroInscripcion)})`,
         participante: data,
       })
     } catch (error) {
@@ -674,7 +677,7 @@ export default function CheckInPage() {
                           {item.nombre} {item.apellido}
                         </p>
                         <p className="text-xs text-gray-500">
-                          #{String(item.numeroInscripcion).padStart(3, "0")}
+                          {formatNumeroInscripcion(item.numeroInscripcion)}
                         </p>
                       </div>
                     </div>
