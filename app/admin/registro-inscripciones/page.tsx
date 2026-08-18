@@ -130,11 +130,22 @@ export default function RegistroInscripciones() {
       const from = (page - 1) * perPage
       const to = from + perPage - 1
 
-      const buildQuery = (columns: string) => {
+      const buildQuery = (columns: string, conOrdenEstado = true) => {
+        // Orden: pendientes arriba, despues las confirmadas del numero mas
+        // grande al 1 (el #1 queda ultimo, incluso con varias paginas) y las
+        // rechazadas al final. Se ordena en el servidor porque la lista esta
+        // paginada: ordenar en el cliente ordenaria cada hoja por separado.
         let query = supabase
           .from("participantes")
           .select(columns, { count: "exact" })
           .contains("anios", [EDICION_ACTUAL])
+
+        if (conOrdenEstado) {
+          query = query.order("orden_estado", { ascending: true })
+        }
+
+        query = query
+          .order("numero_inscripcion", { ascending: false, nullsFirst: false })
           .order("fecha_inscripcion", { ascending: false })
 
         if (status !== "all") {
@@ -155,6 +166,22 @@ export default function RegistroInscripciones() {
       let data: any[] | null = primaryResult.data as any[] | null
       let count: number | null = primaryResult.count
       let fetchError = primaryResult.error
+
+      // `orden_estado` es una columna generada que agrega la migración
+      // 20260818c. Si todavía no se ejecutó, se carga el listado sin agrupar
+      // por estado en vez de dejar el panel inutilizable.
+      if (fetchError && /orden_estado/i.test(fetchError.message)) {
+        console.warn(
+          "Falta la columna participantes.orden_estado (migración 20260818c). " +
+            "Se carga el listado sin agrupar por estado.",
+          fetchError
+        )
+
+        const sinOrden = await buildQuery(INSCRIPCIONES_COLUMNS, false)
+        data = sinOrden.data as any[] | null
+        count = sinOrden.count
+        fetchError = sinOrden.error
+      }
 
       // Algunas instalaciones antiguas pueden conservar una vista, función o
       // política que todavía referencia `participantes.provincia`. Este archivo
@@ -479,10 +506,13 @@ export default function RegistroInscripciones() {
 
   // Exportar CSV: descarga TODAS las inscripciones filtradas (no solo la pagina actual)
   const exportarCSV = async () => {
+    // Mismo orden que la grilla, para que el CSV se lea igual que la pantalla.
     let query = supabase
       .from("participantes")
       .select(INSCRIPCIONES_COLUMNS)
       .contains("anios", [EDICION_ACTUAL])
+      .order("orden_estado", { ascending: true })
+      .order("numero_inscripcion", { ascending: false, nullsFirst: false })
       .order("fecha_inscripcion", { ascending: false })
 
     if (statusFilter !== "all") query = query.eq("estado", statusFilter)

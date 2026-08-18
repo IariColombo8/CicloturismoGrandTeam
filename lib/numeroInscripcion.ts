@@ -18,6 +18,46 @@ export function debeTenerNumero(estado: string): boolean {
 }
 
 /**
+ * Prioridad de cada estado en el listado del panel: los pendientes van
+ * arriba (son los que hay que revisar), despues los confirmados y al
+ * final los rechazados. Replica la columna generada `orden_estado`.
+ */
+export function ordenEstado(estado: string): number {
+  if (estado === "pendiente") return 0
+  if (estado === "confirmada" || estado === "aprobado") return 1
+  if (estado === "rechazada") return 2
+  return 3
+}
+
+export type FilaListado = {
+  estado: string
+  numeroInscripcion: number | null
+  fechaInscripcion?: string
+}
+
+/**
+ * Orden del listado: pendientes primero, luego los confirmados del numero
+ * mas grande al 1 (el #1 queda ultimo) y los rechazados al final. Dentro
+ * de un mismo grupo sin numero, gana el mas reciente.
+ *
+ * En produccion este orden lo resuelve Postgres, porque la lista esta
+ * paginada en el servidor. Se replica acá para poder testear la regla.
+ */
+export function compararParaListado(a: FilaListado, b: FilaListado): number {
+  const porEstado = ordenEstado(a.estado) - ordenEstado(b.estado)
+  if (porEstado !== 0) return porEstado
+
+  // Numero descendente; los que no tienen numero van despues.
+  if (a.numeroInscripcion != null && b.numeroInscripcion != null) {
+    return b.numeroInscripcion - a.numeroInscripcion
+  }
+  if (a.numeroInscripcion != null) return -1
+  if (b.numeroInscripcion != null) return 1
+
+  return (b.fechaInscripcion ?? "").localeCompare(a.fechaInscripcion ?? "")
+}
+
+/**
  * Menor entero positivo que no esta en uso. Es la misma regla que aplica
  * la RPC assign_inscription_number en Postgres: si una inscripcion vuelve
  * a "pendiente", su numero se libera y lo toma el proximo confirmado, en
