@@ -374,6 +374,13 @@ export default function Navbar() {
               >
                 Pedir Remera
               </Link>
+              {/* Secundario: quien ya se inscribio consulta su estado y su QR. */}
+              <Link
+                href="/mi-qr"
+                className="px-5 py-2.5 border-2 border-yellow-400/60 text-yellow-400 font-bold rounded-lg hover:bg-yellow-400 hover:text-black transition-colors duration-200 whitespace-nowrap"
+              >
+                Mi QR
+              </Link>
 
               {user ? (
                 <div className="flex items-center gap-2">
@@ -563,6 +570,14 @@ export default function Navbar() {
                 className="block w-full text-center px-6 py-3 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg shadow-lg hover:shadow-yellow-500/50 transition-all"
               >
                 Pedir Remera
+              </Link>
+              {/* Secundario: quien ya se inscribio consulta su estado y su QR. */}
+              <Link
+                href="/mi-qr"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block w-full text-center px-6 py-3 border-2 border-yellow-400/60 text-yellow-400 font-bold rounded-lg hover:bg-yellow-400 hover:text-black transition-colors"
+              >
+                Mi QR
               </Link>
 
               {user ? (

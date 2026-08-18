@@ -5,6 +5,7 @@ import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { descargarQRDesdeSVG, nombreArchivoQR } from "@/lib/descargarQR"
 import { CheckCircle2, Mail, Home, FileText, Download, QrCode, UserPlus } from "lucide-react"
 
 export default function ExitoPage() {
@@ -35,32 +36,7 @@ export default function ExitoPage() {
   }
 
   const descargarQR = useCallback(() => {
-    if (!qrRef.current) return
-
-    const svg = qrRef.current.querySelector("svg")
-    if (!svg) return
-
-    const svgData = new XMLSerializer().serializeToString(svg)
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-    const img = new Image()
-
-    img.onload = () => {
-      canvas.width = 400
-      canvas.height = 400
-      if (ctx) {
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, 400, 400)
-        ctx.drawImage(img, 0, 0, 400, 400)
-      }
-
-      const link = document.createElement("a")
-      link.download = `QR-GrandTeam-${numero || "inscripcion"}.png`
-      link.href = canvas.toDataURL("image/png")
-      link.click()
-    }
-
-    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)))
+    descargarQRDesdeSVG(qrRef.current, nombreArchivoQR(numero))
   }, [numero])
 
   return (
