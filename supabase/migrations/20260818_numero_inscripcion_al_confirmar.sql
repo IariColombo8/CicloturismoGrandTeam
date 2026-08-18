@@ -1,6 +1,16 @@
 -- ============================================================
 -- Numero de inscripcion: correlativo 1,2,3... y solo al confirmar
 -- ============================================================
+-- >>> YA APLICADO EL 2026-08-18. NO VOLVER A EJECUTAR. <<<
+--
+-- Este archivo queda como registro del cambio. La parte de datos
+-- es de un solo uso: si se corre de nuevo, blanquea la numeracion
+-- vigente y deja el contador en 5, con lo cual el proximo
+-- confirmado repetiria un numero ya entregado.
+--
+-- Para crear/actualizar solo la funcion, usar el archivo
+-- 20260818_assign_inscription_number.sql (es idempotente).
+-- ============================================================
 -- Antes: el numero se asignaba al enviar el formulario y los
 -- participantes que repiten arrastraban el numero de ediciones
 -- anteriores, por eso la grilla se veia salteada.
