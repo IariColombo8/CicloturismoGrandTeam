@@ -18,6 +18,9 @@ import {
   QrCode,
   Bike,
   Handshake,
+  Images,
+  UserCog,
+  Settings,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
@@ -138,27 +141,26 @@ export default function Navbar() {
     }
   }
 
+  // En la barra queda solo "Inicio" suelto: el resto de las secciones de la
+  // landing vive dentro del dropdown "Detalles" para dejar aire a los CTA.
   const navLinks = useMemo(() => [
     { id: "inicio", label: "Inicio" },
-    { id: "nosotros", label: "Sobre Nosotros" },
-    { id: "pedir-remera", label: "Pedir Remera" },
-    { id: "contacto", label: "Contacto" },
   ], [])
 
   // Sub-secciones agrupadas bajo el dropdown "Detalles"
   const detailsLinks = useMemo(() => [
+    { id: "nosotros", label: "Sobre Nosotros" },
     { id: "detalles", label: "Mapa" },
     { id: "galeria", label: "Galería" },
     { id: "patrocinadores", label: "Sponsors" },
+    { id: "pedir-remera", label: "Pedir Remera" },
+    { id: "contacto", label: "Contacto" },
   ], [])
 
   // Lista plana (para el dropdown "Volver a Inicio" en páginas de admin)
   const flatSectionLinks = useMemo(() => [
     { id: "inicio", label: "Inicio" },
-    { id: "nosotros", label: "Sobre Nosotros" },
-    { id: "pedir-remera", label: "Pedir Remera" },
     ...detailsLinks,
-    { id: "contacto", label: "Contacto" },
   ], [detailsLinks])
 
   const adminLinks = useMemo(() => {
@@ -175,6 +177,9 @@ export default function Navbar() {
       { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
       { href: "/admin/grandteam", label: "Grand Team", icon: Users },
       { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
+      { href: "/admin/galeria", label: "Galeria", icon: Images },
+      { href: "/admin/usuarios", label: "Usuarios y Roles", icon: UserCog },
+      { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
     ]
   }, [isRemera])
 
@@ -293,8 +298,6 @@ export default function Navbar() {
                 // Vista admin en página principal
                 <>
                   {renderDesktopLink(navLinks[0])}
-                  {renderDesktopLink(navLinks[1])}
-                  {renderDesktopLink(navLinks[2])}
                   <DropdownMenu
                     label="Detalles"
                     isOpen={openDropdown === "detalles"}
@@ -311,7 +314,6 @@ export default function Navbar() {
                       </a>
                     ))}
                   </DropdownMenu>
-                  {renderDesktopLink(navLinks[3])}
 
                   <DropdownMenu
                     label="Admin"
@@ -337,8 +339,6 @@ export default function Navbar() {
                 // Vista usuarios normales
                 <>
                   {renderDesktopLink(navLinks[0])}
-                  {renderDesktopLink(navLinks[1])}
-                  {renderDesktopLink(navLinks[2])}
                   <DropdownMenu
                     label="Detalles"
                     isOpen={openDropdown === "detalles"}
@@ -355,7 +355,6 @@ export default function Navbar() {
                       </a>
                     ))}
                   </DropdownMenu>
-                  {renderDesktopLink(navLinks[3])}
                 </>
               )}
             </div>
@@ -490,8 +489,6 @@ export default function Navbar() {
               // Mobile admin en página principal
               <>
                 {renderMobileLink(navLinks[0])}
-                {renderMobileLink(navLinks[1])}
-                {renderMobileLink(navLinks[2])}
                 <MobileDropdown
                   label="Detalles"
                   isOpen={openDropdown === "detalles"}
@@ -508,7 +505,6 @@ export default function Navbar() {
                     </a>
                   ))}
                 </MobileDropdown>
-                {renderMobileLink(navLinks[3])}
 
                 <MobileDropdown
                   label="Admin"
@@ -534,8 +530,6 @@ export default function Navbar() {
               // Mobile usuarios normales
               <>
                 {renderMobileLink(navLinks[0])}
-                {renderMobileLink(navLinks[1])}
-                {renderMobileLink(navLinks[2])}
                 <MobileDropdown
                   label="Detalles"
                   isOpen={openDropdown === "detalles"}
@@ -552,7 +546,6 @@ export default function Navbar() {
                     </a>
                   ))}
                 </MobileDropdown>
-                {renderMobileLink(navLinks[3])}
               </>
             )}
 
