@@ -1,16 +1,11 @@
 "use client"
 import { useState, useEffect } from "react"
-import type React from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Mail, ChevronDown, ChevronUp, Stethoscope, CheckCircle2, XCircle, AlertTriangle, Loader2, Copy } from "lucide-react"
-import Navbar from "@/components/layout/Navbar"
+import { ArrowLeft, Stethoscope, CheckCircle2, XCircle, AlertTriangle, Loader2, Copy, ShieldCheck } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 
@@ -118,7 +113,7 @@ function DiagnosticPanel({ onClose }: { onClose: () => void }) {
         }
       } else if (!data) {
         updateStep(3, { status: "error", detail: `No se encontro ningun registro con email "${userEmail}". Necesitas insertar tu email en la tabla.` })
-        setSqlFix(`INSERT INTO administradores (email, role, display_name, login_method, auth_user_id)\nVALUES ('${userEmail}', 'admin', '${session.user.user_metadata?.full_name || "Admin"}', 'email', '${userId}')\nON CONFLICT (email) DO UPDATE SET role = 'admin', auth_user_id = '${userId}';`)
+        setSqlFix(`INSERT INTO administradores (email, role, display_name, login_method, auth_user_id)\nVALUES ('${userEmail}', 'admin', '${session.user.user_metadata?.full_name || "Admin"}', 'google', '${userId}')\nON CONFLICT (email) DO UPDATE SET role = 'admin', auth_user_id = '${userId}';`)
       } else {
         adminRow = data
         updateStep(3, { status: "ok", detail: `Encontrado: role=${data.role}, auth_user_id=${data.auth_user_id || "NULL"}, login_method=${data.login_method}` })
@@ -273,14 +268,11 @@ export default function LoginPage() {
   const returnUrl = searchParams.get("returnUrl") || "/"
   const { toast } = useToast()
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [isEmailSectionOpen, setIsEmailSectionOpen] = useState(false)
   const [showDiag, setShowDiag] = useState(false)
 
-  // Manejar sesion activa (detecta tokens del hash en flujo implicito OAuth)
+  // Manejar sesion activa (el callback de OAuth vuelve con la sesion ya creada)
   useEffect(() => {
     let handled = false
 
@@ -303,14 +295,10 @@ export default function LoginPage() {
       }
     }
 
-    // Con flujo PKCE, el codigo llega por query param (?code=) y
-    // supabase-js lo intercambia automaticamente por una sesion
-    // (detectSessionInUrl: true). Solo verificamos sesion existente.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) handleUser(session.user)
     })
 
-    // Escuchar cambios de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (session?.user) handleUser(session.user)
@@ -361,55 +349,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-
-    try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (authError) throw authError
-
-      const user = data.user
-      if (!user?.email) throw new Error("No se pudo obtener el email del usuario")
-
-      const userRole = await upsertAdminRecord(
-        user.email,
-        user.user_metadata?.full_name || "",
-        user.user_metadata?.avatar_url || "",
-        "email",
-        user.id
-      )
-
-      toast({
-        title: "Bienvenido!",
-        description: `Sesion iniciada como ${userRole}`,
-      })
-
-      if (userRole === "admin" || userRole === "grandteam") {
-        router.push("/admin/dashboard")
-      } else {
-        router.push(returnUrl)
-      }
-    } catch (error: any) {
-      console.error("Error al iniciar sesion:", error)
-
-      if (error.message?.includes("Invalid login credentials")) {
-        setError("Credenciales incorrectas. Verifica tu email y contrasena.")
-      } else if (error.message?.includes("too many requests")) {
-        setError("Demasiados intentos fallidos. Intenta mas tarde.")
-      } else {
-        setError("Error al iniciar sesion. Por favor, intenta nuevamente.")
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleGoogleSignIn = async () => {
     setError("")
     setLoading(true)
@@ -442,138 +381,119 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
-      <Navbar />
+    <div className="relative min-h-screen overflow-hidden bg-black">
+      {/* Capa 1 — foto del evento */}
+      <div
+        className="absolute inset-0 scale-105 bg-cover bg-center blur-[2px]"
+        style={{ backgroundImage: "url('/ciclistas-en-grupo-pedaleando-en-carretera.jpg')" }}
+        aria-hidden="true"
+      />
+      {/* Capa 2 — velo plano */}
+      <div className="absolute inset-0 bg-black/60" aria-hidden="true" />
+      {/* Capa 3 — degradado de marca (negro -> dorado) */}
+      <div
+        className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/50 to-yellow-900/40"
+        aria-hidden="true"
+      />
+      {/* Capa 4 — vineta radial */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "radial-gradient(ellipse at center, rgba(0,0,0,0.3) 15%, rgba(0,0,0,0.85) 90%)" }}
+        aria-hidden="true"
+      />
+      {/* Halo dorado */}
+      <div
+        className="pointer-events-none absolute -top-40 -right-32 h-[32rem] w-[32rem] rounded-full bg-yellow-400/20 blur-3xl"
+        aria-hidden="true"
+      />
 
-      <div className="container mx-auto px-4 py-24 flex items-center justify-center">
-        <div className="w-full max-w-md">
-          <Card className="bg-black/50 border-yellow-400/30 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <CardTitle className="text-white text-2xl">Iniciar Sesion</CardTitle>
-              <CardDescription className="text-gray-400">Accede con tu cuenta</CardDescription>
-            </CardHeader>
+      <main className="relative z-10 flex min-h-screen flex-col items-center justify-center px-5 py-12">
+        <div className="w-full max-w-sm">
+          {/* Logo */}
+          <div className="flex justify-center">
+            <div className="rounded-full bg-white p-2 shadow-2xl shadow-black/50 ring-1 ring-yellow-400/50">
+              <img
+                src="/logo.png"
+                alt="Grand Team Bike"
+                width={112}
+                height={112}
+                className="h-24 w-24 object-contain md:h-28 md:w-28"
+              />
+            </div>
+          </div>
+
+          <div className="mt-7 text-center">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-yellow-400">
+              Grand Team Bike 2026
+            </p>
+            <h1 className="mt-2 text-3xl font-black leading-[1.1] text-white drop-shadow-lg md:text-4xl">
+              Cicloturismo con alma
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-white/70">
+              Estas accediendo al panel interno del evento. Este espacio es solo para el equipo
+              organizador.
+            </p>
+          </div>
+
+          {/* Panel de acceso */}
+          <div className="mt-8 rounded-2xl border border-yellow-400/25 bg-white/5 p-6 shadow-2xl shadow-black/50 backdrop-blur-xl">
+            <div className="flex items-center justify-center gap-2 text-white/70">
+              <ShieldCheck className="h-4 w-4 text-yellow-400" />
+              <span className="text-xs font-medium uppercase tracking-wider">Acceso restringido</span>
+            </div>
 
             {error && (
-              <div className="mx-6 mb-4">
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              </div>
+              <Alert variant="destructive" className="mt-4 border-red-400/40 bg-red-950/60 text-red-100">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
 
-            <CardContent className="space-y-4">
-              <Button
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="w-full bg-white hover:bg-gray-100 text-black font-semibold py-6 flex items-center justify-center gap-3"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
+            <Button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="mt-5 h-12 w-full rounded-xl bg-white font-semibold text-black shadow-lg transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-xl active:translate-y-0 disabled:opacity-70 disabled:hover:translate-y-0"
+            >
+              {loading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <svg viewBox="0 0 24 24" className="mr-2 h-5 w-5" aria-hidden="true">
+                  <path d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z" fill="#EA4335" />
+                  <path d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 15.99 17.34 17.25 16.08 18.1L19.945 21.1C22.2 19.01 23.49 15.92 23.49 12.275Z" fill="#4285F4" />
+                  <path d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.7049L1.275 6.60986C0.46 8.22986 0 10.0599 0 11.9999C0 13.9399 0.46 15.7699 1.28 17.3899L5.26498 14.2949Z" fill="#FBBC05" />
+                  <path d="M12.0004 24.0001C15.2404 24.0001 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.82 13.6204 19.245 12.0004 19.245C8.8704 19.245 6.2154 17.135 5.2654 14.29L1.27539 17.385C3.25539 21.31 7.3104 24.0001 12.0004 24.0001Z" fill="#34A853" />
                 </svg>
-                Continuar con Google
-              </Button>
+              )}
+              {loading ? "Conectando..." : "Continuar con Google"}
+            </Button>
 
-              <div className="border border-yellow-400/30 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setIsEmailSectionOpen(!isEmailSectionOpen)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-yellow-400/5 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-yellow-400" />
-                    <span className="text-white font-medium">Email y Contrasena</span>
-                  </div>
-                  {isEmailSectionOpen ? (
-                    <ChevronUp className="w-4 h-4 text-yellow-400" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-yellow-400" />
-                  )}
-                </button>
+            <p className="mt-4 text-center text-xs leading-relaxed text-white/45">
+              Si no formas parte del equipo, tu cuenta quedara sin permisos de administracion.
+            </p>
+          </div>
 
-                {isEmailSectionOpen && (
-                  <form onSubmit={handleEmailLogin} className="p-4 pt-0 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-gray-300">
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="tu@email.com"
-                        className="bg-zinc-900 border-yellow-400/30 text-white"
-                        required
-                      />
-                    </div>
+          <div className="mt-8 flex items-center justify-between">
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-yellow-400"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver al sitio
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowDiag(!showDiag)}
+              className="inline-flex items-center gap-1.5 text-sm text-white/30 transition-colors hover:text-yellow-400"
+              title="Diagnostico de login"
+            >
+              <Stethoscope className="h-4 w-4" />
+              Diagnostico
+            </button>
+          </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-gray-300">
-                        Contrasena
-                      </Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="********"
-                        className="bg-zinc-900 border-yellow-400/30 text-white"
-                        required
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:scale-105 transition-transform font-bold"
-                    >
-                      {loading ? "Iniciando sesion..." : "Iniciar Sesion"}
-                    </Button>
-                  </form>
-                )}
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <Link
-                  href="/"
-                  className="text-sm text-gray-400 hover:text-yellow-400 transition-colors flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Volver al inicio
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setShowDiag(!showDiag)}
-                  className="text-sm text-zinc-600 hover:text-yellow-400 transition-colors flex items-center gap-1.5"
-                  title="Diagnostico de login"
-                >
-                  <Stethoscope className="w-4 h-4" />
-                  Diagnostico
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {showDiag && (
-            <DiagnosticPanel onClose={() => setShowDiag(false)} />
-          )}
+          {showDiag && <DiagnosticPanel onClose={() => setShowDiag(false)} />}
         </div>
-      </div>
+      </main>
     </div>
   )
 }
