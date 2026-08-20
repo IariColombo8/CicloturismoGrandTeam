@@ -180,7 +180,7 @@ export default function LoginPage() {
               Grand Team Bike 2026
             </p>
             <h1 className="mt-2 text-3xl font-black leading-[1.1] text-white drop-shadow-lg md:text-4xl">
-              Cicloturismo con alma
+              El equipo detras de la ruta
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-white/70">
               Estas accediendo al panel interno del evento. Este espacio es solo para el equipo
