@@ -7,10 +7,13 @@ import { ChevronRight, MapPin, Calendar, Users, Shield, Wrench, Droplet, Shirt, 
 import { Button } from "@/components/ui/button"
 import { EVENTO } from "@/lib/constants"
 import { useCuposRestantes } from "@/hooks/useCuposRestantes"
+import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
+import { REMERA_CERRADA_MENSAJE } from "@/lib/remeraDeadline"
 
 export default function HeroSection() {
   const [isVisible, setIsVisible] = useState(false)
   const { disponibles, hayDatos } = useCuposRestantes()
+  const remeraCerrada = useRemeraCerrada()
 
   useEffect(() => {
     setIsVisible(true)
@@ -155,15 +158,28 @@ export default function HeroSection() {
                 <ChevronRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link href="/pedir-remera" className="w-full sm:w-auto">
+            {remeraCerrada ? (
               <Button
                 size="lg"
-                className="w-full sm:w-auto group px-4 sm:px-8 py-3 sm:py-6 text-sm sm:text-lg font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black hover:scale-105 transition-all duration-300 btn-glow rounded-lg sm:rounded-xl shadow-lg hover:shadow-yellow-500/50"
+                disabled
+                aria-disabled
+                title={REMERA_CERRADA_MENSAJE}
+                className="w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-6 text-sm sm:text-lg font-bold bg-zinc-700 text-zinc-300 rounded-lg sm:rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Pedir Remera
+                Pedidos de remera cerrados
                 <Shirt className="ml-2 w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
               </Button>
-            </Link>
+            ) : (
+              <Link href="/pedir-remera" className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto group px-4 sm:px-8 py-3 sm:py-6 text-sm sm:text-lg font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black hover:scale-105 transition-all duration-300 btn-glow rounded-lg sm:rounded-xl shadow-lg hover:shadow-yellow-500/50"
+                >
+                  Pedir Remera
+                  <Shirt className="ml-2 w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+                </Button>
+              </Link>
+            )}
             <Button
               size="lg"
               variant="outline"

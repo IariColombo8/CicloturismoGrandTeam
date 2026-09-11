@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase-admin"
+import { REMERA_CERRADA_MENSAJE, isRemeraCerrada } from "@/lib/remeraDeadline"
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 const MAX_BASE64_LENGTH = 7_100_000
@@ -64,6 +65,11 @@ const submitSchema = z
   })
 
 export async function POST(req: NextRequest) {
+  // Cierre definitivo de pedidos: nadie puede cargar una remera pasada la fecha limite.
+  if (isRemeraCerrada()) {
+    return NextResponse.json({ error: REMERA_CERRADA_MENSAJE }, { status: 403 })
+  }
+
   let raw: unknown
 
   try {

@@ -17,6 +17,8 @@ import {
   totalRemeras,
   type RemeraItem,
 } from "@/lib/miInscripcion"
+import { REMERA_CERRADA_MENSAJE, REMERA_DEADLINE_AVISO } from "@/lib/remeraDeadline"
+import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
 import {
   AlertCircle,
   CalendarDays,
@@ -76,6 +78,7 @@ const TONOS = {
 } as const
 
 export default function MiQRPage() {
+  const remeraCerrada = useRemeraCerrada()
   const [dni, setDni] = useState("")
   const [buscando, setBuscando] = useState(false)
   const [resultado, setResultado] = useState<Respuesta | null>(null)
@@ -351,16 +354,30 @@ export default function MiQRPage() {
                 ) : (
                   <>
                     <p className="text-sm text-gray-400 leading-relaxed mb-5">
-                      Todavía no tenés una remera pedida. Podés sumarla y elegir si la retirás o te
-                      la enviamos.
+                      {remeraCerrada
+                        ? REMERA_CERRADA_MENSAJE
+                        : `Todavía no tenés una remera pedida. Podés sumarla y elegir si la retirás o te la enviamos. ${REMERA_DEADLINE_AVISO}`}
                     </p>
-                    <Link
-                      href="/pedir-remera"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform"
-                    >
-                      <Shirt className="w-4 h-4" aria-hidden="true" />
-                      Pedir mi remera
-                    </Link>
+                    {remeraCerrada ? (
+                      <button
+                        type="button"
+                        disabled
+                        aria-disabled
+                        title={REMERA_CERRADA_MENSAJE}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-700 text-zinc-300 font-bold rounded-lg opacity-60 cursor-not-allowed"
+                      >
+                        <Shirt className="w-4 h-4" aria-hidden="true" />
+                        Pedidos cerrados
+                      </button>
+                    ) : (
+                      <Link
+                        href="/pedir-remera"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-600 text-black font-bold rounded-lg hover:scale-105 transition-transform"
+                      >
+                        <Shirt className="w-4 h-4" aria-hidden="true" />
+                        Pedir mi remera
+                      </Link>
+                    )}
                   </>
                 )}
               </section>

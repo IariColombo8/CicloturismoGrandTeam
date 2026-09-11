@@ -40,7 +40,9 @@ import {
   Save,
   Navigation,
   Search,
+  CalendarClock,
 } from "lucide-react"
+import { REMERA_DEADLINE_AVISO } from "@/lib/remeraDeadline"
 import { TALLES_DISPONIBLES, type RemeraItem } from "@/types/database"
 import { supabase } from "@/lib/supabase"
 
@@ -1514,6 +1516,11 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               automáticamente.
             </DialogDescription>
           </DialogHeader>
+
+          <p className="flex items-start gap-2 rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-xs text-yellow-100">
+            <CalendarClock className="w-4 h-4 mt-0.5 shrink-0 text-yellow-400" aria-hidden="true" />
+            {REMERA_DEADLINE_AVISO}
+          </p>
 
           {!draftDecisionMade && draftCandidate ? (
             <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-4 space-y-4">

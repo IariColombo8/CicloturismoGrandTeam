@@ -7,6 +7,13 @@ import RemeroFormModal from "@/components/remera/RemeroFormModal"
 import { supabase } from "@/lib/supabase"
 import { REMERA_CONTENT_DEFAULTS, mergeRemeraContent, type RemeraContentData } from "@/lib/remeraContent"
 import {
+  REMERA_CERRADA_MENSAJE,
+  REMERA_DEADLINE_AVISO,
+  REMERA_DEADLINE_LABEL,
+} from "@/lib/remeraDeadline"
+import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
+import {
+  CalendarClock,
   Shirt,
   BadgeCheck,
   Ruler,
@@ -52,6 +59,7 @@ export default function RemeraSection() {
   const [modalOpen, setModalOpen] = useState(false)
   const [sizeChartOpen, setSizeChartOpen] = useState(false)
   const [imagenActiva, setImagenActiva] = useState(0)
+  const pedidosCerrados = useRemeraCerrada()
 
   useEffect(() => {
     supabase
@@ -86,6 +94,32 @@ export default function RemeraSection() {
               {contenido.price}
             </p>
           )}
+
+          {/* Aviso de fecha limite para pedir la remera */}
+          <div
+            role="note"
+            className={`mt-6 mx-auto max-w-2xl flex items-start gap-3 rounded-2xl border px-4 py-3 text-left ${
+              pedidosCerrados
+                ? "bg-red-500/10 border-red-500/40"
+                : "bg-yellow-400/10 border-yellow-400/40"
+            }`}
+          >
+            <CalendarClock
+              className={`w-5 h-5 mt-0.5 shrink-0 ${pedidosCerrados ? "text-red-400" : "text-yellow-400"}`}
+              aria-hidden="true"
+            />
+            <p
+              className={`text-sm leading-relaxed ${pedidosCerrados ? "text-red-200" : "text-yellow-100"}`}
+            >
+              {pedidosCerrados ? (
+                REMERA_CERRADA_MENSAJE
+              ) : (
+                <>
+                  <span className="font-bold">Importante:</span> {REMERA_DEADLINE_AVISO}
+                </>
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Contenido principal: imagen + info */}
@@ -181,13 +215,18 @@ export default function RemeraSection() {
               <Button
                 onClick={() => setModalOpen(true)}
                 size="lg"
-                className="w-full sm:w-auto bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg px-10 h-14 shadow-lg shadow-yellow-400/20"
+                disabled={pedidosCerrados}
+                aria-disabled={pedidosCerrados}
+                title={pedidosCerrados ? REMERA_CERRADA_MENSAJE : undefined}
+                className="w-full sm:w-auto bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg px-10 h-14 shadow-lg shadow-yellow-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 <Shirt className="w-5 h-5 mr-2" />
-                Pedir mi remera
+                {pedidosCerrados ? "Pedidos cerrados" : "Pedir mi remera"}
               </Button>
               <p className="text-zinc-500 text-xs mt-3">
-                Si ya estás inscripto al evento, tus datos se completan automáticamente con tu DNI.
+                {pedidosCerrados
+                  ? REMERA_CERRADA_MENSAJE
+                  : `Podés pedirla hasta el ${REMERA_DEADLINE_LABEL}. Si ya estás inscripto al evento, tus datos se completan automáticamente con tu DNI.`}
               </p>
             </div>
           </div>
