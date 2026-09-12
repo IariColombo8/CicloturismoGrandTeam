@@ -9,6 +9,7 @@ const RemeraSection = dynamic(() => import("@/components/remera/RemeraSection"),
 const RouteMap = dynamic(() => import("@/components/home/RouteMap"), { ssr: true })
 const Gallery = dynamic(() => import("@/components/home/Gallery"), { ssr: true })
 const Sponsors = dynamic(() => import("@/components/home/Sponsors"), { ssr: true })
+const Alojamientos = dynamic(() => import("@/components/home/Alojamientos"), { ssr: true })
 const CallToAction = dynamic(() => import("@/components/home/CallToAction"), { ssr: true })
 const Footer = dynamic(() => import("@/components/layout/Footer"), { ssr: true })
 
@@ -31,6 +32,7 @@ export default async function Home() {
       <RouteMap />
       <Gallery images={teamPhotos} fotografos={fotografos} />
       <Sponsors />
+      <Alojamientos />
       <CallToAction />
       <Footer />
     </main>
