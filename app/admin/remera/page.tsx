@@ -376,6 +376,60 @@ export default function AdminRemeraPage() {
     toast({ title: `Pedido ${etiquetaEstado(nuevoEstado).toLowerCase()}` });
   };
 
+  // Persiste una nueva lista de items (talle/cantidad) para un pedido.
+  const actualizarItems = async (
+    pedido: RemeraAdmin,
+    nuevosItems: RemeraItemConGenero[],
+  ) => {
+    const { error } = await supabase
+      .from("remera")
+      .update({ items: nuevosItems, updated_at: new Date().toISOString() })
+      .eq("id", pedido.id);
+
+    if (error) {
+      toast({
+        title: "No se pudo actualizar la remera",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    actualizarPedidoLocal(pedido.id, { items: nuevosItems });
+  };
+
+  const cambiarTalleItem = (pedido: RemeraAdmin, index: number, talle: string) => {
+    const items = [...(pedido.items as RemeraItemConGenero[])];
+    items[index] = { ...items[index], talle };
+    void actualizarItems(pedido, items);
+  };
+
+  const cambiarCantidadItem = (
+    pedido: RemeraAdmin,
+    index: number,
+    cantidad: number,
+  ) => {
+    if (!Number.isFinite(cantidad) || cantidad < 1) return;
+    const items = [...(pedido.items as RemeraItemConGenero[])];
+    items[index] = { ...items[index], cantidad };
+    void actualizarItems(pedido, items);
+  };
+
+  const eliminarItemPedido = (pedido: RemeraAdmin, index: number) => {
+    const items = (pedido.items as RemeraItemConGenero[]).filter(
+      (_, i) => i !== index,
+    );
+    void actualizarItems(pedido, items);
+  };
+
+  const agregarItemPedido = (pedido: RemeraAdmin) => {
+    const items: RemeraItemConGenero[] = [
+      ...(pedido.items as RemeraItemConGenero[]),
+      { talle: TALLES_DISPONIBLES[0], cantidad: 1 },
+    ];
+    void actualizarItems(pedido, items);
+  };
+
   const cambiarEntrega = async (pedido: RemeraAdmin) => {
     if (obtenerEstadoConfirmacion(pedido) !== "confirmado") {
       toast({
@@ -1004,25 +1058,78 @@ export default function AdminRemeraPage() {
               </div>
 
               <div className="rounded-xl border border-zinc-700 bg-black/20 p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Remeras solicitadas
-                </p>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Remeras solicitadas
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => agregarItemPedido(pedidoSeleccionado)}
+                    className="h-7 border-yellow-400/30 px-2 text-xs text-yellow-400 hover:bg-yellow-400/10"
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Agregar
+                  </Button>
+                </div>
                 <div className="space-y-2">
                   {(pedidoSeleccionado.items as RemeraItemConGenero[]).map(
                     (item, index) => (
                       <div
                         key={`${pedidoSeleccionado.id}-detalle-${index}`}
-                        className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2"
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2"
                       >
-                        <span className="font-medium text-zinc-200">
-                          {formatItemLabel(item).replace(
-                            ` ×${item.cantidad}`,
-                            "",
-                          )}
-                        </span>
-                        <Badge className="border-yellow-400/20 bg-yellow-400/10 text-yellow-400">
-                          Cantidad: {item.cantidad}
-                        </Badge>
+                        {item.genero && (
+                          <span className="text-xs text-zinc-400">
+                            {item.genero === "mujer" ? "Mujer" : "Hombre"}
+                          </span>
+                        )}
+
+                        <Select
+                          value={item.talle}
+                          onValueChange={(valor) =>
+                            cambiarTalleItem(pedidoSeleccionado, index, valor)
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-24 border-zinc-700 bg-zinc-800 text-xs text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="border-zinc-700 bg-zinc-800">
+                            {TALLES_DISPONIBLES.map((talle) => (
+                              <SelectItem key={talle} value={talle}>
+                                {talle}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Input
+                          type="number"
+                          min={1}
+                          value={item.cantidad}
+                          onChange={(e) =>
+                            cambiarCantidadItem(
+                              pedidoSeleccionado,
+                              index,
+                              Number(e.target.value),
+                            )
+                          }
+                          className="h-8 w-20 border-zinc-700 bg-zinc-800 text-center text-xs text-white"
+                        />
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            eliminarItemPedido(pedidoSeleccionado, index)
+                          }
+                          title="Eliminar remera"
+                          className="ml-auto h-8 w-8 text-red-400 hover:bg-red-400/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     ),
                   )}
