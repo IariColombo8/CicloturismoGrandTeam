@@ -111,6 +111,7 @@ export default function InscripcionPage() {
   })
   
   const [formData, setFormData] = useState(defaultFormData)
+  const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [buscandoDNI, setBuscandoDNI] = useState(false)
   const ultimoDniBuscadoRef = useRef<string>("")
   const [gruposGuardados, setGruposGuardados] = useState<string[]>([])
@@ -350,6 +351,15 @@ export default function InscripcionPage() {
       return
     }
 
+    if (!aceptaTerminos) {
+      toast({
+        title: "Falta aceptar el deslinde de responsabilidad",
+        description: "Debes leer y aceptar el deslinde de responsabilidad antes de enviar tu inscripción.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -533,7 +543,14 @@ export default function InscripcionPage() {
                 <CategoryStep formData={formData} updateFormData={updateFormData} gruposGuardados={gruposGuardados} />
               )}
               {currentStep === 3 && <PaymentStep formData={formData} updateFormData={updateFormData} eventConfig={eventConfig} />}
-              {currentStep === 4 && <ReviewStep formData={formData} eventConfig={eventConfig} />}
+              {currentStep === 4 && (
+                <ReviewStep
+                  formData={formData}
+                  eventConfig={eventConfig}
+                  aceptaTerminos={aceptaTerminos}
+                  onAceptaTerminosChange={setAceptaTerminos}
+                />
+              )}
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8 pt-6 border-t border-yellow-400/20">
@@ -558,8 +575,8 @@ export default function InscripcionPage() {
                 ) : (
                   <Button
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:scale-105 transition-transform"
+                    disabled={isSubmitting || !aceptaTerminos}
+                    className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {isSubmitting ? "Enviando..." : "Enviar Inscripción"}
                     <CheckCircle2 className="w-4 h-4 ml-2" />
