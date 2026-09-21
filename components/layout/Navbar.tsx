@@ -154,6 +154,7 @@ export default function Navbar() {
     { id: "detalles", label: "Mapa" },
     { id: "galeria", label: "Galería" },
     { id: "patrocinadores", label: "Sponsors" },
+    { id: "alojamientos", label: "Alojamientos" },
     { id: "pedir-remera", label: "Pedir Remera" },
     { id: "contacto", label: "Contacto" },
   ], [])

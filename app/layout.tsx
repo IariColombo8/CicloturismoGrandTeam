@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 
   category: "Sports",
 
-  manifest: "/site.webmanifest",
+  manifest: "/manifest.json",
 
   keywords: [
     "cicloturismo",

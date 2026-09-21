@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { BedDouble, ExternalLink, MapPin } from "lucide-react"
 
@@ -83,19 +83,25 @@ function AlojamientoLogo({ src, alt }: { src: string | null; alt: string }) {
 export default function Alojamientos() {
   const [alojamientos, setAlojamientos] = useState<Alojamiento[]>([])
   const [isVisible, setIsVisible] = useState(false)
-  const sectionRef = useRef<HTMLElement | null>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
+  // Ref-callback en vez de useRef+useEffect: la seccion no existe en el DOM
+  // hasta que llegan los datos de Supabase, asi que el observer debe
+  // engancharse recien cuando el nodo se monta (no en el primer render).
+  const sectionRef = useCallback((node: HTMLElement | null) => {
+    observerRef.current?.disconnect()
+    if (!node) return
+
+    observerRef.current = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) setIsVisible(true)
       },
       { threshold: 0.1 },
     )
-
-    if (sectionRef.current) observer.observe(sectionRef.current)
-    return () => observer.disconnect()
+    observerRef.current.observe(node)
   }, [])
+
+  useEffect(() => () => observerRef.current?.disconnect(), [])
 
   useEffect(() => {
     supabase
