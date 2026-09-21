@@ -12,6 +12,7 @@ import PersonalInfoStep from "@/components/inscripcion/PersonalInfoStep"
 import CategoryStep from "@/components/inscripcion/CategoryStep"
 import PaymentStep from "@/components/inscripcion/PaymentStep"
 import ReviewStep from "@/components/inscripcion/ReviewStep"
+import MedallasBanner from "@/components/inscripcion/MedallasBanner"
 import Navbar from "@/components/layout/Navbar"
 
 // ──────────────────────────────────────────────────────────────
@@ -474,6 +475,8 @@ export default function InscripcionPage() {
             </h1>
             <p className="text-gray-300 text-body-fluid">Completa los siguientes pasos para asegurar tu lugar en el evento</p>
           </div>
+
+          <MedallasBanner />
 
           {/* Progress bar */}
           <div className="mb-8">
