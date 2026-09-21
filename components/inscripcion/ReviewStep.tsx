@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,22 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
   const [modalOpen, setModalOpen] = useState(false)
   const [scrolledToEnd, setScrolledToEnd] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Al llegar al paso de revision, abrimos el deslinde automaticamente
+  // y lo dejamos desplazado hasta el final para habilitar la aceptacion.
+  useEffect(() => {
+    if (!aceptaTerminos) setModalOpen(true)
+  }, [aceptaTerminos])
+
+  useEffect(() => {
+    if (!modalOpen) return
+    const timer = window.setTimeout(() => {
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+      setScrolledToEnd(true)
+    }, 100)
+    return () => window.clearTimeout(timer)
+  }, [modalOpen])
 
   const handleScroll = () => {
     const el = scrollRef.current
