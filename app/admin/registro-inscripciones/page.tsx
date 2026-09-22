@@ -94,6 +94,8 @@ export default function RegistroInscripciones() {
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [numeroEditValue, setNumeroEditValue] = useState("")
+  const [savingNumero, setSavingNumero] = useState(false)
   const [openingComprobante, setOpeningComprobante] = useState<string | null>(null)
   const [comprobanteModal, setComprobanteModal] = useState<{
     url: string
@@ -369,7 +371,61 @@ export default function RegistroInscripciones() {
     setSelectedInscripcion(insc)
     setNewStatus(insc.estado || "pendiente")
     setStatusNote(insc.nota || "")
+    setNumeroEditValue(insc.numeroInscripcion != null ? String(insc.numeroInscripcion) : "")
     setIsDetailsModalOpen(true)
+  }
+
+  // Correccion manual del numero de inscripcion, para arreglar casos puntuales
+  // (por ejemplo numeros que quedaron desparejos por altas y bajas de confirmacion).
+  // No usa las RPC de asignacion: es una edicion directa, pensada solo para el admin.
+  const guardarNumeroInscripcion = async () => {
+    if (!selectedInscripcion) return
+
+    const valorLimpio = numeroEditValue.trim()
+    const nuevoNumero = valorLimpio === "" ? null : Number(valorLimpio)
+
+    if (valorLimpio !== "" && (!Number.isInteger(nuevoNumero) || (nuevoNumero as number) < 1)) {
+      alert("El numero de inscripcion debe ser un entero positivo.")
+      return
+    }
+
+    setSavingNumero(true)
+    try {
+      if (nuevoNumero != null) {
+        const { data: duplicado, error: dupError } = await supabase
+          .from("participantes")
+          .select("id, nombre, apellido")
+          .contains("anios", [EDICION_ACTUAL])
+          .eq("numero_inscripcion", nuevoNumero)
+          .neq("id", selectedInscripcion.id)
+          .maybeSingle()
+
+        if (dupError) throw dupError
+        if (duplicado) {
+          alert(`Ese numero ya lo tiene ${duplicado.nombre} ${duplicado.apellido}. Elegi otro.`)
+          return
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from("participantes")
+        .update({ numero_inscripcion: nuevoNumero })
+        .eq("id", selectedInscripcion.id)
+
+      if (updateError) throw updateError
+
+      setInscripciones((prev) =>
+        prev.map((insc) =>
+          insc.id === selectedInscripcion.id ? { ...insc, numeroInscripcion: nuevoNumero } : insc
+        )
+      )
+      setSelectedInscripcion((prev: any) => (prev ? { ...prev, numeroInscripcion: nuevoNumero } : prev))
+    } catch (err: any) {
+      console.error("Error actualizando numero de inscripcion:", err)
+      alert("Error al guardar el numero: " + (err?.message || ""))
+    } finally {
+      setSavingNumero(false)
+    }
   }
 
   const closeDetailsModal = () => {
@@ -1032,6 +1088,33 @@ export default function RegistroInscripciones() {
                         className="w-full px-3 py-2 bg-zinc-900 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
                         placeholder="Agregar nota..."
                       />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs text-gray-400 block mb-1">
+                        N° de inscripción (editable por si quedó desparejo)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          value={numeroEditValue}
+                          onChange={(e) => setNumeroEditValue(e.target.value)}
+                          className="w-full px-3 py-2 bg-zinc-900 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
+                          placeholder="Sin número"
+                        />
+                        <button
+                          type="button"
+                          onClick={guardarNumeroInscripcion}
+                          disabled={savingNumero}
+                          className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/30 text-yellow-400 hover:bg-zinc-700 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {savingNumero ? "Guardando..." : "Guardar N°"}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Dejalo vacío para quitarle el número. Ojo: si ya se envió el mail de confirmación con
+                        el número anterior, cambiarlo acá no reenvía el mail.
+                      </p>
                     </div>
                   </div>
                 </div>

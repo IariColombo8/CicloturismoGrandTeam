@@ -19,6 +19,7 @@ import {
 } from "@/lib/miInscripcion"
 import { REMERA_CERRADA_MENSAJE, REMERA_DEADLINE_AVISO } from "@/lib/remeraDeadline"
 import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
+import { LIMITE_MEDALLAS } from "@/hooks/useMedallasRestantes"
 import {
   AlertCircle,
   CalendarDays,
@@ -27,6 +28,7 @@ import {
   Download,
   Loader2,
   MapPin,
+  Medal,
   MessageCircle,
   QrCode,
   Search,
@@ -247,14 +249,30 @@ export default function MiQRPage() {
                 </p>
 
                 {inscripcion.numeroInscripcion != null && (
-                  <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-yellow-400/30 bg-black/40">
-                    <span className="text-xs uppercase tracking-widest text-gray-400">
-                      Inscripción
-                    </span>
-                    <span className="text-lg font-black text-yellow-400">
-                      #{String(inscripcion.numeroInscripcion).padStart(3, "0")}
-                    </span>
-                  </div>
+                  <>
+                    <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-yellow-400/30 bg-black/40">
+                      <span className="text-xs uppercase tracking-widest text-gray-400">
+                        Inscripción
+                      </span>
+                      <span className="text-lg font-black text-yellow-400">
+                        #{String(inscripcion.numeroInscripcion).padStart(3, "0")}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex justify-center">
+                      {inscripcion.numeroInscripcion <= LIMITE_MEDALLAS ? (
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-green-500/40 bg-green-500/10 text-green-400 text-xs font-bold">
+                          <Medal className="w-4 h-4" aria-hidden="true" />
+                          Incluye medalla de finisher
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-600 bg-zinc-800/60 text-gray-400 text-xs font-bold">
+                          <Medal className="w-4 h-4" aria-hidden="true" />
+                          Sin medalla (se agotaron las {LIMITE_MEDALLAS} garantizadas)
+                        </span>
+                      )}
+                    </div>
+                  </>
                 )}
               </section>
 
