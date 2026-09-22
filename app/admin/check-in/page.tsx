@@ -243,7 +243,7 @@ export default function CheckInPage() {
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: { width: 150, height: 150 },
         },
         (decodedText) => {
           // Éxito al escanear
@@ -464,7 +464,7 @@ export default function CheckInPage() {
                   id="qr-reader"
                   ref={scannerContainerRef}
                   style={{ display: scanning ? "block" : "none" }}
-                  className="w-full rounded-xl mb-3"
+                  className="w-full max-w-[190px] sm:max-w-[220px] md:max-w-none mx-auto rounded-xl mb-3 overflow-hidden"
                 />
 
                 {!scanning && (
