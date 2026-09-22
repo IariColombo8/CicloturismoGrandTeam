@@ -191,6 +191,20 @@ POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y part
 - Ingresos calculados dinamicamente: confirmados * precio entrada
 - Graficos con recharts (cargados via dynamic import)
 
+### Acceso a Supabase Management API (SQL directo)
+
+- El usuario provee un Personal Access Token de Supabase (`sbp_...`) para que Claude pueda ejecutar SQL directo contra la base cuando haga falta (fixes de datos puntuales, diagnosticos).
+- **El token NUNCA se guarda en este archivo ni en ningun archivo trackeado por git.** Vive solo en `.env.local` (gitignorado) como `SUPABASE_ACCESS_TOKEN` y `SUPABASE_PROJECT_REF`.
+- Los PAT de Supabase vencen a los 30 dias: si `SUPABASE_ACCESS_TOKEN` no esta en `.env.local` o esta vencido, pedirle uno nuevo al usuario en vez de asumir que sigue vigente.
+- Para ejecutar SQL: `POST https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/database/query` con header `Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}` y body `{"query": "..."}`.
+- Cualquier cambio de datos en produccion vía este canal debe reflejarse despues en una migracion dentro de `supabase/migrations/` (sin el token) para que el repo documente el estado real de la base.
+
+### Numeracion de Inscripciones (numero_inscripcion)
+
+- Solo las inscripciones **confirmadas** tienen numero (se asigna con la RPC `assign_inscription_number` al confirmar, se libera con `release_inscription_number` al revertir).
+- Desde `20260921_compactar_numero_inscripcion.sql`, `release_inscription_number` **compacta automáticamente**: al liberar un numero, corre un lugar hacia abajo a todos los confirmados con numero mayor. Esto garantiza que la secuencia de confirmados de cada edicion sea siempre `1..N` sin huecos, sin importar cuantas altas/bajas haya.
+- En el panel admin (`/admin/registro-inscripciones`, modal de detalle) hay un campo para editar el numero a mano por si hace falta una correccion puntual — no reenvia el mail de confirmacion.
+
 ### Talles de Remera Disponibles
 
 `["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]`
