@@ -20,9 +20,11 @@ import {
   Search,
   Loader2,
   AlertTriangle,
+  Medal,
   RefreshCw,
 } from "lucide-react"
 import { formatNumeroInscripcion } from "@/lib/numeroInscripcion"
+import { LIMITE_MEDALLAS } from "@/hooks/useMedallasRestantes"
 
 interface CheckInRecord {
   id: string
@@ -329,7 +331,7 @@ export default function CheckInPage() {
           }).eq("id", participante.id)
           setResultado({
             tipo: "exito",
-            mensaje: `Check-in exitoso para ${participante.nombre} ${participante.apellido}`,
+            mensaje: `Check-in exitoso para ${participante.nombre} ${participante.apellido} (${formatNumeroInscripcion(participante.numeroInscripcion)})`,
             participante,
           })
         }
@@ -551,6 +553,22 @@ export default function CheckInPage() {
                       {resultado.tipo === "error" && "ERROR"}
                     </p>
                     <p className="text-gray-300 text-sm mt-1">{resultado.mensaje}</p>
+
+                    {(resultado.tipo === "exito" || resultado.tipo === "ya-registrado") &&
+                      resultado.participante?.numeroInscripcion != null && (
+                        <span
+                          className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                            resultado.participante.numeroInscripcion <= LIMITE_MEDALLAS
+                              ? "bg-green-500/15 border-green-500/40 text-green-400"
+                              : "bg-zinc-800 border-zinc-600 text-gray-400"
+                          }`}
+                        >
+                          <Medal className="w-3.5 h-3.5" aria-hidden="true" />
+                          {resultado.participante.numeroInscripcion <= LIMITE_MEDALLAS
+                            ? "CON MEDALLA"
+                            : "SIN MEDALLA"}
+                        </span>
+                      )}
 
                     <Button
                       variant="ghost"
