@@ -4,15 +4,17 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Clock, Landmark } from "lucide-react"
+import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Clock, Landmark, Filter } from "lucide-react"
 
 import { EstimadorInscriptos } from "./EstimadorInscriptos"
 import { CalculadoraCaja } from "./CalculadoraCaja"
-import { MovimientosTable } from "./MovimientosTable"
+import { MovimientosTable, type FiltroEstado, type FiltroTipo } from "./MovimientosTable"
 import { GastosTable } from "./GastosTable"
 import { IngresosTable } from "./IngresosTable"
 import { PagosTable } from "./PagosTable"
@@ -21,6 +23,8 @@ import { IngresoFormModal } from "./IngresoFormModal"
 import { GastoDetalleModal } from "./GastoDetalleModal"
 import { useFinanzas } from "./useFinanzas"
 import { formatARS, mensajeError, type Gasto } from "./tipos"
+
+type Vista = "todo" | "gastos" | "ingresos" | "pagos" | "rechazados"
 
 export default function GastosPage() {
   const { user, userRole, eventSettings } = useSupabaseContext()
@@ -35,6 +39,9 @@ export default function GastosPage() {
   const [isGastoModalOpen, setIsGastoModalOpen] = useState(false)
   const [isIngresoModalOpen, setIsIngresoModalOpen] = useState(false)
   const [selectedGasto, setSelectedGasto] = useState<Gasto | null>(null)
+  const [vista, setVista] = useState<Vista>("todo")
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos")
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos")
 
   const pendientes = gastos.filter((g) => g.estado === "pendiente")
   const aprobados = gastos.filter((g) => g.estado === "aprobado")
@@ -330,56 +337,129 @@ export default function GastosPage() {
 
         {/* Contenido */}
         <Card className="bg-gray-800/50 border-yellow-400/20">
-          <CardHeader>
-            <CardTitle className="text-yellow-400">Movimientos del evento</CardTitle>
-            <CardDescription className="text-gray-400">
-              Gastos, ingresos y pagos de inscripción
-            </CardDescription>
+          <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+            <div>
+              <CardTitle className="text-yellow-400">Movimientos del evento</CardTitle>
+              <CardDescription className="text-gray-400">
+                Gastos, ingresos y pagos de inscripción
+              </CardDescription>
+            </div>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-600 text-gray-200 bg-gray-700/60 hover:bg-gray-700 shrink-0"
+                >
+                  <Filter className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Filtros</span>
+                  {(filtroTipo !== "todos" || filtroEstado !== "todos") && (
+                    <Badge className="ml-1.5 bg-yellow-400/20 text-yellow-400 px-1.5">
+                      {(filtroTipo !== "todos" ? 1 : 0) + (filtroEstado !== "todos" ? 1 : 0)}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 bg-gray-800 border-gray-700 space-y-4" align="end">
+                <div>
+                  <Label className="text-gray-300 text-xs mb-1.5 block">Vista</Label>
+                  <Select value={vista} onValueChange={(v) => setVista(v as Vista)}>
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600">
+                      <SelectItem value="todo">Todo ({movimientos.length})</SelectItem>
+                      <SelectItem value="gastos">Gastos ({gastos.length})</SelectItem>
+                      <SelectItem value="ingresos">Ingresos ({ingresos.length})</SelectItem>
+                      <SelectItem value="pagos">Pagos ({confirmadas.length})</SelectItem>
+                      <SelectItem value="rechazados">Rechazados ({rechazados.length})</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {vista === "todo" && (
+                  <>
+                    <div>
+                      <Label className="text-gray-300 text-xs mb-1.5 block">Tipo</Label>
+                      <Select value={filtroTipo} onValueChange={(v) => setFiltroTipo(v as FiltroTipo)}>
+                        <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-700 border-gray-600">
+                          <SelectItem value="todos">Todos los tipos</SelectItem>
+                          <SelectItem value="ingreso">Solo ingresos</SelectItem>
+                          <SelectItem value="gasto">Solo gastos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-300 text-xs mb-1.5 block">Estado</Label>
+                      <Select value={filtroEstado} onValueChange={(v) => setFiltroEstado(v as FiltroEstado)}>
+                        <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-700 border-gray-600">
+                          <SelectItem value="todos">Todos los estados</SelectItem>
+                          <SelectItem value="aprobado">Aprobado</SelectItem>
+                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="rechazado">Rechazado</SelectItem>
+                          <SelectItem value="cobrado">Cobrado</SelectItem>
+                          <SelectItem value="por_cobrar">Por cobrar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(filtroTipo !== "todos" || filtroEstado !== "todos") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-gray-600 text-gray-300"
+                        onClick={() => {
+                          setFiltroTipo("todos")
+                          setFiltroEstado("todos")
+                        }}
+                      >
+                        Limpiar filtros
+                      </Button>
+                    )}
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="todo">
-              <TabsList className="bg-gray-700 w-full flex flex-wrap h-auto gap-1 p-1">
-                <TabsTrigger value="todo" className="flex-1 min-w-0 text-xs sm:text-sm">
-                  Todo ({movimientos.length})
-                </TabsTrigger>
-                <TabsTrigger value="gastos" className="flex-1 min-w-0 text-xs sm:text-sm">
-                  Gastos ({gastos.length})
-                </TabsTrigger>
-                <TabsTrigger value="ingresos" className="flex-1 min-w-0 text-xs sm:text-sm">
-                  Ingresos ({ingresos.length})
-                </TabsTrigger>
-                <TabsTrigger value="pagos" className="flex-1 min-w-0 text-xs sm:text-sm">
-                  Pagos ({confirmadas.length})
-                </TabsTrigger>
-                <TabsTrigger value="rechazados" className="flex-1 min-w-0 text-xs sm:text-sm">
-                  Rech. ({rechazados.length})
-                </TabsTrigger>
-              </TabsList>
+            {vista === "todo" && (
+              <MovimientosTable
+                movimientos={movimientos}
+                onVerGasto={setSelectedGasto}
+                filtroTipo={filtroTipo}
+                filtroEstado={filtroEstado}
+              />
+            )}
 
-              <TabsContent value="todo">
-                <MovimientosTable movimientos={movimientos} onVerGasto={setSelectedGasto} />
-              </TabsContent>
+            {vista === "gastos" && (
+              <GastosTable
+                gastos={gastos}
+                confirmados={resumen.confirmados}
+                onView={setSelectedGasto}
+                getStatusBadge={getStatusBadge}
+                onTogglePagado={esAdmin ? handleTogglePagado : undefined}
+              />
+            )}
 
-              <TabsContent value="gastos">
-                <GastosTable
-                  gastos={gastos}
-                  confirmados={resumen.confirmados}
-                  onView={setSelectedGasto}
-                  getStatusBadge={getStatusBadge}
-                  onTogglePagado={esAdmin ? handleTogglePagado : undefined}
-                />
-              </TabsContent>
+            {vista === "ingresos" && (
+              <IngresosTable
+                ingresos={ingresos}
+                puedeEliminar={esAdmin}
+                onEliminar={handleEliminarIngreso}
+                onMarcarCobrado={handleMarcarCobrado}
+              />
+            )}
 
-              <TabsContent value="ingresos">
-                <IngresosTable
-                  ingresos={ingresos}
-                  puedeEliminar={esAdmin}
-                  onEliminar={handleEliminarIngreso}
-                  onMarcarCobrado={handleMarcarCobrado}
-                />
-              </TabsContent>
-
-              <TabsContent value="pagos">
+            {vista === "pagos" && (
+              <>
                 {resumen.pagosDiferentes.length > 0 && (
                   <div className="mt-4 rounded-lg border border-orange-500/30 bg-orange-500/10 p-3 text-sm text-orange-300">
                     {resumen.pagosDiferentes.length} inscripto(s) pagaron distinto al precio base de{" "}
@@ -394,17 +474,17 @@ export default function GastosPage() {
                   onGuardar={handleGuardarPago}
                   mensajeVacio="Todavía no hay inscripciones confirmadas"
                 />
-              </TabsContent>
+              </>
+            )}
 
-              <TabsContent value="rechazados">
-                <GastosTable
-                  gastos={rechazados}
-                  confirmados={resumen.confirmados}
-                  onView={setSelectedGasto}
-                  getStatusBadge={getStatusBadge}
-                />
-              </TabsContent>
-            </Tabs>
+            {vista === "rechazados" && (
+              <GastosTable
+                gastos={rechazados}
+                confirmados={resumen.confirmados}
+                onView={setSelectedGasto}
+                getStatusBadge={getStatusBadge}
+              />
+            )}
           </CardContent>
         </Card>
 

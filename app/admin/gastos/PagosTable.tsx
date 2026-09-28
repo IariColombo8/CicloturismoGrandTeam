@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Check, Pencil, RotateCcw, X } from "lucide-react"
 import { Paginacion } from "./Paginacion"
-import { formatARS, montoEfectivo, type InscripcionPago } from "./tipos"
+import { formatARS, montoEfectivo, parseMonto, type InscripcionPago } from "./tipos"
 
 const PAGE_SIZE = 15
 
@@ -82,7 +82,8 @@ export function PagosTable({
                   <TableCell className="px-2 sm:px-4 py-2">
                     {enEdicion ? (
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         value={valorEdicion}
                         onChange={(e) => setValorEdicion(e.target.value)}
                         className="bg-gray-700 border-gray-600 text-white h-8 w-20 sm:w-28 text-xs sm:text-sm"
@@ -114,7 +115,7 @@ export function PagosTable({
                           disabled={guardando}
                           className="border-green-500/50 text-green-400 bg-transparent px-1.5 sm:px-3"
                           onClick={() => {
-                            const numero = Number.parseFloat(valorEdicion)
+                            const numero = parseMonto(valorEdicion)
                             if (Number.isFinite(numero) && numero >= 0) guardar(insc.id, numero)
                           }}
                         >

@@ -90,6 +90,17 @@ export function totalGasto(gasto: Gasto, cantidadParticipantes: number): number 
 }
 
 /**
+ * Convierte un texto de monto ingresado por el usuario a numero, aceptando
+ * tanto "," como "." como separador decimal (en Argentina se usa coma).
+ * Los inputs de monto usan type="text" en vez de type="number" porque el
+ * input nativo number no acepta coma y descarta la parte decimal.
+ */
+export function parseMonto(valor: string): number {
+  const normalizado = valor.trim().replace(",", ".")
+  return Number.parseFloat(normalizado)
+}
+
+/**
  * true solo si se esta corriendo en localhost. Se usa para habilitar edicion
  * de gastos ya procesados (aprobados/rechazados), algo que no se permite en produccion.
  */

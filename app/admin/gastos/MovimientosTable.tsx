@@ -4,21 +4,20 @@ import { useMemo, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Label } from "@/components/ui/label"
-import { Eye, Filter, TrendingDown, TrendingUp, Users } from "lucide-react"
+import { Eye, TrendingDown, TrendingUp, Users } from "lucide-react"
 import { Paginacion } from "./Paginacion"
 import { formatARS, type Gasto, type Movimiento } from "./tipos"
 
 const PAGE_SIZE = 15
 
-type FiltroTipo = "todos" | "gasto" | "ingreso"
-type FiltroEstado = "todos" | "aprobado" | "pendiente" | "rechazado" | "cobrado" | "por_cobrar"
+export type FiltroTipo = "todos" | "gasto" | "ingreso"
+export type FiltroEstado = "todos" | "aprobado" | "pendiente" | "rechazado" | "cobrado" | "por_cobrar"
 
 interface MovimientosTableProps {
   movimientos: Movimiento[]
   onVerGasto: (gasto: Gasto) => void
+  filtroTipo: FiltroTipo
+  filtroEstado: FiltroEstado
 }
 
 const ETIQUETA_ESTADO: Record<string, string> = {
@@ -47,11 +46,9 @@ function badgeEstado(estado: string) {
   }
 }
 
-/** Vista unificada de toda la plata del evento, con filtros por tipo y estado. */
-export function MovimientosTable({ movimientos, onVerGasto }: MovimientosTableProps) {
+/** Vista unificada de toda la plata del evento, filtrada por tipo y estado (controlado desde afuera). */
+export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEstado }: MovimientosTableProps) {
   const [page, setPage] = useState(1)
-  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos")
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos")
 
   const filtrados = useMemo(() => {
     return movimientos.filter((mov) => {
@@ -69,88 +66,11 @@ export function MovimientosTable({ movimientos, onVerGasto }: MovimientosTablePr
 
   const pageItems = filtrados.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const cambiarFiltroTipo = (valor: FiltroTipo) => {
-    setFiltroTipo(valor)
-    setPage(1)
-  }
-
-  const cambiarFiltroEstado = (valor: FiltroEstado) => {
-    setFiltroEstado(valor)
-    setPage(1)
-  }
-
-  const filtrosActivos = (filtroTipo !== "todos" ? 1 : 0) + (filtroEstado !== "todos" ? 1 : 0)
-
   return (
     <div className="mt-4 space-y-3">
-      {/* Filtros */}
-      <div className="flex items-center gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-gray-600 text-gray-200 bg-gray-700/60 hover:bg-gray-700"
-            >
-              <Filter className="w-4 h-4 mr-1.5" />
-              Filtros
-              {filtrosActivos > 0 && (
-                <Badge className="ml-1.5 bg-yellow-400/20 text-yellow-400 px-1.5">{filtrosActivos}</Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 bg-gray-800 border-gray-700 space-y-4" align="start">
-            <div>
-              <Label className="text-gray-300 text-xs mb-1.5 block">Tipo</Label>
-              <Select value={filtroTipo} onValueChange={(v) => cambiarFiltroTipo(v as FiltroTipo)}>
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600">
-                  <SelectItem value="todos">Todos los tipos</SelectItem>
-                  <SelectItem value="ingreso">Solo ingresos</SelectItem>
-                  <SelectItem value="gasto">Solo gastos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="text-gray-300 text-xs mb-1.5 block">Estado</Label>
-              <Select value={filtroEstado} onValueChange={(v) => cambiarFiltroEstado(v as FiltroEstado)}>
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600">
-                  <SelectItem value="todos">Todos los estados</SelectItem>
-                  <SelectItem value="aprobado">Aprobado</SelectItem>
-                  <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="rechazado">Rechazado</SelectItem>
-                  <SelectItem value="cobrado">Cobrado</SelectItem>
-                  <SelectItem value="por_cobrar">Por cobrar</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {filtrosActivos > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full border-gray-600 text-gray-300"
-                onClick={() => {
-                  cambiarFiltroTipo("todos")
-                  cambiarFiltroEstado("todos")
-                }}
-              >
-                Limpiar filtros
-              </Button>
-            )}
-          </PopoverContent>
-        </Popover>
-
-        <span className="text-[11px] sm:text-xs text-gray-400 ml-auto truncate">
-          {filtrados.length} de {movimientos.length} mov.
-        </span>
-      </div>
+      <span className="text-[11px] sm:text-xs text-gray-400 block">
+        {filtrados.length} de {movimientos.length} movimientos
+      </span>
 
       {/* Resumen de lo filtrado */}
       <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-700 bg-gray-900/40 p-3">

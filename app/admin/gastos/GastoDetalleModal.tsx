@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, XCircle, Trash2, Pencil } from "lucide-react"
-import { esLocalhost, formatARS, mensajeError, totalGasto, type Gasto } from "./tipos"
+import { esLocalhost, formatARS, mensajeError, parseMonto, totalGasto, type Gasto } from "./tipos"
 
 interface GastoDetalleModalProps {
   gasto: Gasto | null
@@ -83,7 +83,7 @@ export function GastoDetalleModal({
         .from("gastos")
         .update({
           descripcion: editDescripcion,
-          monto: Number.parseFloat(editMonto),
+          monto: parseMonto(editMonto),
           por_participante: editPorParticipante,
           categoria: editCategoria,
         })
@@ -203,7 +203,8 @@ export function GastoDetalleModal({
                     {editPorParticipante ? "Monto por persona (ARS) *" : "Monto total (ARS) *"}
                   </Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={editMonto}
                     onChange={(e) => setEditMonto(e.target.value)}
                     className="bg-gray-700 border-gray-600 text-white"

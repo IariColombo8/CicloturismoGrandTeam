@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { formatARS, mensajeError } from "./tipos"
+import { formatARS, mensajeError, parseMonto } from "./tipos"
 
 interface GastoFormModalProps {
   open: boolean
@@ -46,7 +46,7 @@ export function GastoFormModal({
   const [comprobante, setComprobante] = useState<File | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const montoNumero = Number.parseFloat(monto)
+  const montoNumero = parseMonto(monto)
   const previewTotal = Number.isFinite(montoNumero) ? montoNumero * confirmados : 0
 
   const limpiar = () => {
@@ -85,7 +85,7 @@ export function GastoFormModal({
       const { error } = await supabase.from("gastos").insert({
         evento_id: "2026",
         descripcion,
-        monto: Number.parseFloat(monto),
+        monto: montoNumero,
         por_participante: porParticipante,
         categoria,
         fecha: now,
@@ -160,7 +160,8 @@ export function GastoFormModal({
               {porParticipante ? "Monto por persona (ARS) *" : "Monto total (ARS) *"}
             </Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
               placeholder={porParticipante ? "10000" : "40000"}

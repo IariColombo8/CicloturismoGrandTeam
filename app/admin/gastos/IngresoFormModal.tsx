@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { mensajeError } from "./tipos"
+import { mensajeError, parseMonto } from "./tipos"
 
 interface IngresoFormModalProps {
   open: boolean
@@ -54,7 +54,7 @@ export function IngresoFormModal({
   }
 
   const handleGuardar = async () => {
-    const montoNumero = Number.parseFloat(monto)
+    const montoNumero = parseMonto(monto)
     if (!descripcion || !Number.isFinite(montoNumero) || montoNumero <= 0) {
       toast({
         title: "Error",
@@ -133,10 +133,11 @@ export function IngresoFormModal({
           <div>
             <Label className="text-gray-300">Monto (ARS) *</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
-              placeholder="500000"
+              placeholder="500000 o 500000,50"
               className="bg-gray-700 border-gray-600 text-white"
             />
           </div>
