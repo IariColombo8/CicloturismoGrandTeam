@@ -142,7 +142,7 @@ export function MovimientosTable({ movimientos, onVerGasto }: MovimientosTablePr
                   <TableHead className="text-yellow-400 hidden sm:table-cell">Categoría</TableHead>
                   <TableHead className="text-yellow-400">Monto</TableHead>
                   <TableHead className="text-yellow-400 hidden md:table-cell">Fecha</TableHead>
-                  <TableHead className="text-yellow-400">Estado</TableHead>
+                  <TableHead className="text-yellow-400 hidden sm:table-cell">Estado</TableHead>
                   <TableHead className="text-yellow-400 text-right">Ver</TableHead>
                 </TableRow>
               </TableHeader>
@@ -165,22 +165,23 @@ export function MovimientosTable({ movimientos, onVerGasto }: MovimientosTablePr
                       </div>
                       {mov.detalle && <span className="block text-xs text-gray-500">{mov.detalle}</span>}
                       <span className="block text-xs text-gray-500 capitalize sm:hidden">{mov.categoria}</span>
+                      <span className="block sm:hidden mt-1">{badgeEstado(mov.estado)}</span>
                     </TableCell>
                     <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{mov.categoria}</TableCell>
-                    <TableCell className={`font-bold ${mov.monto >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    <TableCell className={`font-bold whitespace-nowrap ${mov.monto >= 0 ? "text-green-400" : "text-red-400"}`}>
                       {mov.monto >= 0 ? "+" : "-"}
                       {formatARS(Math.abs(mov.monto))}
                     </TableCell>
                     <TableCell className="text-gray-400 text-sm hidden md:table-cell">
                       {mov.fecha ? new Date(mov.fecha).toLocaleDateString("es-AR") : "-"}
                     </TableCell>
-                    <TableCell>{badgeEstado(mov.estado)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{badgeEstado(mov.estado)}</TableCell>
                     <TableCell className="text-right">
                       {mov.origen && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-blue-500/50 text-blue-400 bg-transparent"
+                          className="border-blue-500/50 text-blue-400 bg-transparent px-2"
                           onClick={() => onVerGasto(mov.origen as Gasto)}
                         >
                           <Eye className="w-4 h-4" />

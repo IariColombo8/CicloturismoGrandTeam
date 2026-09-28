@@ -10,6 +10,8 @@ export interface Gasto {
   porParticipante: boolean
   categoria: string
   estado: EstadoGasto
+  /** Si es false, el gasto esta aprobado pero todavia no se abono (se paga a ultimo momento). */
+  pagado: boolean
   fecha: string | null
   comprobante: string | null
   creadoPor: string | null
@@ -85,4 +87,14 @@ export function montoEfectivo(inscripcion: InscripcionPago, precioBase: number):
  */
 export function totalGasto(gasto: Gasto, cantidadParticipantes: number): number {
   return gasto.porParticipante ? gasto.monto * cantidadParticipantes : gasto.monto
+}
+
+/**
+ * true solo si se esta corriendo en localhost. Se usa para habilitar edicion
+ * de gastos ya procesados (aprobados/rechazados), algo que no se permite en produccion.
+ */
+export function esLocalhost(): boolean {
+  if (typeof window === "undefined") return false
+  const host = window.location.hostname
+  return host === "localhost" || host === "127.0.0.1"
 }

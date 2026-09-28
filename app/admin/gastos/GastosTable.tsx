@@ -15,9 +15,10 @@ interface GastosTableProps {
   confirmados: number
   onView: (gasto: Gasto) => void
   getStatusBadge: (estado: string) => React.ReactNode
+  onTogglePagado?: (gasto: Gasto) => void
 }
 
-export function GastosTable({ gastos, confirmados, onView, getStatusBadge }: GastosTableProps) {
+export function GastosTable({ gastos, confirmados, onView, getStatusBadge, onTogglePagado }: GastosTableProps) {
   const [page, setPage] = useState(1)
   const pageItems = gastos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
@@ -67,16 +68,42 @@ export function GastosTable({ gastos, confirmados, onView, getStatusBadge }: Gas
                   {gasto.creadoPor}
                   <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
                 </TableCell>
-                <TableCell>{getStatusBadge(gasto.estado)}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    {getStatusBadge(gasto.estado)}
+                    {gasto.estado === "aprobado" && !gasto.pagado && (
+                      <Badge className="bg-orange-500/20 text-orange-400 whitespace-nowrap">
+                        Aún no se pagó
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-blue-500/50 text-blue-400 bg-transparent"
-                    onClick={() => onView(gasto)}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    {onTogglePagado && gasto.estado === "aprobado" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={
+                          gasto.pagado
+                            ? "border-orange-500/50 text-orange-400 bg-transparent"
+                            : "border-green-500/50 text-green-400 bg-transparent"
+                        }
+                        title={gasto.pagado ? "Marcar que aún no se pagó" : "Marcar como pagado"}
+                        onClick={() => onTogglePagado(gasto)}
+                      >
+                        {gasto.pagado ? "Aún no se pagó" : "Marcar pagado"}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-500/50 text-blue-400 bg-transparent"
+                      onClick={() => onView(gasto)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

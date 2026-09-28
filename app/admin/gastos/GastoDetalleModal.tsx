@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -14,8 +16,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { CheckCircle, XCircle, Trash2 } from "lucide-react"
-import { formatARS, mensajeError, totalGasto, type Gasto } from "./tipos"
+import { CheckCircle, XCircle, Trash2, Pencil } from "lucide-react"
+import { esLocalhost, formatARS, mensajeError, totalGasto, type Gasto } from "./tipos"
 
 interface GastoDetalleModalProps {
   gasto: Gasto | null
@@ -40,6 +42,24 @@ export function GastoDetalleModal({
   const [confirmarEliminar, setConfirmarEliminar] = useState(false)
   const [rechazando, setRechazando] = useState(false)
   const [motivoRechazo, setMotivoRechazo] = useState("")
+  const [editando, setEditando] = useState(false)
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+  const [editDescripcion, setEditDescripcion] = useState("")
+  const [editMonto, setEditMonto] = useState("")
+  const [editPorParticipante, setEditPorParticipante] = useState(false)
+  const [editCategoria, setEditCategoria] = useState("otro")
+
+  const puedeEditar = esLocalhost()
+
+  useEffect(() => {
+    if (gasto) {
+      setEditDescripcion(gasto.descripcion)
+      setEditMonto(String(gasto.monto))
+      setEditPorParticipante(gasto.porParticipante)
+      setEditCategoria(gasto.categoria)
+      setEditando(false)
+    }
+  }, [gasto])
 
   if (!gasto) return null
 
@@ -47,8 +67,36 @@ export function GastoDetalleModal({
     setConfirmarEliminar(false)
     setRechazando(false)
     setMotivoRechazo("")
+    setEditando(false)
     onClose()
     await onCambio()
+  }
+
+  const handleGuardarEdicion = async () => {
+    if (!editDescripcion || !editMonto) {
+      toast({ title: "Error", description: "Completá descripción y monto", variant: "destructive" })
+      return
+    }
+    setGuardandoEdicion(true)
+    try {
+      const { error } = await supabase
+        .from("gastos")
+        .update({
+          descripcion: editDescripcion,
+          monto: Number.parseFloat(editMonto),
+          por_participante: editPorParticipante,
+          categoria: editCategoria,
+        })
+        .eq("id", gasto.id)
+      if (error) throw error
+      toast({ title: "Gasto actualizado" })
+      await cerrarTodo()
+    } catch (err) {
+      console.error("Error editando gasto:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    } finally {
+      setGuardandoEdicion(false)
+    }
   }
 
   const handleAprobar = async () => {
@@ -90,6 +138,18 @@ export function GastoDetalleModal({
     }
   }
 
+  const handleTogglePagado = async (nuevoPagado: boolean) => {
+    try {
+      const { error } = await supabase.from("gastos").update({ pagado: nuevoPagado }).eq("id", gasto.id)
+      if (error) throw error
+      toast({ title: nuevoPagado ? "Marcado como pagado" : "Marcado como sin pagar" })
+      await cerrarTodo()
+    } catch (err) {
+      console.error("Error actualizando pago del gasto:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    }
+  }
+
   const handleEliminar = async () => {
     try {
       const { error } = await supabase.from("gastos").delete().eq("id", gasto.id)
@@ -118,44 +178,124 @@ export function GastoDetalleModal({
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-gray-400">Descripción</Label>
-                <p className="text-white font-medium">{gasto.descripcion}</p>
-              </div>
-              <div>
-                <Label className="text-gray-400">Total</Label>
-                <p className="text-white font-bold text-xl">
-                  {formatARS(totalGasto(gasto, confirmados))}
+            {editando ? (
+              <div className="space-y-4 rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+                <p className="text-xs text-blue-300">
+                  Modo edición (solo disponible en localhost) — permite corregir gastos ya aprobados o rechazados.
                 </p>
-                {gasto.porParticipante && (
-                  <p className="text-xs text-blue-400">
-                    {formatARS(gasto.monto)} por persona × {confirmados} confirmados
+                <div>
+                  <Label className="text-gray-300">Descripción *</Label>
+                  <Input
+                    value={editDescripcion}
+                    onChange={(e) => setEditDescripcion(e.target.value)}
+                    className="bg-gray-700 border-gray-600 text-white"
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-700/40 p-3">
+                  <div>
+                    <Label className="text-gray-200">Gasto por participante</Label>
+                    <p className="text-xs text-gray-400">El monto se multiplica por la cantidad de inscriptos</p>
+                  </div>
+                  <Switch checked={editPorParticipante} onCheckedChange={setEditPorParticipante} />
+                </div>
+                <div>
+                  <Label className="text-gray-300">
+                    {editPorParticipante ? "Monto por persona (ARS) *" : "Monto total (ARS) *"}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={editMonto}
+                    onChange={(e) => setEditMonto(e.target.value)}
+                    className="bg-gray-700 border-gray-600 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-gray-300">Categoría *</Label>
+                  <Select value={editCategoria} onValueChange={setEditCategoria}>
+                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-700 border-gray-600">
+                      <SelectItem value="equipamiento">Equipamiento</SelectItem>
+                      <SelectItem value="premios">Premios</SelectItem>
+                      <SelectItem value="logística">Logística</SelectItem>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="alimentación">Alimentación</SelectItem>
+                      <SelectItem value="lugar">Lugar / Predio</SelectItem>
+                      <SelectItem value="seguro">Seguro</SelectItem>
+                      <SelectItem value="otro">Otro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditando(false)}
+                    className="border-gray-600 text-gray-300"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleGuardarEdicion}
+                    disabled={guardandoEdicion}
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    Guardar cambios
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-gray-400">Descripción</Label>
+                  <p className="text-white font-medium">{gasto.descripcion}</p>
+                </div>
+                <div>
+                  <Label className="text-gray-400">Total</Label>
+                  <p className="text-white font-bold text-xl">
+                    {formatARS(totalGasto(gasto, confirmados))}
                   </p>
-                )}
+                  {gasto.porParticipante && (
+                    <p className="text-xs text-blue-400">
+                      {formatARS(gasto.monto)} por persona × {confirmados} confirmados
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-gray-400">Categoría</Label>
+                  <p className="text-white capitalize">{gasto.categoria}</p>
+                </div>
+                <div>
+                  <Label className="text-gray-400">Estado</Label>
+                  {getStatusBadge(gasto.estado)}
+                </div>
+                <div>
+                  <Label className="text-gray-400">Creado por</Label>
+                  <p className="text-white text-sm">{gasto.creadoPor}</p>
+                  <p className="text-gray-500 text-xs capitalize">({gasto.rolCreador})</p>
+                </div>
+                <div>
+                  <Label className="text-gray-400">Fecha</Label>
+                  <p className="text-white text-sm">
+                    {gasto.fecha ? new Date(gasto.fecha).toLocaleDateString("es-AR") : "N/A"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <Label className="text-gray-400">Categoría</Label>
-                <p className="text-white capitalize">{gasto.categoria}</p>
-              </div>
-              <div>
-                <Label className="text-gray-400">Estado</Label>
-                {getStatusBadge(gasto.estado)}
-              </div>
-              <div>
-                <Label className="text-gray-400">Creado por</Label>
-                <p className="text-white text-sm">{gasto.creadoPor}</p>
-                <p className="text-gray-500 text-xs capitalize">({gasto.rolCreador})</p>
-              </div>
-              <div>
-                <Label className="text-gray-400">Fecha</Label>
-                <p className="text-white text-sm">
-                  {gasto.fecha ? new Date(gasto.fecha).toLocaleDateString("es-AR") : "N/A"}
-                </p>
-              </div>
-            </div>
+            )}
 
-            {gasto.comprobante && (
+            {!editando && esAdmin && gasto.estado === "aprobado" && (
+              <div className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-700/40 p-3">
+                <div>
+                  <Label className="text-gray-200">¿Ya se pagó?</Label>
+                  <p className="text-xs text-gray-400">
+                    Desmarcá si es un gasto aprobado que todavía no se abonó (se paga a último momento).
+                  </p>
+                </div>
+                <Switch checked={gasto.pagado} onCheckedChange={handleTogglePagado} />
+              </div>
+            )}
+
+            {!editando && gasto.comprobante && (
               <div>
                 <Label className="text-gray-400">Comprobante</Label>
                 <Button variant="link" className="text-yellow-400" onClick={abrirComprobante}>
@@ -172,31 +312,44 @@ export function GastoDetalleModal({
             )}
           </div>
 
-          <DialogFooter className="flex flex-wrap gap-2">
-            {esAdmin && gasto.estado === "pendiente" && (
-              <>
-                <Button onClick={handleAprobar} className="bg-green-500 hover:bg-green-600">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Aprobar
-                </Button>
-                <Button onClick={() => setRechazando(true)} variant="destructive">
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Rechazar
-                </Button>
-              </>
-            )}
+          {!editando && (
+            <DialogFooter className="flex flex-wrap gap-2">
+              {esAdmin && gasto.estado === "pendiente" && (
+                <>
+                  <Button onClick={handleAprobar} className="bg-green-500 hover:bg-green-600">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Aprobar
+                  </Button>
+                  <Button onClick={() => setRechazando(true)} variant="destructive">
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Rechazar
+                  </Button>
+                </>
+              )}
 
-            {esAdmin && (
-              <Button
-                onClick={() => setConfirmarEliminar(true)}
-                variant="outline"
-                className="border-red-500 text-red-500"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Eliminar
-              </Button>
-            )}
-          </DialogFooter>
+              {puedeEditar && (
+                <Button
+                  onClick={() => setEditando(true)}
+                  variant="outline"
+                  className="border-blue-500 text-blue-400"
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar (localhost)
+                </Button>
+              )}
+
+              {esAdmin && (
+                <Button
+                  onClick={() => setConfirmarEliminar(true)}
+                  variant="outline"
+                  className="border-red-500 text-red-500"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </Button>
+              )}
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 

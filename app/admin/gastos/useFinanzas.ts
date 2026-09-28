@@ -47,10 +47,16 @@ export interface ResumenFinanciero {
   gastosAprobadosProyectado: number
   /** Gastos propuestos aun sin aprobar (deuda potencial). */
   gastosPendientes: number
+  /** De los gastos aprobados, los que ya se abonaron. */
+  gastosAprobadosPagados: number
+  /** De los gastos aprobados, los que todavia no se abonaron (se pagan a ultimo momento). */
+  gastosAprobadosSinPagar: number
   /** totalIngresos - gastosAprobados. */
   balance: number
   /** Balance considerando proyecciones y gastos pendientes. */
   balanceProyectado: number
+  /** Plata real disponible ahora: ingresos ya cobrados menos gastos ya pagados. */
+  plataEnBanco: number
   /** Inscriptos confirmados que pagaron distinto al precio base. */
   pagosDiferentes: InscripcionPago[]
   /** Diferencia total contra lo que se deberia haber cobrado. */
@@ -65,6 +71,7 @@ function mapGasto(g: any): Gasto {
     porParticipante: Boolean(g.por_participante),
     categoria: g.categoria,
     estado: g.estado,
+    pagado: g.pagado === false ? false : true,
     fecha: g.fecha,
     comprobante: g.comprobante,
     creadoPor: g.creado_por,
@@ -181,6 +188,10 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       0,
     )
     const gastosPendientes = pendientes.reduce((sum, g) => sum + totalGasto(g, confirmados), 0)
+    const gastosAprobadosPagados = aprobados
+      .filter((g) => g.pagado)
+      .reduce((sum, g) => sum + totalGasto(g, confirmados), 0)
+    const gastosAprobadosSinPagar = gastosAprobados - gastosAprobadosPagados
 
     const totalIngresos = ingresoInscripciones + ingresosCobrados
     const totalIngresosProyectado = ingresoInscripcionesProyectado + ingresosCobrados + ingresosPorCobrar
@@ -202,8 +213,11 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       gastosAprobados,
       gastosAprobadosProyectado,
       gastosPendientes,
+      gastosAprobadosPagados,
+      gastosAprobadosSinPagar,
       balance: totalIngresos - gastosAprobados,
       balanceProyectado: totalIngresosProyectado - gastosAprobadosProyectado - gastosPendientes,
+      plataEnBanco: totalIngresos - gastosAprobadosPagados,
       pagosDiferentes,
       diferenciaPagos,
     }

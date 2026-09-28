@@ -8,8 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Clock } from "lucide-react"
+import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Clock, Landmark } from "lucide-react"
 
+import { EstimadorInscriptos } from "./EstimadorInscriptos"
+import { CalculadoraCaja } from "./CalculadoraCaja"
 import { MovimientosTable } from "./MovimientosTable"
 import { GastosTable } from "./GastosTable"
 import { IngresosTable } from "./IngresosTable"
@@ -75,6 +77,22 @@ export default function GastosPage() {
       await recargar()
     } catch (err) {
       console.error("Error actualizando ingreso:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    }
+  }
+
+  const handleTogglePagado = async (gasto: Gasto) => {
+    try {
+      const nuevoPagado = !gasto.pagado
+      const { error: errorUpdate } = await supabase
+        .from("gastos")
+        .update({ pagado: nuevoPagado })
+        .eq("id", gasto.id)
+      if (errorUpdate) throw errorUpdate
+      toast({ title: nuevoPagado ? "Marcado como pagado" : "Marcado: aún no se pagó" })
+      await recargar()
+    } catch (err) {
+      console.error("Error actualizando pago del gasto:", mensajeError(err), err)
       toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
     }
   }
@@ -146,36 +164,85 @@ export default function GastosPage() {
         )}
 
         {/* Dashboard */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
-          <Card className="bg-gray-800/50 border-green-500/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Ingresos
+        <div className="grid grid-cols-3 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-6 mb-6 sm:mb-8">
+          <Card className="bg-gray-800/50 border-emerald-400/40">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
+              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                <Landmark className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">Plata en el BNA</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-500">{formatARS(resumen.totalIngresos)}</div>
-              <p className="text-xs text-gray-500 mt-1">
+            <CardContent className="px-3 sm:px-6">
+              <div
+                className={`text-lg sm:text-3xl font-bold ${resumen.plataEnBanco >= 0 ? "text-emerald-400" : "text-red-500"}`}
+              >
+                {resumen.plataEnBanco < 0 && "-"}
+                {formatARS(Math.abs(resumen.plataEnBanco))}
+              </div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
+                Inscripciones + ingresos cobrados − gastos ya pagados
+              </p>
+              {resumen.gastosAprobadosSinPagar > 0 && (
+                <p className="text-[10px] sm:text-xs text-orange-400 mt-1">
+                  <span className="hidden sm:inline">Todavía falta pagar </span>
+                  {formatARS(resumen.gastosAprobadosSinPagar)}
+                  <span className="hidden sm:inline"> de gastos aprobados</span>
+                  <span className="sm:hidden"> sin pagar</span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800/50 border-green-500/20">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
+              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">Ingresos</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-lg sm:text-3xl font-bold text-green-500">{formatARS(resumen.totalIngresos)}</div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
                 Inscripciones {formatARS(resumen.ingresoInscripciones)} · Otros {formatARS(resumen.ingresosCobrados)}
               </p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
                 Proyectado: {formatARS(resumen.totalIngresosProyectado)}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-800/50 border-red-500/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                <TrendingDown className="w-4 h-4" />
-                Gastos Aprobados
+          <Card className="bg-gray-800/50 border-blue-500/20">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
+              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">Sin cerrar</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-400">{formatARS(resumen.gastosAprobados)}</div>
-              <p className="text-xs text-gray-500 mt-1">{aprobados.length} gastos · sobre confirmados</p>
-              <p className="text-xs text-gray-600 mt-1">
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-base sm:text-2xl font-bold text-blue-400">
+                +{formatARS(resumen.ingresosPorCobrar)}
+              </div>
+              <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Por cobrar</p>
+              <div className="text-base sm:text-2xl font-bold text-orange-400 mt-1 sm:mt-2">
+                -{formatARS(resumen.gastosPendientes)}
+              </div>
+              <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">
+                {pendientes.length} gastos esperando aprobación
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800/50 border-red-500/20">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
+              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">Gastos Aprobados</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6">
+              <div className="text-lg sm:text-3xl font-bold text-red-400">{formatARS(resumen.gastosAprobados)}</div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{aprobados.length} gastos · sobre confirmados</p>
+              <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
                 Con todos los inscriptos: {formatARS(resumen.gastosAprobadosProyectado)}
               </p>
             </CardContent>
@@ -184,46 +251,25 @@ export default function GastosPage() {
           <Card
             className={`bg-gray-800/50 ${resumen.balance >= 0 ? "border-yellow-400/20" : "border-red-500/40"}`}
           >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                <Scale className="w-4 h-4" />
-                Balance
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
+              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">Balance</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 sm:px-6">
               <div
-                className={`text-3xl font-bold ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
+                className={`text-lg sm:text-3xl font-bold ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
               >
                 {resumen.balance < 0 && "-"}
                 {formatARS(Math.abs(resumen.balance))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                 {resumen.balance >= 0 ? "A favor" : "En déficit"} · ingresos menos gastos
               </p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
                 Proyectado: {resumen.balanceProyectado < 0 ? "-" : ""}
                 {formatARS(Math.abs(resumen.balanceProyectado))}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800/50 border-blue-500/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Sin cerrar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-400">
-                +{formatARS(resumen.ingresosPorCobrar)}
-              </div>
-              <p className="text-xs text-gray-500">Por cobrar</p>
-              <div className="text-2xl font-bold text-orange-400 mt-2">
-                -{formatARS(resumen.gastosPendientes)}
-              </div>
-              <p className="text-xs text-gray-500">
-                {pendientes.length} gastos esperando aprobación
               </p>
             </CardContent>
           </Card>
@@ -267,6 +313,7 @@ export default function GastosPage() {
                   confirmados={resumen.confirmados}
                   onView={setSelectedGasto}
                   getStatusBadge={getStatusBadge}
+                  onTogglePagado={esAdmin ? handleTogglePagado : undefined}
                 />
               </TabsContent>
 
@@ -307,6 +354,24 @@ export default function GastosPage() {
             </Tabs>
           </CardContent>
         </Card>
+
+        {/* Calculadora de caja y estimador: al final, colapsados */}
+        <div className="mt-6 sm:mt-8 space-y-4">
+          <CalculadoraCaja
+            gastos={gastos}
+            ingresos={ingresos}
+            confirmados={resumen.confirmados}
+            ingresoInscripciones={resumen.ingresoInscripciones}
+            ingresoInscripcionesProyectado={resumen.ingresoInscripcionesProyectado}
+          />
+          <EstimadorInscriptos
+            gastos={gastos}
+            precioBase={precioBase}
+            ingresosCobrados={resumen.ingresosCobrados}
+            ingresosPorCobrar={resumen.ingresosPorCobrar}
+            inscriptosActuales={resumen.inscriptosTotales}
+          />
+        </div>
 
         <GastoFormModal
           open={isGastoModalOpen}
