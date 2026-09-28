@@ -164,115 +164,168 @@ export default function GastosPage() {
         )}
 
         {/* Dashboard */}
-        <div className="grid grid-cols-3 sm:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-6 mb-6 sm:mb-8">
-          <Card className="bg-gray-800/50 border-emerald-400/40">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
-              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
-                <Landmark className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Plata en el BNA</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div
-                className={`text-lg sm:text-3xl font-bold ${resumen.plataEnBanco >= 0 ? "text-emerald-400" : "text-red-500"}`}
-              >
-                {resumen.plataEnBanco < 0 && "-"}
-                {formatARS(Math.abs(resumen.plataEnBanco))}
-              </div>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
-                Inscripciones + ingresos cobrados − gastos ya pagados
-              </p>
-              {resumen.gastosAprobadosSinPagar > 0 && (
-                <p className="text-[10px] sm:text-xs text-orange-400 mt-1">
-                  <span className="hidden sm:inline">Todavía falta pagar </span>
-                  {formatARS(resumen.gastosAprobadosSinPagar)}
-                  <span className="hidden sm:inline"> de gastos aprobados</span>
-                  <span className="sm:hidden"> sin pagar</span>
+        <div className="mb-6 sm:mb-8 space-y-2 sm:space-y-3">
+          <div className="grid grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-6">
+            <Card className="bg-gray-800/50 border-emerald-400/40 xl:col-span-1">
+              <CardHeader className="pb-1 sm:pb-2 px-2.5 sm:px-6">
+                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
+                  <Landmark className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">Plata en el BNA</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2.5 sm:px-6">
+                <div
+                  className={`text-sm sm:text-3xl font-bold truncate ${resumen.plataEnBanco >= 0 ? "text-emerald-400" : "text-red-500"}`}
+                >
+                  {resumen.plataEnBanco < 0 && "-"}
+                  {formatARS(Math.abs(resumen.plataEnBanco))}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
+                  Inscripciones + ingresos cobrados − gastos ya pagados
                 </p>
-              )}
-            </CardContent>
-          </Card>
+                {resumen.gastosAprobadosSinPagar > 0 && (
+                  <p className="text-[9px] sm:text-xs text-orange-400 mt-1 truncate">
+                    <span className="hidden sm:inline">Todavía falta pagar </span>
+                    {formatARS(resumen.gastosAprobadosSinPagar)}
+                    <span className="hidden sm:inline"> de gastos aprobados</span>
+                    <span className="sm:hidden"> sin pagar</span>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gray-800/50 border-green-500/20">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
-              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
-                <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Ingresos</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div className="text-lg sm:text-3xl font-bold text-green-500">{formatARS(resumen.totalIngresos)}</div>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
-                Inscripciones {formatARS(resumen.ingresoInscripciones)} · Otros {formatARS(resumen.ingresosCobrados)}
-              </p>
-              <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
-                Proyectado: {formatARS(resumen.totalIngresosProyectado)}
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="bg-gray-800/50 border-green-500/20 xl:col-span-1">
+              <CardHeader className="pb-1 sm:pb-2 px-2.5 sm:px-6">
+                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
+                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">Ingresos</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2.5 sm:px-6">
+                <div className="text-sm sm:text-3xl font-bold text-green-500 truncate">
+                  {formatARS(resumen.totalIngresos)}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
+                  Inscripciones {formatARS(resumen.ingresoInscripciones)} · Otros {formatARS(resumen.ingresosCobrados)}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
+                  Proyectado: {formatARS(resumen.totalIngresosProyectado)}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gray-800/50 border-blue-500/20">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
-              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
-                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Sin cerrar</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div className="text-base sm:text-2xl font-bold text-blue-400">
-                +{formatARS(resumen.ingresosPorCobrar)}
-              </div>
-              <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Por cobrar</p>
-              <div className="text-base sm:text-2xl font-bold text-orange-400 mt-1 sm:mt-2">
-                -{formatARS(resumen.gastosPendientes)}
-              </div>
-              <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">
-                {pendientes.length} gastos esperando aprobación
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="bg-gray-800/50 border-blue-500/20 xl:col-span-1">
+              <CardHeader className="pb-1 sm:pb-2 px-2.5 sm:px-6">
+                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">Sin cerrar</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2.5 sm:px-6">
+                <div className="text-xs sm:text-2xl font-bold text-blue-400 truncate">
+                  +{formatARS(resumen.ingresosPorCobrar)}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Por cobrar</p>
+                <div className="text-xs sm:text-2xl font-bold text-orange-400 mt-1 sm:mt-2 truncate">
+                  -{formatARS(resumen.gastosPendientes)}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">
+                  {pendientes.length} gastos esperando aprobación
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card className="bg-gray-800/50 border-red-500/20">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
-              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
-                <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Gastos Aprobados</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div className="text-lg sm:text-3xl font-bold text-red-400">{formatARS(resumen.gastosAprobados)}</div>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">{aprobados.length} gastos · sobre confirmados</p>
-              <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
-                Con todos los inscriptos: {formatARS(resumen.gastosAprobadosProyectado)}
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="bg-gray-800/50 border-red-500/20 hidden xl:block">
+              <CardHeader className="pb-2 px-6">
+                <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4 shrink-0" />
+                  <span className="truncate">Gastos Aprobados</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-6">
+                <div className="text-3xl font-bold text-red-400">{formatARS(resumen.gastosAprobados)}</div>
+                <p className="text-xs text-gray-500 mt-1">{aprobados.length} gastos · sobre confirmados</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Con todos los inscriptos: {formatARS(resumen.gastosAprobadosProyectado)}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card
-            className={`bg-gray-800/50 ${resumen.balance >= 0 ? "border-yellow-400/20" : "border-red-500/40"}`}
-          >
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6">
-              <CardTitle className="text-[11px] sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
-                <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Balance</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6">
-              <div
-                className={`text-lg sm:text-3xl font-bold ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
-              >
-                {resumen.balance < 0 && "-"}
-                {formatARS(Math.abs(resumen.balance))}
-              </div>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                {resumen.balance >= 0 ? "A favor" : "En déficit"} · ingresos menos gastos
-              </p>
-              <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
-                Proyectado: {resumen.balanceProyectado < 0 ? "-" : ""}
-                {formatARS(Math.abs(resumen.balanceProyectado))}
-              </p>
-            </CardContent>
-          </Card>
+            <Card
+              className={`bg-gray-800/50 hidden xl:block ${resumen.balance >= 0 ? "border-yellow-400/20" : "border-red-500/40"}`}
+            >
+              <CardHeader className="pb-2 px-6">
+                <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
+                  <Scale className="w-4 h-4 shrink-0" />
+                  <span className="truncate">Balance</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-6">
+                <div
+                  className={`text-3xl font-bold ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
+                >
+                  {resumen.balance < 0 && "-"}
+                  {formatARS(Math.abs(resumen.balance))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {resumen.balance >= 0 ? "A favor" : "En déficit"} · ingresos menos gastos
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Proyectado: {resumen.balanceProyectado < 0 ? "-" : ""}
+                  {formatARS(Math.abs(resumen.balanceProyectado))}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Gastos Aprobados y Balance: 50/50 en pantallas chicas y medianas */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-6 xl:hidden">
+            <Card className="bg-gray-800/50 border-red-500/20">
+              <CardHeader className="pb-1 sm:pb-2 px-2.5 sm:px-6">
+                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
+                  <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">Gastos Aprobados</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2.5 sm:px-6">
+                <div className="text-sm sm:text-3xl font-bold text-red-400 truncate">
+                  {formatARS(resumen.gastosAprobados)}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                  {aprobados.length} gastos · sobre confirmados
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
+                  Con todos los inscriptos: {formatARS(resumen.gastosAprobadosProyectado)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`bg-gray-800/50 ${resumen.balance >= 0 ? "border-yellow-400/20" : "border-red-500/40"}`}
+            >
+              <CardHeader className="pb-1 sm:pb-2 px-2.5 sm:px-6">
+                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
+                  <Scale className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">Balance</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2.5 sm:px-6">
+                <div
+                  className={`text-sm sm:text-3xl font-bold truncate ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
+                >
+                  {resumen.balance < 0 && "-"}
+                  {formatARS(Math.abs(resumen.balance))}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+                  {resumen.balance >= 0 ? "A favor" : "En déficit"} · ingresos menos gastos
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
+                  Proyectado: {resumen.balanceProyectado < 0 ? "-" : ""}
+                  {formatARS(Math.abs(resumen.balanceProyectado))}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Contenido */}

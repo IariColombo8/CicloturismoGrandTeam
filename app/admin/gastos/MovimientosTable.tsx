@@ -149,26 +149,28 @@ export function MovimientosTable({ movimientos, onVerGasto }: MovimientosTablePr
               <TableBody>
                 {pageItems.map((mov) => (
                   <TableRow key={`${mov.tipo}-${mov.id}`} className="border-gray-700">
-                    <TableCell className="text-white font-medium">
-                      <div className="flex items-center gap-2">
+                    <TableCell className="text-white font-medium whitespace-normal break-words max-w-[40vw] sm:max-w-none px-2 sm:px-4 py-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {mov.tipo === "ingreso" ? (
-                          <TrendingUp className="w-4 h-4 text-green-400 shrink-0" />
+                          <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400 shrink-0" />
                         ) : (
-                          <TrendingDown className="w-4 h-4 text-red-400 shrink-0" />
+                          <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 shrink-0" />
                         )}
-                        <span>{mov.descripcion}</span>
+                        <span className="text-xs sm:text-sm break-words">{mov.descripcion}</span>
                         {mov.origen?.porParticipante && (
-                          <Badge className="bg-blue-500/20 text-blue-400 whitespace-nowrap">
+                          <Badge className="bg-blue-500/20 text-blue-400 whitespace-nowrap text-[10px]">
                             <Users className="w-3 h-3 mr-1" />x persona
                           </Badge>
                         )}
                       </div>
-                      {mov.detalle && <span className="block text-xs text-gray-500">{mov.detalle}</span>}
-                      <span className="block text-xs text-gray-500 capitalize sm:hidden">{mov.categoria}</span>
+                      {mov.detalle && <span className="block text-[10px] sm:text-xs text-gray-500">{mov.detalle}</span>}
+                      <span className="block text-[10px] text-gray-500 capitalize sm:hidden">{mov.categoria}</span>
                       <span className="block sm:hidden mt-1">{badgeEstado(mov.estado)}</span>
                     </TableCell>
                     <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{mov.categoria}</TableCell>
-                    <TableCell className={`font-bold whitespace-nowrap ${mov.monto >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    <TableCell
+                      className={`font-bold whitespace-nowrap text-xs sm:text-sm px-2 sm:px-4 py-2 ${mov.monto >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
                       {mov.monto >= 0 ? "+" : "-"}
                       {formatARS(Math.abs(mov.monto))}
                     </TableCell>
@@ -176,15 +178,15 @@ export function MovimientosTable({ movimientos, onVerGasto }: MovimientosTablePr
                       {mov.fecha ? new Date(mov.fecha).toLocaleDateString("es-AR") : "-"}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{badgeEstado(mov.estado)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right px-1 sm:px-4 py-2">
                       {mov.origen && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-blue-500/50 text-blue-400 bg-transparent px-2"
+                          className="border-blue-500/50 text-blue-400 bg-transparent px-1.5 sm:px-2"
                           onClick={() => onVerGasto(mov.origen as Gasto)}
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </Button>
                       )}
                     </TableCell>

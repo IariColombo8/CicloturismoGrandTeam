@@ -41,37 +41,46 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
               <TableHead className="text-yellow-400 hidden sm:table-cell">Categoría</TableHead>
               <TableHead className="text-yellow-400">Monto</TableHead>
               <TableHead className="text-yellow-400 hidden md:table-cell">Fecha</TableHead>
-              <TableHead className="text-yellow-400">Estado</TableHead>
+              <TableHead className="text-yellow-400 hidden sm:table-cell">Estado</TableHead>
               <TableHead className="text-yellow-400 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pageItems.map((ingreso) => (
               <TableRow key={ingreso.id} className="border-gray-700">
-                <TableCell className="text-white font-medium">
+                <TableCell className="text-white font-medium whitespace-normal break-words max-w-[38vw] sm:max-w-none text-xs sm:text-sm px-2 sm:px-4 py-2">
                   {ingreso.descripcion}
-                  {ingreso.notas && <span className="block text-xs text-gray-500">{ingreso.notas}</span>}
-                  <span className="block text-xs text-gray-500 capitalize sm:hidden">{ingreso.categoria}</span>
+                  {ingreso.notas && <span className="block text-[10px] sm:text-xs text-gray-500">{ingreso.notas}</span>}
+                  <span className="block text-[10px] text-gray-500 capitalize sm:hidden">{ingreso.categoria}</span>
+                  <span className="block sm:hidden mt-1">
+                    {ingreso.estado === "cobrado" ? (
+                      <Badge className="bg-green-500/20 text-green-500 text-[10px]">Cobrado</Badge>
+                    ) : (
+                      <Badge className="bg-yellow-400/20 text-yellow-400 text-[10px]">Por cobrar</Badge>
+                    )}
+                  </span>
                 </TableCell>
                 <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{ingreso.categoria}</TableCell>
-                <TableCell className="text-green-400 font-bold">+{formatARS(ingreso.monto)}</TableCell>
+                <TableCell className="text-green-400 font-bold text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4 py-2">
+                  +{formatARS(ingreso.monto)}
+                </TableCell>
                 <TableCell className="text-gray-400 text-sm hidden md:table-cell">
                   {ingreso.fecha ? new Date(ingreso.fecha).toLocaleDateString("es-AR") : "N/A"}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   {ingreso.estado === "cobrado" ? (
                     <Badge className="bg-green-500/20 text-green-500">Cobrado</Badge>
                   ) : (
                     <Badge className="bg-yellow-400/20 text-yellow-400">Por cobrar</Badge>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right px-1.5 sm:px-4 py-2">
                   <div className="flex items-center justify-end gap-1">
                     {ingreso.comprobante && (
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-blue-500/50 text-blue-400 bg-transparent"
+                        className="border-blue-500/50 text-blue-400 bg-transparent px-1.5 sm:px-3"
                         onClick={() => abrirComprobante(ingreso.comprobante)}
                       >
                         <ExternalLink className="w-4 h-4" />
@@ -81,7 +90,7 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-green-500/50 text-green-400 bg-transparent text-xs"
+                        className="border-green-500/50 text-green-400 bg-transparent text-xs px-1.5 sm:px-3"
                         onClick={() => onMarcarCobrado(ingreso.id)}
                       >
                         Cobrar
@@ -91,7 +100,7 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-red-500/50 text-red-400 bg-transparent"
+                        className="border-red-500/50 text-red-400 bg-transparent px-1.5 sm:px-3"
                         onClick={() => onEliminar(ingreso.id)}
                       >
                         <Trash2 className="w-4 h-4" />

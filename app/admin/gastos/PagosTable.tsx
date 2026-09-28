@@ -74,21 +74,23 @@ export function PagosTable({
 
               return (
                 <TableRow key={insc.id} className="border-gray-700">
-                  <TableCell className="text-white font-medium">
+                  <TableCell className="text-white font-medium whitespace-normal break-words max-w-[32vw] sm:max-w-none text-xs sm:text-sm px-2 sm:px-4 py-2">
                     {insc.nombre} {insc.apellido}
-                    <span className="block text-xs text-gray-500 sm:hidden">DNI {insc.dni || "-"}</span>
+                    <span className="block text-[10px] text-gray-500 sm:hidden">DNI {insc.dni || "-"}</span>
                   </TableCell>
                   <TableCell className="text-gray-400 hidden sm:table-cell">{insc.dni || "-"}</TableCell>
-                  <TableCell>
+                  <TableCell className="px-2 sm:px-4 py-2">
                     {enEdicion ? (
                       <Input
                         type="number"
                         value={valorEdicion}
                         onChange={(e) => setValorEdicion(e.target.value)}
-                        className="bg-gray-700 border-gray-600 text-white h-8 w-28"
+                        className="bg-gray-700 border-gray-600 text-white h-8 w-20 sm:w-28 text-xs sm:text-sm"
                       />
                     ) : (
-                      <span className={diferencia === 0 ? "text-white font-bold" : "text-orange-400 font-bold"}>
+                      <span
+                        className={`text-xs sm:text-sm whitespace-nowrap ${diferencia === 0 ? "text-white font-bold" : "text-orange-400 font-bold"}`}
+                      >
                         {formatARS(pagado)}
                       </span>
                     )}
@@ -103,14 +105,14 @@ export function PagosTable({
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right px-1.5 sm:px-4 py-2">
                     {!puedeEditar ? null : enEdicion ? (
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={guardando}
-                          className="border-green-500/50 text-green-400 bg-transparent"
+                          className="border-green-500/50 text-green-400 bg-transparent px-1.5 sm:px-3"
                           onClick={() => {
                             const numero = Number.parseFloat(valorEdicion)
                             if (Number.isFinite(numero) && numero >= 0) guardar(insc.id, numero)
@@ -122,7 +124,7 @@ export function PagosTable({
                           size="sm"
                           variant="outline"
                           disabled={guardando}
-                          className="border-gray-600 text-gray-300 bg-transparent"
+                          className="border-gray-600 text-gray-300 bg-transparent px-1.5 sm:px-3"
                           onClick={() => setEditandoId(null)}
                         >
                           <X className="w-4 h-4" />
@@ -133,7 +135,7 @@ export function PagosTable({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-blue-500/50 text-blue-400 bg-transparent"
+                          className="border-blue-500/50 text-blue-400 bg-transparent px-1.5 sm:px-3"
                           onClick={() => iniciarEdicion(insc)}
                         >
                           <Pencil className="w-4 h-4" />
@@ -143,7 +145,7 @@ export function PagosTable({
                             size="sm"
                             variant="outline"
                             title="Volver al precio base"
-                            className="border-gray-600 text-gray-300 bg-transparent"
+                            className="border-gray-600 text-gray-300 bg-transparent px-1.5 sm:px-3"
                             onClick={() => guardar(insc.id, null)}
                           >
                             <RotateCcw className="w-4 h-4" />
