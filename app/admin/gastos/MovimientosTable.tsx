@@ -5,7 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, TrendingDown, TrendingUp, Users } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Label } from "@/components/ui/label"
+import { Eye, Filter, TrendingDown, TrendingUp, Users } from "lucide-react"
 import { Paginacion } from "./Paginacion"
 import { formatARS, type Gasto, type Movimiento } from "./tipos"
 
@@ -77,37 +79,76 @@ export function MovimientosTable({ movimientos, onVerGasto }: MovimientosTablePr
     setPage(1)
   }
 
+  const filtrosActivos = (filtroTipo !== "todos" ? 1 : 0) + (filtroEstado !== "todos" ? 1 : 0)
+
   return (
     <div className="mt-4 space-y-3">
       {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={filtroTipo} onValueChange={(v) => cambiarFiltroTipo(v as FiltroTipo)}>
-          <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full sm:w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-700 border-gray-600">
-            <SelectItem value="todos">Todos los tipos</SelectItem>
-            <SelectItem value="ingreso">Solo ingresos</SelectItem>
-            <SelectItem value="gasto">Solo gastos</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex items-center gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-600 text-gray-200 bg-gray-700/60 hover:bg-gray-700"
+            >
+              <Filter className="w-4 h-4 mr-1.5" />
+              Filtros
+              {filtrosActivos > 0 && (
+                <Badge className="ml-1.5 bg-yellow-400/20 text-yellow-400 px-1.5">{filtrosActivos}</Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 bg-gray-800 border-gray-700 space-y-4" align="start">
+            <div>
+              <Label className="text-gray-300 text-xs mb-1.5 block">Tipo</Label>
+              <Select value={filtroTipo} onValueChange={(v) => cambiarFiltroTipo(v as FiltroTipo)}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  <SelectItem value="todos">Todos los tipos</SelectItem>
+                  <SelectItem value="ingreso">Solo ingresos</SelectItem>
+                  <SelectItem value="gasto">Solo gastos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <Select value={filtroEstado} onValueChange={(v) => cambiarFiltroEstado(v as FiltroEstado)}>
-          <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full sm:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-700 border-gray-600">
-            <SelectItem value="todos">Todos los estados</SelectItem>
-            <SelectItem value="aprobado">Aprobado</SelectItem>
-            <SelectItem value="pendiente">Pendiente</SelectItem>
-            <SelectItem value="rechazado">Rechazado</SelectItem>
-            <SelectItem value="cobrado">Cobrado</SelectItem>
-            <SelectItem value="por_cobrar">Por cobrar</SelectItem>
-          </SelectContent>
-        </Select>
+            <div>
+              <Label className="text-gray-300 text-xs mb-1.5 block">Estado</Label>
+              <Select value={filtroEstado} onValueChange={(v) => cambiarFiltroEstado(v as FiltroEstado)}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  <SelectItem value="todos">Todos los estados</SelectItem>
+                  <SelectItem value="aprobado">Aprobado</SelectItem>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="rechazado">Rechazado</SelectItem>
+                  <SelectItem value="cobrado">Cobrado</SelectItem>
+                  <SelectItem value="por_cobrar">Por cobrar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <span className="text-xs text-gray-400 ml-auto">
-          {filtrados.length} de {movimientos.length} movimientos
+            {filtrosActivos > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full border-gray-600 text-gray-300"
+                onClick={() => {
+                  cambiarFiltroTipo("todos")
+                  cambiarFiltroEstado("todos")
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        <span className="text-[11px] sm:text-xs text-gray-400 ml-auto truncate">
+          {filtrados.length} de {movimientos.length} mov.
         </span>
       </div>
 
