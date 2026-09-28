@@ -67,13 +67,9 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
   const pageItems = filtrados.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
-    <div className="mt-4 space-y-3">
-      <span className="text-[11px] sm:text-xs text-gray-400 block">
-        {filtrados.length} de {movimientos.length} movimientos
-      </span>
-
+    <div className="mt-2 space-y-2">
       {/* Resumen de lo filtrado */}
-      <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-700 bg-gray-900/40 p-3">
+      <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-700 bg-gray-900/40 p-2 sm:p-3">
         <div>
           <p className="text-xs text-gray-400">Entra</p>
           <p className="text-green-400 font-bold">+{formatARS(totales.entra)}</p>
