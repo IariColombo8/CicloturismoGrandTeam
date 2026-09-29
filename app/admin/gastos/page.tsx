@@ -345,16 +345,18 @@ export default function GastosPage() {
 
         {/* Contenido */}
         <Card className="bg-gray-800/50 border-yellow-400/20 py-3 sm:py-6 gap-3 sm:gap-4">
-          <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 px-3 sm:px-6">
-            <div className="min-w-0">
-              <CardTitle className="text-yellow-400 text-sm sm:text-base truncate">Movimientos del evento</CardTitle>
-              <CardDescription className="text-gray-400 text-[10px] sm:text-sm truncate hidden sm:block">
-                Gastos, ingresos y pagos de inscripción
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 px-3 sm:px-6">
+            <div className="min-w-0 flex items-center gap-1.5 overflow-hidden">
+              <CardTitle className="text-yellow-400 text-xs sm:text-base whitespace-nowrap shrink-0">
+                Movimientos
+              </CardTitle>
+              <CardDescription className="text-gray-400 text-xs sm:text-sm truncate hidden md:inline">
+                · Gastos, ingresos y pagos de inscripción
               </CardDescription>
               {vista === "todo" && (
-                <p className="text-[10px] text-gray-500 mt-0.5">
-                  {movimientosFiltrados.length} de {movimientos.length} movimientos
-                </p>
+                <span className="text-[10px] sm:text-xs text-gray-500 truncate">
+                  · {movimientosFiltrados.length} de {movimientos.length}
+                </span>
               )}
             </div>
 
