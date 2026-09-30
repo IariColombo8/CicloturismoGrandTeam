@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Clock, Landmark, Filter } from "lucide-react"
+import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Landmark, Filter, FileText, FileSpreadsheet } from "lucide-react"
 
 import { EstimadorInscriptos } from "./EstimadorInscriptos"
 import { CalculadoraCaja } from "./CalculadoraCaja"
@@ -23,6 +23,7 @@ import { IngresoFormModal } from "./IngresoFormModal"
 import { GastoDetalleModal } from "./GastoDetalleModal"
 import { useFinanzas } from "./useFinanzas"
 import { formatARS, mensajeError, type Gasto } from "./tipos"
+import { exportarFinanzasExcel, exportarFinanzasPDF } from "./exportFinanzas"
 
 type Vista = "todo" | "gastos" | "ingresos" | "pagos" | "rechazados"
 
@@ -42,6 +43,7 @@ export default function GastosPage() {
   const [vista, setVista] = useState<Vista>("todo")
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos")
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos")
+  const [exportando, setExportando] = useState<"pdf" | "excel" | null>(null)
 
   const movimientosFiltrados = useMemo(() => {
     return movimientos.filter((mov) => {
@@ -131,6 +133,30 @@ export default function GastosPage() {
     }
   }
 
+  const handleDescargarPDF = async () => {
+    setExportando("pdf")
+    try {
+      await exportarFinanzasPDF(gastos, ingresos, resumen, resumen.confirmados)
+    } catch (err) {
+      console.error("Error generando PDF:", mensajeError(err), err)
+      toast({ title: "Error al generar el PDF", description: mensajeError(err), variant: "destructive" })
+    } finally {
+      setExportando(null)
+    }
+  }
+
+  const handleDescargarExcel = async () => {
+    setExportando("excel")
+    try {
+      await exportarFinanzasExcel(gastos, ingresos, resumen, resumen.confirmados)
+    } catch (err) {
+      console.error("Error generando Excel:", mensajeError(err), err)
+      toast({ title: "Error al generar el Excel", description: mensajeError(err), variant: "destructive" })
+    } finally {
+      setExportando(null)
+    }
+  }
+
   if (cargando) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -156,6 +182,24 @@ export default function GastosPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
+              onClick={handleDescargarPDF}
+              disabled={exportando !== null}
+              variant="outline"
+              className="border-gray-600 text-gray-200 bg-gray-700/60 hover:bg-gray-700"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              {exportando === "pdf" ? "Generando..." : "Descargar PDF"}
+            </Button>
+            <Button
+              onClick={handleDescargarExcel}
+              disabled={exportando !== null}
+              variant="outline"
+              className="border-gray-600 text-gray-200 bg-gray-700/60 hover:bg-gray-700"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              {exportando === "excel" ? "Generando..." : "Descargar Excel"}
+            </Button>
+            <Button
               onClick={() => setIsIngresoModalOpen(true)}
               className="bg-green-600 text-white hover:bg-green-700"
             >
@@ -178,10 +222,30 @@ export default function GastosPage() {
           </div>
         )}
 
-        {/* Dashboard */}
-        <div className="mb-6 sm:mb-8 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-6">
-            <Card className="bg-gray-800/50 border-emerald-400/40 xl:col-span-1 py-2 sm:py-4 gap-1.5 sm:gap-2">
+        {/* Dashboard: Ingresos | Plata en BNA, Gastos Aprobados | Balance. 2x2 en celu, los 4 en una fila en PC */}
+        <div className="mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-6">
+            <Card className="bg-gray-800/50 border-green-500/20 py-2 sm:py-4 gap-1.5 sm:gap-2">
+              <CardHeader className="pb-0 px-2.5 sm:px-4">
+                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
+                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate">Ingresos</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2.5 sm:px-4">
+                <div className="text-sm sm:text-3xl font-bold text-green-500 truncate">
+                  {formatARS(resumen.totalIngresos)}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
+                  Inscripciones {formatARS(resumen.ingresoInscripciones)} · Otros {formatARS(resumen.ingresosCobrados)}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
+                  Proyectado: {formatARS(resumen.totalIngresosProyectado)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-800/50 border-emerald-400/40 py-2 sm:py-4 gap-1.5 sm:gap-2">
               <CardHeader className="pb-0 px-2.5 sm:px-4">
                 <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
                   <Landmark className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
@@ -209,92 +273,6 @@ export default function GastosPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-800/50 border-green-500/20 xl:col-span-1 py-2 sm:py-4 gap-1.5 sm:gap-2">
-              <CardHeader className="pb-0 px-2.5 sm:px-4">
-                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
-                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                  <span className="truncate">Ingresos</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-2.5 sm:px-4">
-                <div className="text-sm sm:text-3xl font-bold text-green-500 truncate">
-                  {formatARS(resumen.totalIngresos)}
-                </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
-                  Inscripciones {formatARS(resumen.ingresoInscripciones)} · Otros {formatARS(resumen.ingresosCobrados)}
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
-                  Proyectado: {formatARS(resumen.totalIngresosProyectado)}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800/50 border-blue-500/20 xl:col-span-1 py-2 sm:py-4 gap-1.5 sm:gap-2">
-              <CardHeader className="pb-0 px-2.5 sm:px-4">
-                <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
-                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                  <span className="truncate">Sin cerrar</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-2.5 sm:px-4">
-                <div className="text-xs sm:text-2xl font-bold text-blue-400 truncate">
-                  +{formatARS(resumen.ingresosPorCobrar)}
-                </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Por cobrar</p>
-                <div className="text-xs sm:text-2xl font-bold text-orange-400 mt-1 sm:mt-2 truncate">
-                  -{formatARS(resumen.gastosPendientes)}
-                </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">
-                  {pendientes.length} gastos esperando aprobación
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800/50 border-red-500/20 hidden xl:block py-4 gap-2">
-              <CardHeader className="pb-0 px-4">
-                <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Gastos Aprobados</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4">
-                <div className="text-3xl font-bold text-red-400">{formatARS(resumen.gastosAprobados)}</div>
-                <p className="text-xs text-gray-500 mt-1">{aprobados.length} gastos · sobre confirmados</p>
-                <p className="text-xs text-gray-600 mt-1">
-                  Con todos los inscriptos: {formatARS(resumen.gastosAprobadosProyectado)}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className={`bg-gray-800/50 hidden xl:block py-4 gap-2 ${resumen.balance >= 0 ? "border-yellow-400/20" : "border-red-500/40"}`}
-            >
-              <CardHeader className="pb-0 px-4">
-                <CardTitle className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                  <Scale className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Balance</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4">
-                <div
-                  className={`text-3xl font-bold ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
-                >
-                  {resumen.balance < 0 && "-"}
-                  {formatARS(Math.abs(resumen.balance))}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {resumen.balance >= 0 ? "A favor" : "En déficit"} · ingresos menos gastos
-                </p>
-                <p className="text-xs text-gray-600 mt-1">
-                  Proyectado: {resumen.balanceProyectado < 0 ? "-" : ""}
-                  {formatARS(Math.abs(resumen.balanceProyectado))}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Gastos Aprobados y Balance: 50/50 en pantallas chicas y medianas */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-6 xl:hidden">
             <Card className="bg-gray-800/50 border-red-500/20 py-2 sm:py-4 gap-1.5 sm:gap-2">
               <CardHeader className="pb-0 px-2.5 sm:px-4">
                 <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
@@ -470,6 +448,7 @@ export default function GastosPage() {
                 puedeEliminar={esAdmin}
                 onEliminar={handleEliminarIngreso}
                 onMarcarCobrado={handleMarcarCobrado}
+                onGuardado={recargar}
               />
             )}
 

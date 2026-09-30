@@ -1,12 +1,26 @@
 "use client"
 
 import { useState } from "react"
+import { supabase } from "@/lib/supabase"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, ExternalLink } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import { Trash2, ExternalLink, Pencil } from "lucide-react"
 import { Paginacion } from "./Paginacion"
-import { formatARS, type Ingreso } from "./tipos"
+import { esLocalhost, formatARS, mensajeError, parseMonto, type Ingreso } from "./tipos"
 
 const PAGE_SIZE = 15
 
@@ -15,6 +29,7 @@ interface IngresosTableProps {
   puedeEliminar: boolean
   onEliminar: (id: string) => void
   onMarcarCobrado: (id: string) => void
+  onGuardado?: () => Promise<void>
 }
 
 function abrirComprobante(url: string | null) {
@@ -23,9 +38,58 @@ function abrirComprobante(url: string | null) {
   }
 }
 
-export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCobrado }: IngresosTableProps) {
+export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCobrado, onGuardado }: IngresosTableProps) {
+  const { toast } = useToast()
   const [page, setPage] = useState(1)
+  const [editando, setEditando] = useState<Ingreso | null>(null)
+  const [editDescripcion, setEditDescripcion] = useState("")
+  const [editMonto, setEditMonto] = useState("")
+  const [editCategoria, setEditCategoria] = useState("otro")
+  const [editNotas, setEditNotas] = useState("")
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
+
+  const puedeEditar = esLocalhost()
   const pageItems = ingresos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const abrirEdicion = (ingreso: Ingreso) => {
+    setEditando(ingreso)
+    setEditDescripcion(ingreso.descripcion)
+    setEditMonto(String(ingreso.monto))
+    setEditCategoria(ingreso.categoria)
+    setEditNotas(ingreso.notas || "")
+  }
+
+  const cerrarEdicion = () => setEditando(null)
+
+  const handleGuardarEdicion = async () => {
+    if (!editando) return
+    const montoNumero = parseMonto(editMonto)
+    if (!editDescripcion || !Number.isFinite(montoNumero) || montoNumero <= 0) {
+      toast({ title: "Error", description: "Completá descripción y un monto mayor a cero", variant: "destructive" })
+      return
+    }
+    setGuardandoEdicion(true)
+    try {
+      const { error } = await supabase
+        .from("ingresos")
+        .update({
+          descripcion: editDescripcion,
+          monto: montoNumero,
+          categoria: editCategoria,
+          notas: editNotas || null,
+        })
+        .eq("id", editando.id)
+      if (error) throw error
+      toast({ title: "Ingreso actualizado" })
+      cerrarEdicion()
+      if (onGuardado) await onGuardado()
+    } catch (err) {
+      console.error("Error editando ingreso:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    } finally {
+      setGuardandoEdicion(false)
+    }
+  }
 
   if (ingresos.length === 0) {
     return <div className="text-center py-8 text-gray-400">Todavía no hay ingresos registrados</div>
@@ -96,6 +160,16 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
                         Cobrar
                       </Button>
                     )}
+                    {puedeEditar && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500/50 text-blue-400 bg-transparent px-1.5 sm:px-3"
+                        onClick={() => abrirEdicion(ingreso)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
                     {puedeEliminar && (
                       <Button
                         size="sm"
@@ -115,6 +189,78 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
       </div>
 
       <Paginacion page={page} pageSize={PAGE_SIZE} total={ingresos.length} onChange={setPage} />
+
+      {/* Edición (solo localhost) */}
+      <Dialog open={editando !== null} onOpenChange={(open) => !open && cerrarEdicion()}>
+        <DialogContent className="bg-gray-800 border-blue-500/30 max-w-[calc(100vw-2rem)] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-blue-400">Editar Ingreso</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Modo edición (solo disponible en localhost) — permite corregir un ingreso ya registrado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-gray-300">Descripción *</Label>
+              <Input
+                value={editDescripcion}
+                onChange={(e) => setEditDescripcion(e.target.value)}
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+
+            <div>
+              <Label className="text-gray-300">Monto (ARS) *</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={editMonto}
+                onChange={(e) => setEditMonto(e.target.value)}
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+
+            <div>
+              <Label className="text-gray-300">Categoría *</Label>
+              <Select value={editCategoria} onValueChange={setEditCategoria}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  <SelectItem value="sponsor">Sponsor</SelectItem>
+                  <SelectItem value="donacion">Donación</SelectItem>
+                  <SelectItem value="venta">Venta</SelectItem>
+                  <SelectItem value="remera">Remeras</SelectItem>
+                  <SelectItem value="otro">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-gray-300">Notas (opcional)</Label>
+              <Textarea
+                value={editNotas}
+                onChange={(e) => setEditNotas(e.target.value)}
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={cerrarEdicion} className="border-gray-600 text-gray-300">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleGuardarEdicion}
+              disabled={guardandoEdicion}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              Guardar cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

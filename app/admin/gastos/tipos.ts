@@ -71,9 +71,13 @@ export interface Movimiento {
   origen: Gasto | null
 }
 
-/** Formatea un monto en pesos argentinos, sin decimales. */
+/**
+ * Formatea un monto en pesos argentinos. Sin decimales si es un numero entero,
+ * con hasta 2 decimales si los tiene (ej: 147,42), para no perder centavos
+ * cargados a mano (como intereses bancarios).
+ */
 export function formatARS(monto: number): string {
-  return `$${Math.round(monto).toLocaleString("es-AR")}`
+  return `$${monto.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 /** Monto real abonado por un inscripto: su excepcion o el precio base. */

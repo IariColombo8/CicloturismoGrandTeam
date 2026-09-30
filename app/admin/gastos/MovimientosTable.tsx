@@ -58,35 +58,10 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
     })
   }, [movimientos, filtroTipo, filtroEstado])
 
-  const totales = useMemo(() => {
-    const entra = filtrados.filter((m) => m.monto > 0).reduce((s, m) => s + m.monto, 0)
-    const sale = filtrados.filter((m) => m.monto < 0).reduce((s, m) => s + Math.abs(m.monto), 0)
-    return { entra, sale, neto: entra - sale }
-  }, [filtrados])
-
   const pageItems = filtrados.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div className="mt-2 space-y-2">
-      {/* Resumen de lo filtrado */}
-      <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-700 bg-gray-900/40 p-2 sm:p-3">
-        <div>
-          <p className="text-xs text-gray-400">Entra</p>
-          <p className="text-green-400 font-bold">+{formatARS(totales.entra)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400">Sale</p>
-          <p className="text-red-400 font-bold">-{formatARS(totales.sale)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400">Neto</p>
-          <p className={`font-bold ${totales.neto >= 0 ? "text-yellow-400" : "text-red-500"}`}>
-            {totales.neto < 0 && "-"}
-            {formatARS(Math.abs(totales.neto))}
-          </p>
-        </div>
-      </div>
-
       {filtrados.length === 0 ? (
         <div className="text-center py-8 text-gray-400">No hay movimientos con estos filtros</div>
       ) : (
