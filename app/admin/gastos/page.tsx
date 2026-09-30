@@ -259,15 +259,9 @@ export default function GastosPage() {
                   {resumen.plataEnBanco < 0 && "-"}
                   {formatARS(Math.abs(resumen.plataEnBanco))}
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
-                  Inscripciones + ingresos cobrados − gastos ya pagados
-                </p>
                 {resumen.gastosAprobadosSinPagar > 0 && (
-                  <p className="text-[9px] sm:text-xs text-orange-400 mt-1 truncate">
-                    <span className="hidden sm:inline">Todavía falta pagar </span>
-                    {formatARS(resumen.gastosAprobadosSinPagar)}
-                    <span className="hidden sm:inline"> de gastos aprobados</span>
-                    <span className="sm:hidden"> sin pagar</span>
+                  <p className="text-[10px] sm:text-xs text-orange-400 mt-1 truncate">
+                    Falta pagar {formatARS(resumen.gastosAprobadosSinPagar)}
                   </p>
                 )}
               </CardContent>
