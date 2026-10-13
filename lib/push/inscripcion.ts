@@ -26,12 +26,11 @@ export async function notificarInscripcionNueva(datos: DatosInscripcionNueva): P
       .filter(Boolean)
       .join(" · ")
 
-    // El monto incluye las inscripciones pendientes de verificar (la nueva
-    // entre ellas): es lo que deberia estar en la cuenta si todas transfirieron.
-    // Se aclara entre parentesis para no confundirlo con la plata ya validada.
+    // Plata ya verificada + SOLO esta inscripcion. No se suman las pendientes
+    // viejas: son transferencias sin confirmar y harian crecer el numero con
+    // plata que quiza nunca entro.
     const montoBna = saldo
-      ? `En el BNA deberia haber ${formatearPesos(saldo.total)}` +
-        (saldo.pendientes > 0 ? ` (incluye ${saldo.pendientes} sin verificar)` : "")
+      ? `En el BNA deberia haber ${formatearPesos(saldo.verificado + saldo.precio)} con esta`
       : null
 
     const lineas = [detalle || null, montoBna].filter(Boolean)

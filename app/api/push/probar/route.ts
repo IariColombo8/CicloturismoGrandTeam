@@ -19,7 +19,9 @@ export async function POST(req: NextRequest) {
   const resultado = await enviarPushATodos({
     titulo: "Prueba: nueva inscripcion",
     cuerpo: saldo
-      ? `Juan Perez (prueba) · En el BNA deberia haber ${formatearPesos(saldo.total)}`
+      ? `Juan Perez (prueba)\nEn el BNA deberia haber ${formatearPesos(
+          saldo.verificado + saldo.precio
+        )} con esta`
       : "Juan Perez (prueba)",
     url: "/admin/registro-inscripciones",
     tag: "prueba",
@@ -28,6 +30,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     success: resultado.enviadas > 0,
     ...resultado,
-    saldo: saldo?.total ?? null,
+    saldo: saldo ? saldo.verificado + saldo.precio : null,
   })
 }

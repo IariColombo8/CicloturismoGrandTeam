@@ -255,7 +255,7 @@ Detalle completo en **`docs/notificaciones.md`**. Tres vias, todas implementadas
 2. **Notificacion del navegador**: si hay permiso y la pestaña no esta visible.
 3. **Push al celular** (funciona con el sitio cerrado): Service Worker en `public/sw.js`, claves VAPID, suscripciones en `public.push_subscriptions` y envio con `web-push` desde `lib/push/enviar.ts`. Lo dispara `POST /api/inscripcion/submit` via `lib/push/inscripcion.ts`.
 
-El mensaje incluye **cuanta plata deberia haber en el BNA** contando esa transferencia (`lib/finanzas/saldoEsperado.ts`): confirmadas cobradas + pendientes x precio + ingresos cobrados − gastos pagados. A diferencia de la calculadora de caja de `/admin/gastos`, aca las pendientes **si** se suman (por eso el mensaje aclara cuantas estan sin verificar).
+El mensaje incluye **cuanta plata deberia haber en el BNA** contando esa transferencia (`lib/finanzas/saldoEsperado.ts`): (confirmadas cobradas + ingresos cobrados − gastos pagados) + el precio de esa inscripcion. Las pendientes viejas **no** se suman: son transferencias sin verificar y harian crecer el numero con plata que quiza nunca entro. El `verificado` coincide con la calculadora de caja de `/admin/gastos` en sus valores por defecto.
 
 Se activa por dispositivo desde el boton del panel. En iPhone requiere instalar el sitio como app (iOS 16.4+). Las claves VAPID **no se regeneran**: si cambian, hay que reactivar en cada dispositivo.
 

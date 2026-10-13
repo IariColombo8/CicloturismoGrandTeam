@@ -3,10 +3,14 @@
 // Lo usa la notificacion de inscripcion nueva, para avisar en el mismo mensaje
 // cuanto tendria que haber entrado si todos los inscriptos transfirieron.
 //
-// Replica el criterio de la calculadora de caja (/admin/gastos):
-//   entra  = inscripciones cobradas + inscripciones pendientes (si transfirieron)
-//            + ingresos ya cobrados
-//   sale   = gastos aprobados y efectivamente pagados
+// Mismo criterio que la calculadora de caja (/admin/gastos) con sus valores
+// por defecto:
+//   verificado = inscripciones cobradas + ingresos cobrados - gastos pagados
+//
+// Las inscripciones pendientes NO entran en ese numero: son plata que todavia
+// no se confirmo y meterlas haria crecer el total con transferencias que quiza
+// nunca llegaron. Quien avisa de una inscripcion nueva le suma esa sola
+// (ver lib/push/inscripcion.ts); el resto queda como dato informativo.
 //
 // Uso exclusivo en servidor (usa el cliente admin de Supabase).
 
@@ -17,16 +21,20 @@ const EDICION_ACTUAL = 2026
 const PRECIO_FALLBACK = 25000
 
 export interface SaldoEsperado {
-  /** Plata que deberia haber en la cuenta. */
-  total: number
+  /**
+   * Plata verificada que deberia estar en la cuenta: inscripciones ya
+   * confirmadas + ingresos cobrados - gastos pagados. No incluye pendientes.
+   */
+  verificado: number
   /** Cobrado por inscripciones ya confirmadas. */
   inscripcionesConfirmadas: number
-  /** Lo que sumarian las pendientes si todas transfirieron. */
+  /** Cuanto sumarian TODAS las pendientes. Informativo, no entra en `verificado`. */
   inscripcionesPendientes: number
   ingresosCobrados: number
   gastosPagados: number
   /** Cantidad de inscriptos confirmados (los gastos por participante los usan). */
   confirmados: number
+  /** Cuantas inscripciones esperan verificacion. */
   pendientes: number
   precio: number
 }
@@ -72,8 +80,7 @@ export async function calcularSaldoEsperado(): Promise<SaldoEsperado | null> {
         inscripcionesConfirmadas += p.monto_pagado != null ? Number(p.monto_pagado) : precio
       } else if (p.estado === "pendiente") {
         pendientes += 1
-        // Se inscribieron y subieron comprobante: la plata deberia estar en la
-        // cuenta aunque todavia no se haya verificado.
+        // Solo informativo: no se suma al saldo verificado.
         inscripcionesPendientes += precio
       }
     }
@@ -97,8 +104,7 @@ export async function calcularSaldoEsperado(): Promise<SaldoEsperado | null> {
       )
 
     return {
-      total:
-        inscripcionesConfirmadas + inscripcionesPendientes + ingresosCobrados - gastosPagados,
+      verificado: inscripcionesConfirmadas + ingresosCobrados - gastosPagados,
       inscripcionesConfirmadas,
       inscripcionesPendientes,
       ingresosCobrados,

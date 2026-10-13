@@ -30,25 +30,29 @@ llegue al celular.
 ```
 Nueva inscripcion: Juan Perez
 Concepcion del Uruguay · Grand Team
-En el BNA deberia haber $1.446.920 (incluye 16 sin verificar)
+En el BNA deberia haber $1.071.920 con esta
 ```
 
-El monto es el **saldo esperado** de la cuenta, contando esa transferencia.
-Se calcula en `lib/finanzas/saldoEsperado.ts`:
+El monto es la plata ya verificada **mas esa inscripcion sola**. Se calcula en
+`lib/finanzas/saldoEsperado.ts`:
 
 ```
   inscripciones confirmadas y cobradas   (suma de monto_pagado)
-+ inscripciones pendientes x precio      (ya transfirieron, falta verificar)
 + ingresos cobrados
 - gastos aprobados y pagados             (los "por participante" x confirmados)
+= verificado
++ el precio de la inscripcion que acaba de entrar
 = lo que deberia haber en el BNA
 ```
 
-> Ojo con la diferencia respecto de la calculadora de caja de `/admin/gastos`:
-> ahi las pendientes vienen **destildadas** por defecto. La notificacion si las
-> suma, porque la pregunta que responde es "cuanto deberia haber si todos los
-> que se inscribieron transfirieron". Por eso se aclara cuantas estan sin
-> verificar.
+> **Las pendientes viejas no se suman.** Son transferencias que todavia no se
+> verificaron: si se contaran, el numero creceria con plata que quiza nunca
+> entro y dejaria de servir para chequear contra el homebanking. El total
+> `verificado` coincide con la calculadora de caja de `/admin/gastos` con sus
+> valores por defecto, asi que los dos numeros son comparables.
+>
+> `SaldoEsperado` igual expone `pendientes` e `inscripcionesPendientes` por si
+> en algun momento se quiere mostrar ese dato aparte.
 
 ## Configuracion del servidor
 
