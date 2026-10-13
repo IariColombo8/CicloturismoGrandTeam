@@ -241,7 +241,7 @@ Limite practico: Gmail gratuito permite ~500 destinatarios por dia; `/api/email/
 
 - El usuario provee un Personal Access Token de Supabase (`sbp_...`) para que Claude pueda ejecutar SQL directo contra la base cuando haga falta (fixes de datos puntuales, diagnosticos).
 - **El token NUNCA se guarda en este archivo ni en ningun archivo trackeado por git.** Vive solo en `.env.local` (gitignorado) como `SUPABASE_ACCESS_TOKEN` y `SUPABASE_PROJECT_REF`.
-- Los PAT de Supabase vencen a los 30 dias: si `SUPABASE_ACCESS_TOKEN` no esta en `.env.local` o esta vencido, pedirle uno nuevo al usuario en vez de asumir que sigue vigente.
+- Los PAT de Supabase vencen a los 90 dias: si `SUPABASE_ACCESS_TOKEN` no esta en `.env.local` o esta vencido, pedirle uno nuevo al usuario en vez de asumir que sigue vigente. La fecha de vencimiento del token actual queda como comentario al lado de la variable en `.env.local`.
 - Para ejecutar SQL: `POST https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/database/query` con header `Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}` y body `{"query": "..."}`.
 - Cualquier cambio de datos en produccion vía este canal debe reflejarse despues en una migracion dentro de `supabase/migrations/` (sin el token) para que el repo documente el estado real de la base.
 

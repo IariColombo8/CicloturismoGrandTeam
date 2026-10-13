@@ -66,7 +66,15 @@ function abrirNavegador(url) {
   const plataforma = process.platform
   try {
     if (plataforma === "win32") {
-      spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref()
+      // Ojo: `cmd /c start <url>` NO sirve acá. cmd interpreta el "&" de los
+      // query params como separador de comandos y le pasa al navegador solo
+      // hasta el primer parametro, con lo que Google responde
+      // "Required parameter is missing: response_type".
+      // rundll32 recibe la URL completa como un unico argumento, sin shell.
+      spawn("rundll32", ["url.dll,FileProtocolHandler", url], {
+        detached: true,
+        stdio: "ignore",
+      }).unref()
     } else if (plataforma === "darwin") {
       spawn("open", [url], { detached: true, stdio: "ignore" }).unref()
     } else {
