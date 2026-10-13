@@ -7,6 +7,7 @@ import {
   parseDataUrl,
   submitSchema,
 } from "@/lib/inscripcion-schema"
+import { notificarInscripcionNueva } from "@/lib/push/inscripcion"
 
 const BUCKET = "comprobantes"
 
@@ -142,6 +143,15 @@ export async function POST(req: NextRequest) {
   }
 
   await guardarGrupoNuevoSiCorresponde(supabase, normalizeGrupoCiclistas(formData.grupoCiclistas))
+
+  // Aviso a los organizadores. Va despues del alta y con await para que la
+  // funcion serverless no muera antes de mandarlo, pero cualquier fallo se
+  // ignora: la inscripcion ya quedo guardada y es lo que importa.
+  await notificarInscripcionNueva({
+    nombre: `${formData.nombre} ${formData.apellido}`.trim(),
+    localidad: formData.localidad,
+    grupo: normalizeGrupoCiclistas(formData.grupoCiclistas),
+  })
 
   return NextResponse.json({ ok: true, numeroInscripcion, tokenQR })
 }

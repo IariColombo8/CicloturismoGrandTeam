@@ -8,6 +8,8 @@ import { useIsMobile } from "@/components/ui/use-mobile"
 import { exportToCSV } from "@/lib/exportUtils"
 import { emailService } from "@/lib/emailService"
 import { SIN_NUMERO } from "@/lib/numeroInscripcion"
+import { reproducirAviso } from "@/lib/sonidoAviso"
+import NotificacionesPush from "@/components/admin/NotificacionesPush"
 import {
   Users,
   CheckCircle,
@@ -134,6 +136,12 @@ export default function RegistroInscripciones() {
   const [filtroPago, setFiltroPago] = useState("all")
   const [filtroSalud, setFiltroSalud] = useState("all")
   const [soloConNota, setSoloConNota] = useState(false)
+
+  // Aviso flotante de inscripcion nueva (realtime).
+  const [avisoInscripcion, setAvisoInscripcion] = useState<{
+    nombre: string
+    localidad: string
+  } | null>(null)
 
   // Valores disponibles para los selects, derivados de las inscripciones reales.
   const [opcionesFiltro, setOpcionesFiltro] = useState<{
@@ -488,10 +496,43 @@ export default function RegistroInscripciones() {
     // Realtime: re-fetch pagina actual cuando cambia la tabla
     const channel = supabase
       .channel("registro-inscripciones")
-      .on("postgres_changes", { event: "*", schema: "public", table: "participantes" }, () => {
-        fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter, filtrosAvanzados)
-        fetchStats()
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "participantes" },
+        (payload) => {
+          // Alta nueva: ademas de refrescar, se avisa en pantalla. El push al
+          // celular lo manda el servidor desde /api/inscripcion/submit.
+          if (payload.eventType === "INSERT") {
+            const nuevo = payload.new as { nombre?: string; apellido?: string; localidad?: string }
+            const nombre = `${nuevo.nombre ?? ""} ${nuevo.apellido ?? ""}`.trim() || "Alguien"
+
+            setAvisoInscripcion({ nombre, localidad: nuevo.localidad || "" })
+            reproducirAviso()
+
+            // Notificacion del sistema si el admin dio permiso y no esta
+            // mirando la pestaña.
+            if (
+              typeof Notification !== "undefined" &&
+              Notification.permission === "granted" &&
+              document.visibilityState !== "visible"
+            ) {
+              try {
+                new Notification("Nueva inscripcion", {
+                  body: nombre,
+                  icon: "/email/logo.png",
+                  tag: "inscripcion-nueva",
+                })
+              } catch {
+                // Algunos navegadores solo permiten notificaciones desde el
+                // service worker; ahi ya llega el push.
+              }
+            }
+          }
+
+          fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter, filtrosAvanzados)
+          fetchStats()
+        }
+      )
       .subscribe()
 
     return () => {
@@ -527,6 +568,13 @@ export default function RegistroInscripciones() {
     if (typeof window === "undefined") return
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
+
+  // El aviso de inscripcion nueva se va solo a los 12 segundos.
+  useEffect(() => {
+    if (!avisoInscripcion) return
+    const id = window.setTimeout(() => setAvisoInscripcion(null), 12000)
+    return () => window.clearTimeout(id)
+  }, [avisoInscripcion])
 
   const totalPages = Math.ceil(totalCount / itemsPerPage)
   const indexOfFirst = (currentPage - 1) * itemsPerPage + 1
@@ -1056,7 +1104,8 @@ export default function RegistroInscripciones() {
             </h1>
             <p className="text-gray-400 mt-1 text-sm md:text-base">Gestiona todas las inscripciones del evento</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <NotificacionesPush />
             <button
               onClick={handleRefresh}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm ${refreshing ? "opacity-70" : ""}`}
@@ -1067,6 +1116,32 @@ export default function RegistroInscripciones() {
             </button>
           </div>
         </div>
+
+        {/* Aviso en vivo de inscripcion nueva */}
+        {avisoInscripcion && (
+          <div className="fixed bottom-20 right-4 left-4 sm:left-auto sm:w-80 z-50 animate-fadeIn">
+            <div className="bg-zinc-900 border border-yellow-400/50 rounded-lg shadow-2xl p-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-yellow-400/15 grid place-items-center flex-shrink-0">
+                <Users className="w-4 h-4 text-yellow-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-yellow-400">Nueva inscripcion</p>
+                <p className="text-sm text-white truncate">{avisoInscripcion.nombre}</p>
+                {avisoInscripcion.localidad && (
+                  <p className="text-xs text-gray-400 truncate">{avisoInscripcion.localidad}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAvisoInscripcion(null)}
+                aria-label="Cerrar aviso"
+                className="p-1 rounded hover:bg-zinc-800 transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Error */}
         {error && (

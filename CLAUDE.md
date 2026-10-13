@@ -169,6 +169,10 @@ POST /api/email/reply            -> Responde un hilo manteniendo el enhebrado
 POST /api/email/acciones         -> leido / no-leido / archivar / a-recibidos / destacar / papelera
 GET  /api/email/adjunto          -> Descarga un adjunto de un correo recibido
 
+POST /api/push/subscribe         -> Registra el dispositivo del admin para notificaciones push
+DELETE /api/push/subscribe       -> Da de baja el dispositivo (?endpoint=...)
+POST /api/push/probar            -> Manda una notificacion de prueba a todos los dispositivos
+
 POST /api/mi-inscripcion/reenviar-confirmacion -> Reenvio del mail de confirmacion desde /mi-qr.
   PUBLICA: solo envia si el email del body coincide con el de la inscripcion (el QR es la
   credencial de acreditacion). Exige estado confirmada y limita a 3 intentos por DNI+IP cada 10 min.
@@ -243,6 +247,18 @@ Limite practico: Gmail gratuito permite ~500 destinatarios por dia; `/api/email/
   la inscripcion — nunca a una cualquiera — porque el QR es la credencial de acreditacion.
   El bloque de remera se recalcula en cada reenvio, asi que refleja el estado actual del pedido.
 
+### Notificaciones de inscripcion nueva
+
+Detalle completo en **`docs/notificaciones.md`**. Tres vias, todas implementadas:
+
+1. **En el panel**: el canal realtime de `/admin/registro-inscripciones` detecta el INSERT, muestra un aviso flotante y hace sonar un pitido (`lib/sonidoAviso.ts`, WebAudio, sin assets).
+2. **Notificacion del navegador**: si hay permiso y la pestaña no esta visible.
+3. **Push al celular** (funciona con el sitio cerrado): Service Worker en `public/sw.js`, claves VAPID, suscripciones en `public.push_subscriptions` y envio con `web-push` desde `lib/push/enviar.ts`. Lo dispara `POST /api/inscripcion/submit` via `lib/push/inscripcion.ts`.
+
+El mensaje incluye **cuanta plata deberia haber en el BNA** contando esa transferencia (`lib/finanzas/saldoEsperado.ts`): confirmadas cobradas + pendientes x precio + ingresos cobrados − gastos pagados. A diferencia de la calculadora de caja de `/admin/gastos`, aca las pendientes **si** se suman (por eso el mensaje aclara cuantas estan sin verificar).
+
+Se activa por dispositivo desde el boton del panel. En iPhone requiere instalar el sitio como app (iOS 16.4+). Las claves VAPID **no se regeneran**: si cambian, hay que reactivar en cada dispositivo.
+
 ### Dashboard Admin
 
 - Stats en tiempo real: total inscriptos, confirmados, pendientes, rechazados
@@ -286,6 +302,9 @@ GOOGLE_CLIENT_SECRET                   # SECRETO. Solo servidor (lib/google/**)
 GOOGLE_REFRESH_TOKEN                   # SECRETO. Se genera con `npm run gmail:auth`
 GMAIL_SENDER                           # Casilla que envia y cuya bandeja se lee
 GMAIL_SENDER_NAME                      # Nombre visible del remitente (default "Grand Team Bike")
+NEXT_PUBLIC_VAPID_PUBLIC_KEY           # Clave publica de Web Push (la usa el navegador)
+VAPID_PRIVATE_KEY                      # SECRETA. Solo servidor. No regenerar (ver docs/notificaciones.md)
+VAPID_SUBJECT                          # mailto: de contacto para los push services
 NEXT_PUBLIC_EMAILJS_SERVICE_ID         # LEGACY: ya no se usa (migrado a Gmail API)
 NEXT_PUBLIC_EMAILJS_TEMPLATE_ID        # LEGACY
 NEXT_PUBLIC_EMAILJS_PUBLIC_KEY         # LEGACY
