@@ -40,11 +40,19 @@ import {
   Save,
   Navigation,
   Search,
-  CalendarClock,
+  Truck,
 } from "lucide-react"
-import { REMERA_DEADLINE_AVISO } from "@/lib/remeraDeadline"
+import {
+  REMERA_AVISO_PEDIDOS,
+  REMERA_SOLO_ENVIO,
+  REMERA_SOLO_ENVIO_AVISO,
+} from "@/lib/remeraDeadline"
 import { TALLES_DISPONIBLES, type RemeraItem } from "@/types/database"
 import { supabase } from "@/lib/supabase"
+
+// Metodo de entrega inicial: con los pedidos reabiertos solo para envio, el
+// retiro en el evento no esta disponible.
+const ENVIO_TIPO_INICIAL: "retiro" | "envio" = REMERA_SOLO_ENVIO ? "envio" : "retiro"
 
 interface RemeroFormModalProps {
   open: boolean
@@ -689,7 +697,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
   const [telefono, setTelefono] = useState("")
   const [email, setEmail] = useState("")
   const [items, setItems] = useState<RemeraItemConGenero[]>(INITIAL_ITEMS)
-  const [envioTipo, setEnvioTipo] = useState<"retiro" | "envio">("retiro")
+  const [envioTipo, setEnvioTipo] = useState<"retiro" | "envio">(ENVIO_TIPO_INICIAL)
   const [direccionEnvio, setDireccionEnvio] = useState<DireccionEnvioForm>(
     DIRECCION_INICIAL,
   )
@@ -722,7 +730,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     setTelefono("")
     setEmail("")
     setItems(INITIAL_ITEMS)
-    setEnvioTipo("retiro")
+    setEnvioTipo(ENVIO_TIPO_INICIAL)
     setDireccionEnvio(DIRECCION_INICIAL)
     setLocalidades([])
     setCargandoLocalidades(false)
@@ -853,7 +861,10 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     setTelefono(draftCandidate.telefono ?? "")
     setEmail(draftCandidate.email ?? "")
     setItems(normalizarItems(draftCandidate.items))
-    setEnvioTipo(draftCandidate.envioTipo === "envio" ? "envio" : "retiro")
+    // Si solo hay envio, ignoramos el "retiro" que pudiera traer el borrador viejo.
+    setEnvioTipo(
+      REMERA_SOLO_ENVIO || draftCandidate.envioTipo === "envio" ? "envio" : "retiro",
+    )
     setDireccionEnvio(
       normalizarDireccion(
         draftCandidate.direccionEnvio,
@@ -897,7 +908,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
 
         if (data.remera) {
           setItems(normalizarItems(data.remera.items))
-          setEnvioTipo(data.remera.envio_tipo)
+          // Un pedido viejo con retiro en el evento pasa a envio: ya no hay retiro.
+          setEnvioTipo(REMERA_SOLO_ENVIO ? "envio" : data.remera.envio_tipo)
           setDireccionEnvio(
             normalizarDireccion(
               {
@@ -1489,6 +1501,12 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
               Tu pedido y tu email quedaron registrados correctamente. El equipo se pondrá en
               contacto para coordinar la entrega.
             </p>
+            {REMERA_SOLO_ENVIO && (
+              <p className="flex items-start gap-2 rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-left text-xs text-yellow-100">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400" aria-hidden="true" />
+                {REMERA_SOLO_ENVIO_AVISO}
+              </p>
+            )}
             <Button
               onClick={() => onOpenChange(false)}
               className="mt-2 bg-yellow-400 text-black hover:bg-yellow-500 font-semibold"
@@ -1518,8 +1536,8 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
           </DialogHeader>
 
           <p className="flex items-start gap-2 rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-xs text-yellow-100">
-            <CalendarClock className="w-4 h-4 mt-0.5 shrink-0 text-yellow-400" aria-hidden="true" />
-            {REMERA_DEADLINE_AVISO}
+            <Truck className="w-4 h-4 mt-0.5 shrink-0 text-yellow-400" aria-hidden="true" />
+            {REMERA_AVISO_PEDIDOS}
           </p>
 
           {!draftDecisionMade && draftCandidate ? (
@@ -1808,30 +1826,44 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       <MapPin className="w-4 h-4 text-yellow-400" />
                       Método de entrega
                     </Label>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setEnvioTipo("retiro")}
-                        className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                          envioTipo === "retiro"
-                            ? "bg-yellow-400/10 border-yellow-400 text-yellow-400"
-                            : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
-                        }`}
-                      >
-                        Retiro en evento
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEnvioTipo("envio")}
-                        className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                          envioTipo === "envio"
-                            ? "bg-yellow-400/10 border-yellow-400 text-yellow-400"
-                            : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
-                        }`}
-                      >
-                        Envío en Argentina
-                      </button>
-                    </div>
+                    {REMERA_SOLO_ENVIO ? (
+                      // Sin retiro en el evento: el envio es la unica opcion.
+                      <div className="flex items-start gap-2 rounded-lg border border-yellow-400 bg-yellow-400/10 px-3 py-2.5 text-sm text-yellow-100">
+                        <Truck className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400" aria-hidden="true" />
+                        <span>
+                          <span className="font-semibold text-yellow-400">
+                            Envío a domicilio en Argentina
+                          </span>
+                          <br />
+                          {REMERA_SOLO_ENVIO_AVISO}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setEnvioTipo("retiro")}
+                          className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                            envioTipo === "retiro"
+                              ? "bg-yellow-400/10 border-yellow-400 text-yellow-400"
+                              : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                          }`}
+                        >
+                          Retiro en evento
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEnvioTipo("envio")}
+                          className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                            envioTipo === "envio"
+                              ? "bg-yellow-400/10 border-yellow-400 text-yellow-400"
+                              : "border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                          }`}
+                        >
+                          Envío en Argentina
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {envioTipo === "envio" && (

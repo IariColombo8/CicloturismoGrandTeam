@@ -7,9 +7,9 @@ import RemeroFormModal from "@/components/remera/RemeroFormModal"
 import { supabase } from "@/lib/supabase"
 import { REMERA_CONTENT_DEFAULTS, mergeRemeraContent, type RemeraContentData } from "@/lib/remeraContent"
 import {
+  REMERA_AVISO_PEDIDOS,
   REMERA_CERRADA_MENSAJE,
-  REMERA_DEADLINE_AVISO,
-  REMERA_DEADLINE_LABEL,
+  REMERA_SOLO_ENVIO_AVISO,
 } from "@/lib/remeraDeadline"
 import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
 import {
@@ -95,7 +95,7 @@ export default function RemeraSection() {
             </p>
           )}
 
-          {/* Aviso de fecha limite para pedir la remera */}
+          {/* Aviso del estado de los pedidos: reabiertos solo con envio */}
           <div
             role="note"
             className={`mt-6 mx-auto max-w-2xl flex items-start gap-3 rounded-2xl border px-4 py-3 text-left ${
@@ -104,10 +104,11 @@ export default function RemeraSection() {
                 : "bg-yellow-400/10 border-yellow-400/40"
             }`}
           >
-            <CalendarClock
-              className={`w-5 h-5 mt-0.5 shrink-0 ${pedidosCerrados ? "text-red-400" : "text-yellow-400"}`}
-              aria-hidden="true"
-            />
+            {pedidosCerrados ? (
+              <CalendarClock className="w-5 h-5 mt-0.5 shrink-0 text-red-400" aria-hidden="true" />
+            ) : (
+              <Truck className="w-5 h-5 mt-0.5 shrink-0 text-yellow-400" aria-hidden="true" />
+            )}
             <p
               className={`text-sm leading-relaxed ${pedidosCerrados ? "text-red-200" : "text-yellow-100"}`}
             >
@@ -115,7 +116,7 @@ export default function RemeraSection() {
                 REMERA_CERRADA_MENSAJE
               ) : (
                 <>
-                  <span className="font-bold">Importante:</span> {REMERA_DEADLINE_AVISO}
+                  <span className="font-bold">Importante:</span> {REMERA_AVISO_PEDIDOS}
                 </>
               )}
             </p>
@@ -226,7 +227,7 @@ export default function RemeraSection() {
               <p className="text-zinc-500 text-xs mt-3">
                 {pedidosCerrados
                   ? REMERA_CERRADA_MENSAJE
-                  : `Podés pedirla hasta el ${REMERA_DEADLINE_LABEL}. Si ya estás inscripto al evento, tus datos se completan automáticamente con tu DNI.`}
+                  : `${REMERA_SOLO_ENVIO_AVISO} Si ya estás inscripto al evento, tus datos se completan automáticamente con tu DNI.`}
               </p>
             </div>
           </div>

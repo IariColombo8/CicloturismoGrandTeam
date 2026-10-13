@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createAdminClient } from "@/lib/supabase-admin"
-import { REMERA_CERRADA_MENSAJE, isRemeraCerrada } from "@/lib/remeraDeadline"
+import {
+  REMERA_CERRADA_MENSAJE,
+  REMERA_SOLO_ENVIO,
+  REMERA_SOLO_ENVIO_AVISO,
+  isRemeraCerrada,
+} from "@/lib/remeraDeadline"
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 const MAX_BASE64_LENGTH = 7_100_000
@@ -45,6 +50,15 @@ const submitSchema = z
       .optional(),
   })
   .superRefine((data, context) => {
+    // Con los pedidos reabiertos solo para envio, el retiro en el evento no se acepta.
+    if (REMERA_SOLO_ENVIO && data.envio_tipo !== "envio") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["envio_tipo"],
+        message: REMERA_SOLO_ENVIO_AVISO,
+      })
+    }
+
     if (data.envio_tipo === "envio" && !data.direccion) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -65,7 +79,7 @@ const submitSchema = z
   })
 
 export async function POST(req: NextRequest) {
-  // Cierre definitivo de pedidos: nadie puede cargar una remera pasada la fecha limite.
+  // Si los pedidos estan cerrados, nadie puede cargar una remera.
   if (isRemeraCerrada()) {
     return NextResponse.json({ error: REMERA_CERRADA_MENSAJE }, { status: 403 })
   }

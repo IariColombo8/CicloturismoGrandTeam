@@ -1,15 +1,27 @@
-// Fecha limite unica para los pedidos de remera.
-// Se puede pedir durante todo el 10/10/2026; a partir del 11/10/2026 a las 00:00
-// (hora de Argentina, UTC-3) los pedidos quedan cerrados.
-export const REMERA_DEADLINE_LABEL = "10/10/2026"
+// Estado de los pedidos de remera.
+//
+// Los pedidos cerraron el 10/10/2026 y se reabrieron el 13/10/2026, pero esta
+// vez SOLO con envio a domicilio: las remeras no van a estar terminadas para el
+// dia del evento, asi que no se puede retirar en mano.
+//
+// Para volver a cerrar los pedidos basta con poner REMERA_PEDIDOS_ABIERTOS en
+// false; para habilitar de nuevo el retiro en el evento, REMERA_SOLO_ENVIO en
+// false.
+export const REMERA_PEDIDOS_ABIERTOS = true
 
-// 11/10/2026 00:00 en Argentina (UTC-3) == 11/10/2026 03:00 UTC.
-export const REMERA_DEADLINE_MS = Date.UTC(2026, 9, 11, 3, 0, 0)
+// Mientras este en true el unico metodo de entrega posible es el envio.
+export const REMERA_SOLO_ENVIO = true
 
-export const REMERA_DEADLINE_AVISO = `Podes pedir tu remera hasta el ${REMERA_DEADLINE_LABEL}. Despues de esa fecha no se aceptan mas pedidos.`
+// Aclaracion principal que se repite en la landing, el formulario y /mi-qr.
+export const REMERA_SOLO_ENVIO_AVISO =
+  "Las remeras no van a estar listas para el evento, solamente serán enviadas a domicilio."
 
-export const REMERA_CERRADA_MENSAJE = `Los pedidos de remera cerraron el ${REMERA_DEADLINE_LABEL}. Ya no se aceptan nuevos pedidos.`
+// Aviso general de pedidos abiertos.
+export const REMERA_AVISO_PEDIDOS = `Pedidos reabiertos solo con envío a domicilio dentro de Argentina. ${REMERA_SOLO_ENVIO_AVISO}`
 
-export function isRemeraCerrada(ahora: number = Date.now()): boolean {
-  return ahora >= REMERA_DEADLINE_MS
+export const REMERA_CERRADA_MENSAJE =
+  "Los pedidos de remera están cerrados. Ya no se aceptan nuevos pedidos."
+
+export function isRemeraCerrada(): boolean {
+  return !REMERA_PEDIDOS_ABIERTOS
 }

@@ -17,7 +17,7 @@ import {
   totalRemeras,
   type RemeraItem,
 } from "@/lib/miInscripcion"
-import { REMERA_CERRADA_MENSAJE, REMERA_DEADLINE_AVISO } from "@/lib/remeraDeadline"
+import { REMERA_CERRADA_MENSAJE, REMERA_AVISO_PEDIDOS } from "@/lib/remeraDeadline"
 import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
 import { LIMITE_MEDALLAS } from "@/hooks/useMedallasRestantes"
 import {
@@ -374,7 +374,7 @@ export default function MiQRPage() {
                     <p className="text-sm text-gray-400 leading-relaxed mb-5">
                       {remeraCerrada
                         ? REMERA_CERRADA_MENSAJE
-                        : `Todavía no tenés una remera pedida. Podés sumarla y elegir si la retirás o te la enviamos. ${REMERA_DEADLINE_AVISO}`}
+                        : `Todavía no tenés una remera pedida. Podés sumarla y te la enviamos a domicilio. ${REMERA_AVISO_PEDIDOS}`}
                     </p>
                     {remeraCerrada ? (
                       <button
