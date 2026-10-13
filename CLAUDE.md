@@ -106,6 +106,10 @@ public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url,
   redes: instagram, facebook, website
   servicios TEXT[], activo, orden
   RLS: SELECT publico, ALL solo admin
+public.alojamientos          -> nombre, descripcion, logo_url, website, telefono, whatsapp,
+                                direccion, instagram, imagenes TEXT[], activo, orden
+  imagenes = galeria de fotos extra (URLs del bucket `sponsors`, carpeta alojamientos/)
+  RLS: SELECT publico, ALL solo admin/grandteam
 ```
 
 ### Rutas Publicas
@@ -135,6 +139,7 @@ public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url,
 /admin/ciclos                -> Gestion de ciclos/categorias
 /admin/grandteam             -> Panel especifico para rol Grand Team
 /admin/sponsors              -> CRUD completo de sponsors (oro/plata/bronce) con upload de logo
+/admin/alojamientos          -> CRUD de alojamientos bike friendly (logo + galeria de fotos)
 ```
 
 ### API Routes
@@ -146,6 +151,7 @@ GET  /api/remera/settings        -> Retorna alias/datos de pago para el formular
 POST /api/inscripcion/submit     -> Guarda inscripcion (si se crean rutas API)
 POST /api/sponsors/upload-logo   -> Sube logo de sponsor a Supabase Storage (max 2MB, jpg/png/webp/svg/gif)
 POST /api/galeria/upload         -> Sube foto de galeria al bucket publico `galeria` (max 6MB, jpg/png/webp/avif)
+POST /api/alojamientos/upload-imagen -> Sube foto de alojamiento al bucket `sponsors` (max 6MB, jpg/png/webp/avif)
 POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y participantes a "pendiente"
 ```
 
@@ -183,6 +189,14 @@ POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y part
 3. Logo se sube via `POST /api/sponsors/upload-logo` a Supabase Storage `comprobantes/sponsors/`
 4. Landing publica (`components/home/Sponsors.tsx`) carga sponsors activos desde Supabase con fallback a hardcoded
 5. Sponsors se muestran clasificados por tier: oro, plata, bronce
+
+### Flujo de Alojamientos (Bike Friendly)
+
+1. Admin va a `/admin/alojamientos` -> alta/edicion con logo + galeria de hasta 12 fotos
+2. Las fotos se suben via `POST /api/alojamientos/upload-imagen` y se guardan como URLs en `alojamientos.imagenes` (TEXT[]), reordenables con flechas
+3. Landing (`components/home/Alojamientos.tsx`) lista los activos en grilla; la tarjeta **no** linkea al sitio web
+4. Al tocar una tarjeta se abre `components/home/AlojamientoModal.tsx` (dynamic import) con galeria, descripcion, direccion (link a Google Maps), telefono, WhatsApp, Instagram y boton "Ver sitio web"
+5. Tipos y helpers compartidos en `lib/alojamientos.ts`
 
 ### Dashboard Admin
 

@@ -1,56 +1,19 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { BedDouble, ExternalLink, MapPin } from "lucide-react"
+import { BedDouble, Images, Info, MapPin } from "lucide-react"
+import {
+  type Alojamiento,
+  ALOJAMIENTO_PLACEHOLDER,
+  normalizarLogo,
+} from "@/lib/alojamientos"
 
-// Placeholder embebido: evita tarjetas vacias si el logo no carga.
-const ALOJAMIENTO_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-  <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-    <rect width="400" height="400" rx="24" fill="#ffffff"/>
-    <rect x="110" y="170" width="180" height="80" rx="14" fill="#e4e4e7"/>
-    <rect x="130" y="140" width="60" height="40" rx="12" fill="#d4d4d8"/>
-    <text x="200" y="300" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#3f3f46">ALOJAMIENTO</text>
-  </svg>
-`)}`
+// El modal solo se descarga cuando el usuario toca una tarjeta.
+const AlojamientoModal = dynamic(() => import("./AlojamientoModal"), { ssr: false })
 
-export interface Alojamiento {
-  id: string
-  nombre: string
-  descripcion: string | null
-  logo_url: string | null
-  website: string | null
-  direccion: string | null
-}
-
-// Normaliza URLs: fuerza https y soporta enlaces de Google Drive como logo.
-function normalizarLogo(url: string | null | undefined): string {
-  if (!url) return ALOJAMIENTO_PLACEHOLDER
-
-  let value = url.trim()
-  if (!value) return ALOJAMIENTO_PLACEHOLDER
-
-  if (value.startsWith("http://")) {
-    value = `https://${value.slice("http://".length)}`
-  }
-
-  const driveId =
-    value.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)?.[1] ||
-    (value.includes("drive.google.com") ? value.match(/[?&]id=([^&#]+)/)?.[1] : undefined)
-
-  if (driveId) {
-    return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`
-  }
-
-  return encodeURI(value)
-}
-
-function normalizarWebsite(url: string | null | undefined): string | null {
-  if (!url) return null
-  const value = url.trim()
-  if (!value) return null
-  return value.startsWith("http") ? value : `https://${value}`
-}
+export type { Alojamiento }
 
 function AlojamientoLogo({ src, alt }: { src: string | null; alt: string }) {
   const resolved = normalizarLogo(src)
@@ -79,9 +42,11 @@ function AlojamientoLogo({ src, alt }: { src: string | null; alt: string }) {
 
 // Seccion publica "Alojamientos": lista los alojamientos bike friendly
 // recomendados. Hasta 6 por fila en escritorio y 3 por fila en celular;
-// si hay uno solo se muestra centrado.
+// si hay uno solo se muestra centrado. Al tocar una tarjeta se abre un modal
+// con toda la informacion cargada desde el admin (fotos, contacto, etc.).
 export default function Alojamientos() {
   const [alojamientos, setAlojamientos] = useState<Alojamiento[]>([])
+  const [seleccionado, setSeleccionado] = useState<Alojamiento | null>(null)
   const [isVisible, setIsVisible] = useState(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
 
@@ -104,9 +69,11 @@ export default function Alojamientos() {
   useEffect(() => () => observerRef.current?.disconnect(), [])
 
   useEffect(() => {
+    // select("*") en vez de columnas fijas: la seccion sigue funcionando
+    // aunque el esquema todavia no tenga la columna "imagenes".
     supabase
       .from("alojamientos")
-      .select("id, nombre, descripcion, logo_url, website, direccion")
+      .select("*")
       .eq("activo", true)
       .order("orden", { ascending: true })
       .then(({ data, error }) => {
@@ -153,6 +120,9 @@ export default function Alojamientos() {
           <p className="text-xs sm:text-sm md:text-base lg:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed px-4">
             Alojamientos recomendados para ciclistas que vienen al evento
           </p>
+          <p className="mt-2 text-[10px] sm:text-xs text-zinc-500">
+            Tocá cada uno para ver fotos y datos de contacto
+          </p>
         </div>
 
         {/* Grilla: 3 por fila en celular, hasta 6 en escritorio.
@@ -165,16 +135,32 @@ export default function Alojamientos() {
           }
         >
           {alojamientos.map((alojamiento, index) => {
-            const website = normalizarWebsite(alojamiento.website)
-            const contenido = (
-              <>
+            const cantidadFotos = (alojamiento.imagenes ?? []).length
+
+            return (
+              <button
+                key={alojamiento.id}
+                type="button"
+                onClick={() => setSeleccionado(alojamiento)}
+                aria-label={`Ver información de ${alojamiento.nombre}`}
+                className={`group block min-w-0 cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/80 p-2 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-yellow-400/60 hover:shadow-[0_0_20px_rgba(250,204,21,0.18)] sm:p-3 ${
+                  esUnico ? "w-40 sm:w-56" : "w-full"
+                } ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                style={{ transitionDelay: `${index * 80}ms` }}
+              >
                 <div className="relative aspect-square w-full overflow-hidden rounded-lg sm:rounded-xl bg-white p-2 sm:p-3">
                   <AlojamientoLogo src={alojamiento.logo_url} alt={`Logo de ${alojamiento.nombre}`} />
-                  {website && (
-                    <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <ExternalLink className="w-3 h-3 text-yellow-400" aria-hidden="true" />
+
+                  {cantidadFotos > 0 && (
+                    <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-yellow-400">
+                      <Images className="w-2.5 h-2.5" aria-hidden="true" />
+                      {cantidadFotos}
                     </span>
                   )}
+
+                  <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Info className="w-3 h-3 text-yellow-400" aria-hidden="true" />
+                  </span>
                 </div>
 
                 <p className="mt-2 line-clamp-2 text-center text-[10px] font-semibold leading-tight text-zinc-200 transition-colors group-hover:text-yellow-400 sm:text-sm">
@@ -187,37 +173,15 @@ export default function Alojamientos() {
                     <span className="line-clamp-1">{alojamiento.direccion}</span>
                   </p>
                 )}
-              </>
-            )
-
-            const claseTarjeta = `group block min-w-0 rounded-xl border border-zinc-800 bg-zinc-900/80 p-2 sm:p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-yellow-400/60 hover:shadow-[0_0_20px_rgba(250,204,21,0.18)] ${
-              esUnico ? "w-40 sm:w-56" : "w-full"
-            } ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`
-
-            return website ? (
-              <a
-                key={alojamiento.id}
-                href={website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={claseTarjeta}
-                style={{ transitionDelay: `${index * 80}ms` }}
-                aria-label={`Ver sitio web de ${alojamiento.nombre}`}
-              >
-                {contenido}
-              </a>
-            ) : (
-              <div
-                key={alojamiento.id}
-                className={claseTarjeta}
-                style={{ transitionDelay: `${index * 80}ms` }}
-              >
-                {contenido}
-              </div>
+              </button>
             )
           })}
         </div>
       </div>
+
+      {seleccionado && (
+        <AlojamientoModal alojamiento={seleccionado} onClose={() => setSeleccionado(null)} />
+      )}
     </section>
   )
 }

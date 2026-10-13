@@ -9,10 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  ArrowLeft,
+  ArrowRight,
   BedDouble,
   Eye,
   EyeOff,
   ImageIcon,
+  Images,
   Loader2,
   Pencil,
   Plus,
@@ -31,6 +34,7 @@ interface Alojamiento {
   whatsapp: string | null
   direccion: string | null
   instagram: string | null
+  imagenes: string[] | null
   activo: boolean
   orden: number
 }
@@ -44,9 +48,13 @@ const ALOJAMIENTO_VACIO: Omit<Alojamiento, "id"> = {
   whatsapp: "",
   direccion: "",
   instagram: "",
+  imagenes: [],
   activo: true,
   orden: 0,
 }
+
+// Maximo de fotos extra por alojamiento (ademas del logo).
+const MAX_IMAGENES = 12
 
 export default function AdminAlojamientosPage() {
   const { user, userRole, loading: authLoading } = useSupabaseContext()
@@ -56,6 +64,7 @@ export default function AdminAlojamientosPage() {
   const [esNuevo, setEsNuevo] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [subiendoLogo, setSubiendoLogo] = useState(false)
+  const [subiendoImagenes, setSubiendoImagenes] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const autorizado = userRole === "admin" || userRole === "grandteam"
@@ -93,7 +102,7 @@ export default function AdminAlojamientosPage() {
   }
 
   const abrirEdicion = (alojamiento: Alojamiento) => {
-    setEditando({ ...alojamiento })
+    setEditando({ ...alojamiento, imagenes: alojamiento.imagenes ?? [] })
     setEsNuevo(false)
     setError(null)
   }
@@ -130,6 +139,78 @@ export default function AdminAlojamientosPage() {
     }
   }
 
+  // Sube una o varias fotos a la galeria del alojamiento (se van agregando al final).
+  const subirImagenes = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0 || !editando) return
+
+    const actuales = editando.imagenes ?? []
+    const disponibles = MAX_IMAGENES - actuales.length
+
+    if (disponibles <= 0) {
+      setError(`Ya alcanzaste el maximo de ${MAX_IMAGENES} fotos.`)
+      e.target.value = ""
+      return
+    }
+
+    setSubiendoImagenes(true)
+    setError(null)
+
+    const subidas: string[] = []
+    let errorSubida: string | null = null
+
+    for (const file of files.slice(0, disponibles)) {
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("nombre", editando.nombre || "alojamiento")
+
+        const res = await fetch("/api/alojamientos/upload-imagen", {
+          method: "POST",
+          body: formData,
+        })
+        const result = await res.json()
+
+        if (!res.ok) {
+          errorSubida = result.error || `No se pudo subir "${file.name}".`
+          continue
+        }
+        subidas.push(result.url)
+      } catch {
+        errorSubida = `No se pudo subir "${file.name}".`
+      }
+    }
+
+    if (subidas.length > 0) {
+      setEditando((prev) => (prev ? { ...prev, imagenes: [...(prev.imagenes ?? []), ...subidas] } : prev))
+    }
+    if (files.length > disponibles) {
+      errorSubida = `Solo se subieron ${disponibles} fotos: el maximo es ${MAX_IMAGENES}.`
+    }
+    if (errorSubida) setError(errorSubida)
+
+    setSubiendoImagenes(false)
+    e.target.value = ""
+  }
+
+  const quitarImagen = (index: number) => {
+    setEditando((prev) =>
+      prev ? { ...prev, imagenes: (prev.imagenes ?? []).filter((_, i) => i !== index) } : prev,
+    )
+  }
+
+  // Reordena la galeria: el orden del array es el orden en que se ve en la landing.
+  const moverImagen = (index: number, direccion: -1 | 1) => {
+    setEditando((prev) => {
+      if (!prev) return prev
+      const lista = [...(prev.imagenes ?? [])]
+      const destino = index + direccion
+      if (destino < 0 || destino >= lista.length) return prev
+      ;[lista[index], lista[destino]] = [lista[destino], lista[index]]
+      return { ...prev, imagenes: lista }
+    })
+  }
+
   const guardar = async () => {
     if (!editando) return
     if (!editando.nombre?.trim()) {
@@ -149,6 +230,7 @@ export default function AdminAlojamientosPage() {
       whatsapp: editando.whatsapp?.trim() || null,
       direccion: editando.direccion?.trim() || null,
       instagram: editando.instagram?.trim() || null,
+      imagenes: editando.imagenes ?? [],
       activo: editando.activo ?? true,
       orden: editando.orden ?? 0,
     }
@@ -161,7 +243,12 @@ export default function AdminAlojamientosPage() {
 
     if (dbError) {
       console.error("Error guardando alojamiento:", dbError)
-      setError("No se pudo guardar el alojamiento.")
+      // La galeria necesita la columna "imagenes" (migracion 20261012_alojamientos_imagenes.sql).
+      setError(
+        dbError.message?.includes("imagenes")
+          ? "Falta la columna 'imagenes' en la tabla alojamientos. Corre la migracion 20261012_alojamientos_imagenes.sql en Supabase."
+          : "No se pudo guardar el alojamiento.",
+      )
       return
     }
 
@@ -272,6 +359,12 @@ export default function AdminAlojamientosPage() {
                 {alojamiento.direccion && (
                   <p className="text-xs text-zinc-400 text-center">{alojamiento.direccion}</p>
                 )}
+
+                <p className="flex items-center justify-center gap-1 text-[11px] text-zinc-500">
+                  <Images className="w-3.5 h-3.5 text-yellow-400/70" aria-hidden="true" />
+                  {(alojamiento.imagenes ?? []).length} foto
+                  {(alojamiento.imagenes ?? []).length === 1 ? "" : "s"}
+                </p>
 
                 <div className="flex flex-wrap gap-2 justify-center">
                   <Button size="sm" variant="outline" onClick={() => abrirEdicion(alojamiento)}>
@@ -408,6 +501,75 @@ export default function AdminAlojamientosPage() {
                       alt="Vista previa del logo"
                       className="w-full h-full object-contain"
                     />
+                  </div>
+                )}
+              </div>
+
+              {/* Galeria de fotos: se muestran en el modal publico del alojamiento */}
+              <div>
+                <Label htmlFor="imagenes" className="flex items-center gap-2">
+                  <Images className="w-4 h-4 text-yellow-400" aria-hidden="true" />
+                  Fotos del alojamiento ({(editando.imagenes ?? []).length}/{MAX_IMAGENES})
+                </Label>
+                <p className="text-xs text-zinc-500 mt-1">
+                  JPG, PNG, WEBP o AVIF (máx 6MB cada una). Podés seleccionar varias a la vez.
+                </p>
+                <div className="flex items-center gap-3 mt-2">
+                  <Input
+                    id="imagenes"
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    onChange={subirImagenes}
+                    disabled={subiendoImagenes || (editando.imagenes ?? []).length >= MAX_IMAGENES}
+                  />
+                  {subiendoImagenes && <Loader2 className="w-4 h-4 animate-spin text-yellow-400" />}
+                </div>
+
+                {(editando.imagenes ?? []).length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {(editando.imagenes ?? []).map((url, index) => (
+                      <div
+                        key={`${url}-${index}`}
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={`Foto ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => quitarImagen(index)}
+                          aria-label={`Quitar foto ${index + 1}`}
+                          className="absolute top-1 right-1 rounded-full bg-black/70 p-1 text-red-300 hover:text-red-200"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 flex justify-between bg-black/70 px-1 py-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => moverImagen(index, -1)}
+                            disabled={index === 0}
+                            aria-label={`Mover foto ${index + 1} a la izquierda`}
+                            className="text-zinc-300 hover:text-yellow-400 disabled:opacity-30"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-[10px] text-zinc-400">{index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => moverImagen(index, 1)}
+                            disabled={index === (editando.imagenes ?? []).length - 1}
+                            aria-label={`Mover foto ${index + 1} a la derecha`}
+                            className="text-zinc-300 hover:text-yellow-400 disabled:opacity-30"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
