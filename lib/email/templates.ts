@@ -21,6 +21,10 @@ const LOGO_GRANDTEAM_URL = `${SITE_URL}/email/grandteam.png`
 const MAPS_URL = "https://maps.app.goo.gl/ok3ytmh5SFYBfgZp8"
 const WHATSAPP_URL = "https://chat.whatsapp.com/LwCX4X2i7eG0ENJvA4TjHS"
 
+/** Firma de quien desarrolla el sistema de gestion. */
+const SERVITEC_URL = "https://www.servitec.net.ar"
+const SERVITEC_LOGO_URL = "https://www.servitec.net.ar/logo.png"
+
 const FECHA_EVENTO_DEFAULT = "8 de Noviembre 2026"
 const UBICACION_DEFAULT = "El Viejo Molino - Camping"
 const NOMBRE_EVENTO = "1er Cicloturismo Ruinas del Viejo Molino"
@@ -60,6 +64,23 @@ const PIE_HTML = `
             <p style="margin:0;color:#ffffff;font-size:14px;font-weight:bold;line-height:1.6;">Organizado por Grand Team Bike</p>
             <p style="margin:5px 0 0;color:#9ca3af;font-size:12px;line-height:1.6;">Concepci&oacute;n del Uruguay &middot; Entre R&iacute;os</p>
             <p style="margin:16px 0 0;color:#6b7280;font-size:11px;line-height:1.6;">&copy; 2026 Grand Team Bike. Todos los derechos reservados.</p>
+          </td>
+        </tr>
+        <!-- Firma de ServiTec. Va sobre fondo claro a proposito: el logo es de
+             trazo fino oscuro y sobre el pie negro no se veria. -->
+        <tr>
+          <td style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:22px 40px;text-align:center;">
+            <a href="${SERVITEC_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+              <img src="${SERVITEC_LOGO_URL}" alt="ServiTec" width="52" height="52" style="display:block;width:52px;height:auto;margin:0 auto 10px;border:0;outline:none;text-decoration:none;">
+            </a>
+            <p style="margin:0;color:#4b5563;font-size:13px;line-height:1.6;">
+              Sistema de gesti&oacute;n hecho por
+              <a href="${SERVITEC_URL}" target="_blank" rel="noopener noreferrer" style="color:#111827;font-weight:bold;text-decoration:none;">ServiTec</a>
+            </p>
+            <p style="margin:4px 0 0;color:#6b7280;font-size:12px;line-height:1.6;">Hacemos sistemas de gesti&oacute;n para cualquier rubro...</p>
+            <p style="margin:12px 0 0;">
+              <a href="${SERVITEC_URL}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-size:12px;font-weight:bold;text-decoration:underline;">Conoc&eacute; ServiTec &rarr; servitec.net.ar</a>
+            </p>
           </td>
         </tr>`
 
@@ -171,14 +192,6 @@ export function templateConfirmacion(datos: DatosConfirmacion): EmailRenderizado
                 <tr>
                   <td style="padding:20px;text-align:center;">
                     <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1.5px;">Detalles de tu inscripci&oacute;n</div>
-                    ${
-                      numero
-                        ? `<div style="margin-top:8px;font-size:32px;font-weight:bold;color:#111827;line-height:1.1;">#${escaparHtml(
-                            numero
-                          )}</div>
-                    <div style="margin-top:4px;font-size:12px;color:#9ca3af;">Tu n&uacute;mero de inscripci&oacute;n</div>`
-                        : ""
-                    }
                   </td>
                 </tr>
               </table>
@@ -248,7 +261,6 @@ ${fila(
     "",
     `Ya sos parte del ${NOMBRE_EVENTO}.`,
     "",
-    numero ? `Numero de inscripcion: #${numero}` : "",
     `Nombre: ${nombreCompleto}`,
     `Fecha: ${fechaEvento}`,
     `Ubicacion: ${ubicacion} (${MAPS_URL})`,
@@ -259,6 +271,9 @@ ${fila(
     `Grupo de WhatsApp del evento: ${WHATSAPP_URL}`,
     "",
     "Organizado por Grand Team Bike - Concepcion del Uruguay, Entre Rios",
+    "",
+    "Sistema de gestion hecho por ServiTec - servitec.net.ar",
+    "Hacemos sistemas de gestion para cualquier rubro...",
   ]
     .filter((linea) => linea !== "")
     .join("\n")
@@ -340,6 +355,9 @@ export function templateRechazo(datos: DatosRechazo): EmailRenderizado {
     `Contacto: ${SITE_URL}/contacto`,
     "",
     "Organizado por Grand Team Bike - Concepcion del Uruguay, Entre Rios",
+    "",
+    "Sistema de gestion hecho por ServiTec - servitec.net.ar",
+    "Hacemos sistemas de gestion para cualquier rubro...",
   ].join("\n")
 
   return {
@@ -411,6 +429,9 @@ ${boton}`
     datos.boton ? `${datos.boton.texto}: ${datos.boton.url}` : "",
     "",
     "Organizado por Grand Team Bike - Concepcion del Uruguay, Entre Rios",
+    "",
+    "Sistema de gestion hecho por ServiTec - servitec.net.ar",
+    "Hacemos sistemas de gestion para cualquier rubro...",
   ]
     .filter((linea) => linea !== "")
     .join("\n")
