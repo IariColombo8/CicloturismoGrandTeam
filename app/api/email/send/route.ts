@@ -5,6 +5,7 @@ import { respuestaErrorGmail } from "@/lib/google/errores"
 import { htmlATexto } from "@/lib/google/mime"
 import { renderizarPlantilla, NOMBRES_PLANTILLA } from "@/lib/email/templates"
 import { registrarEnvio } from "@/lib/email/registro"
+import { buscarEstadoRemera } from "@/lib/email/remera"
 
 export const dynamic = "force-dynamic"
 
@@ -88,7 +89,16 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const datos = (body.datos as Record<string, unknown>) || {}
+      const datos = { ...((body.datos as Record<string, unknown>) || {}) }
+
+      // El bloque de remera del mail de confirmacion se resuelve en el
+      // servidor a partir del DNI: la pantalla solo manda el dato identificador
+      // y aca se consulta el pedido real.
+      if (plantilla === "confirmacion" && datos.remera === undefined) {
+        const remera = await buscarEstadoRemera(datos.dni)
+        if (remera) datos.remera = remera
+      }
+
       const render = renderizarPlantilla(plantilla, datos)
       html = render.html
       texto = render.texto

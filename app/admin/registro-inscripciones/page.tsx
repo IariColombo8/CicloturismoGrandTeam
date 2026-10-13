@@ -536,6 +536,8 @@ export default function RegistroInscripciones() {
             numeroInscripcion: String(numeroInscripcion),
             tokenQR: selectedInscripcion.tokenQR,
             ubicacion: "Concepcion del Uruguay, Entre Rios",
+            // Con el DNI el servidor resuelve el bloque de remera del mail.
+            dni: selectedInscripcion.dni,
           })
         } catch (emailError) {
           console.error("Error enviando email de confirmación:", emailError)

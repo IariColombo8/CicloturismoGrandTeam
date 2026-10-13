@@ -7,6 +7,12 @@
 //   npx tsx scripts/probar-email.ts --para=alguien@mail.com
 //   npx tsx scripts/probar-email.ts --plantilla=rechazo
 //   npx tsx scripts/probar-email.ts --plantilla=generico
+//
+// El bloque de remera de la confirmacion se elige con --remera:
+//   --remera=envio   -> la pidio, va a domicilio despues del evento
+//   --remera=retiro  -> la pidio, la recibe en el evento
+//   --remera=no      -> no la pidio (muestra la invitacion a pedirla)
+//   (sin el flag)    -> no se muestra el bloque
 
 import { config } from "dotenv"
 config({ path: ".env.local" })
@@ -48,6 +54,12 @@ async function main() {
             nombreCompleto: "Juan Perez",
             numeroInscripcion: 42,
             tokenQR: "prueba-token-qr-0000-1111",
+            remera: (() => {
+              const r = arg("remera")
+              if (!r) return undefined
+              if (r === "no") return { pedida: false }
+              return { pedida: true, envioTipo: r === "envio" ? "envio" : "retiro" }
+            })(),
           })
 
   console.log(`\nEnviando plantilla "${plantilla}" a ${para}...`)

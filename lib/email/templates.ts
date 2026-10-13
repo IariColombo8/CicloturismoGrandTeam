@@ -79,7 +79,7 @@ const PIE_HTML = `
             </p>
             <p style="margin:4px 0 0;color:#6b7280;font-size:12px;line-height:1.6;">Hacemos sistemas de gesti&oacute;n para cualquier rubro...</p>
             <p style="margin:12px 0 0;">
-              <a href="${SERVITEC_URL}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-size:12px;font-weight:bold;text-decoration:underline;">Conoc&eacute; ServiTec &rarr; servitec.net.ar</a>
+              <a href="${SERVITEC_URL}" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-size:12px;font-weight:bold;text-decoration:underline;">Conoc&eacute; ServiTec</a>
             </p>
           </td>
         </tr>`
@@ -156,6 +156,14 @@ function parrafos(texto: string): string {
 // Confirmacion de inscripcion
 // ---------------------------------------------------------------------------
 
+/** Como entra la remera en el mail de confirmacion. */
+export interface EstadoRemera {
+  /** true si la persona ya hizo el pedido en la tabla `remera`. */
+  pedida: boolean
+  /** "envio" = a domicilio despues del evento; "retiro" = la recibe en el evento. */
+  envioTipo?: "retiro" | "envio" | null
+}
+
 export interface DatosConfirmacion {
   /** Nombre completo del participante. */
   nombreCompleto: string
@@ -166,6 +174,86 @@ export interface DatosConfirmacion {
   tokenQR?: string | null
   /** URL de QR ya armada (fallback para inscripciones migradas sin token). */
   qrCodeUrl?: string
+  /**
+   * Estado del pedido de remera. Si no se pasa, el bloque no se muestra.
+   * POST /api/email/send lo completa solo a partir del DNI.
+   */
+  remera?: EstadoRemera
+}
+
+const PEDIR_REMERA_URL = `${SITE_URL}/pedir-remera`
+const REMERA_IMG_URL = `${SITE_URL}/remerab.png`
+
+/** Bloque de remera: cambia segun si la pidio y como la recibe. */
+function bloqueRemera(remera: EstadoRemera | undefined): string {
+  if (!remera) return ""
+
+  if (remera.pedida) {
+    const aDomicilio = remera.envioTipo === "envio"
+    const detalle = aDomicilio
+      ? "Recorda que es a domicilio y te llegara despues del evento."
+      : "Recibiras tu remera en el evento."
+
+    return `          <tr>
+            <td style="padding:0 40px 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;">
+                <tr>
+                  <td style="padding:25px;text-align:center;">
+                    <h2 style="margin:0 0 8px;color:#111827;font-size:20px;">Est&aacute; incluida tu remera</h2>
+                    <p style="margin:0;color:#4b5563;font-size:14px;line-height:1.6;">${escaparHtml(
+                      detalle
+                    )}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
+  }
+
+  return `          <tr>
+            <td style="padding:0 40px 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:14px;">
+                <tr>
+                  <td style="padding:25px;text-align:center;">
+                    <h2 style="margin:0 0 8px;color:#111827;font-size:20px;">Record&aacute; que pod&eacute;s pedir tu remera del evento</h2>
+                    <a href="${PEDIR_REMERA_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+                      <img src="${REMERA_IMG_URL}" alt="Remera del evento" width="260" style="display:block;width:100%;max-width:260px;height:auto;margin:16px auto;border:0;border-radius:10px;outline:none;text-decoration:none;">
+                    </a>
+                    <p style="margin:0 0 18px;color:#4b5563;font-size:14px;line-height:1.6;">Solo se env&iacute;a a domicilio y llega <strong>despu&eacute;s del evento</strong>.</p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+                      <tr>
+                        <td bgcolor="#111827" style="border-radius:8px;">
+                          <a href="${PEDIR_REMERA_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 30px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;border-radius:8px;">Pedir mi remera</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
+}
+
+/** Version en texto plano del bloque de remera. */
+function textoRemera(remera: EstadoRemera | undefined): string[] {
+  if (!remera) return []
+
+  if (remera.pedida) {
+    return [
+      "",
+      "Esta incluida tu remera.",
+      remera.envioTipo === "envio"
+        ? "Recorda que es a domicilio y te llegara despues del evento."
+        : "Recibiras tu remera en el evento.",
+    ]
+  }
+
+  return [
+    "",
+    "Recorda que podes pedir tu remera del evento.",
+    "Solo se envia a domicilio y llega despues del evento.",
+    `Pedila en: ${PEDIR_REMERA_URL}`,
+  ]
 }
 
 export function templateConfirmacion(datos: DatosConfirmacion): EmailRenderizado {
@@ -229,6 +317,8 @@ ${fila(
             </td>
           </tr>
 
+${bloqueRemera(datos.remera)}
+
           <tr>
             <td style="padding:0 40px 36px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;">
@@ -256,6 +346,8 @@ ${fila(
     contenido,
   })
 
+  // null = linea condicional que no corresponde. Los "" son separadores
+  // intencionales y se conservan.
   const texto = [
     `Tu lugar esta confirmado, ${nombre}!`,
     "",
@@ -264,9 +356,10 @@ ${fila(
     `Nombre: ${nombreCompleto}`,
     `Fecha: ${fechaEvento}`,
     `Ubicacion: ${ubicacion} (${MAPS_URL})`,
-    "",
-    qrUrl ? `Tu codigo QR de acceso: ${qrUrl}` : "",
-    qrUrl ? "Presentalo el dia del evento. Es personal, no lo compartas." : "",
+    qrUrl ? "" : null,
+    qrUrl ? `Tu codigo QR de acceso: ${qrUrl}` : null,
+    qrUrl ? "Presentalo el dia del evento. Es personal, no lo compartas." : null,
+    ...textoRemera(datos.remera),
     "",
     `Grupo de WhatsApp del evento: ${WHATSAPP_URL}`,
     "",
@@ -275,13 +368,11 @@ ${fila(
     "Sistema de gestion hecho por ServiTec - servitec.net.ar",
     "Hacemos sistemas de gestion para cualquier rubro...",
   ]
-    .filter((linea) => linea !== "")
+    .filter((linea): linea is string => linea !== null)
     .join("\n")
 
   return {
-    asunto: numero
-      ? `Inscripcion confirmada #${numero} - ${NOMBRE_EVENTO}`
-      : `Inscripcion confirmada - ${NOMBRE_EVENTO}`,
+    asunto: `Inscripcion confirmada - ${NOMBRE_EVENTO}`,
     html,
     texto,
   }
@@ -422,18 +513,18 @@ ${boton}`
   })
 
   const texto = [
-    datos.nombreCompleto?.trim() ? `Hola ${datos.nombreCompleto.trim()},` : "",
-    "",
+    datos.nombreCompleto?.trim() ? `Hola ${datos.nombreCompleto.trim()},` : null,
+    datos.nombreCompleto?.trim() ? "" : null,
     datos.mensaje.trim(),
     "",
-    datos.boton ? `${datos.boton.texto}: ${datos.boton.url}` : "",
-    "",
+    datos.boton ? `${datos.boton.texto}: ${datos.boton.url}` : null,
+    datos.boton ? "" : null,
     "Organizado por Grand Team Bike - Concepcion del Uruguay, Entre Rios",
     "",
     "Sistema de gestion hecho por ServiTec - servitec.net.ar",
     "Hacemos sistemas de gestion para cualquier rubro...",
   ]
-    .filter((linea) => linea !== "")
+    .filter((linea): linea is string => linea !== null)
     .join("\n")
 
   return { asunto: datos.titulo, html, texto }

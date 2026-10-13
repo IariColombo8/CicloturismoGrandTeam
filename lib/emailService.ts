@@ -28,6 +28,11 @@ interface ConfirmationEmailParams extends EmailParams {
   ubicacion?: string
   qrCodeUrl?: string
   tokenQR?: string | null
+  /**
+   * DNI del participante. Con esto el servidor averigua si pidio la remera y
+   * arma el bloque correspondiente. Sin DNI, el mail sale sin ese bloque.
+   */
+  dni?: string | number | null
 }
 
 interface RejectionEmailParams extends EmailParams {
@@ -96,6 +101,7 @@ export const emailService = {
         ubicacion: params.ubicacion,
         tokenQR: params.tokenQR ?? null,
         qrCodeUrl: params.qrCodeUrl,
+        dni: params.dni ?? null,
       },
     })
   },
