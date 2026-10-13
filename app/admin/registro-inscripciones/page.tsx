@@ -885,21 +885,26 @@ export default function RegistroInscripciones() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-6 animate-fadeIn">
+        <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-4 mb-6 animate-fadeIn">
           {[
-            { title: "Total", value: stats.total, icon: Users, color: "blue" },
-            { title: "Confirmadas", value: stats.confirmadas, icon: CheckCircle, color: "green" },
-            { title: "Pendientes", value: stats.pendientes, icon: Clock, color: "yellow" },
-            { title: "Rechazadas", value: stats.rechazadas, icon: XCircleIcon, color: "red" },
+            // El color va completo y no interpolado: Tailwind no genera clases
+            // armadas en runtime (text-${color}-400 quedaba sin estilo).
+            { title: "Total", value: stats.total, icon: Users, color: "text-blue-400" },
+            { title: "Confirmadas", value: stats.confirmadas, icon: CheckCircle, color: "text-green-400" },
+            { title: "Pendientes", value: stats.pendientes, icon: Clock, color: "text-yellow-400" },
+            { title: "Rechazadas", value: stats.rechazadas, icon: XCircleIcon, color: "text-red-400" },
           ].map((stat) => {
             const Icon = stat.icon
             return (
-              <div key={stat.title} className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-4 hover:border-yellow-400/40 transition-all">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="text-xs text-gray-400">{stat.title}</div>
-                  <Icon className={`w-4 h-4 text-${stat.color}-400`} />
+              <div
+                key={stat.title}
+                className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-yellow-400/40 transition-all"
+              >
+                <div className="flex justify-between items-start gap-1 mb-2">
+                  <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">{stat.title}</div>
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${stat.color}`} />
                 </div>
-                <div className="text-2xl font-bold text-white">{stat.value}</div>
+                <div className="text-xl sm:text-2xl font-bold text-white">{stat.value}</div>
               </div>
             )
           })}
@@ -922,7 +927,7 @@ export default function RegistroInscripciones() {
               </div>
               <button
                 onClick={exportarCSV}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
+                className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
                 title={`Exportar inscripciones a CSV`}
               >
                 <Download className="w-4 h-4" />
@@ -960,12 +965,13 @@ export default function RegistroInscripciones() {
             <div className={`${showFilters ? "block" : "hidden"} md:block`}>
               <div className="flex flex-col md:flex-row gap-2">
                 <select
+                  // En celular ocupa todo el ancho; en desktop se ajusta al contenido.
                   value={statusFilter}
                   onChange={(e) => {
                     setStatusFilter(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
+                  className="w-full md:w-auto px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
                 >
                   <option value="all">Todos los estados</option>
                   <option value="pendiente">Pendientes</option>
@@ -979,7 +985,7 @@ export default function RegistroInscripciones() {
                       setStatusFilter("all")
                       setCurrentPage(1)
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
+                    className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-yellow-400 hover:bg-zinc-700 transition-all text-sm whitespace-nowrap"
                   >
                     <FilterX className="w-4 h-4" />
                     Limpiar filtros
@@ -995,18 +1001,18 @@ export default function RegistroInscripciones() {
               <table className="w-full">
                 <thead className="bg-zinc-800/50 border-b border-yellow-400/20">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400">#</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400">Nombre</th>
+                    <th className="px-2 py-3 sm:px-4 text-left text-xs font-semibold text-gray-400 w-10">#</th>
+                    <th className="px-2 py-3 sm:px-4 text-left text-xs font-semibold text-gray-400">Nombre</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 hidden md:table-cell">Email</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 hidden md:table-cell">Ciudad</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400">Estado</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400">Acciones</th>
+                    <th className="px-2 py-3 sm:px-4 text-left text-xs font-semibold text-gray-400">Estado</th>
+                    <th className="px-2 py-3 sm:px-4 text-right text-xs font-semibold text-gray-400">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-yellow-400/10">
                   {inscripciones.map((insc) => (
                     <tr key={insc.id} className="hover:bg-zinc-800/30 transition-colors">
-                      <td className="px-4 py-3 text-sm text-gray-400">
+                      <td className="px-2 py-3 sm:px-4 text-sm text-gray-400">
                         {/* Solo los confirmados tienen numero. Los pendientes
                             y rechazados muestran un guion. */}
                         {insc.numeroInscripcion == null ? (
@@ -1017,11 +1023,13 @@ export default function RegistroInscripciones() {
                           insc.numeroInscripcion
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-yellow-400 text-sm">
+                      {/* En celular el nombre y el email se recortan: sin esto un
+                          email largo estira la tabla y aparece scroll horizontal. */}
+                      <td className="px-2 py-3 sm:px-4 max-w-[40vw] md:max-w-none">
+                        <div className="font-semibold text-yellow-400 text-sm truncate md:whitespace-normal">
                           {insc.nombres} {insc.apellidos}
                         </div>
-                        <div className="text-xs text-gray-500 md:hidden">{insc.email}</div>
+                        <div className="text-xs text-gray-500 md:hidden truncate">{insc.email}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.email}</td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.ciudad}</td>
@@ -1033,8 +1041,8 @@ export default function RegistroInscripciones() {
                           {insc.estado === "confirmada" && getPagoBadge(insc)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="inline-flex items-center justify-end gap-2">
+                      <td className="px-2 py-3 sm:px-4 text-right">
+                        <div className="inline-flex items-center justify-end gap-1.5 sm:gap-2">
                           {insc.comprobantePagoUrl && (
                             <button
                               type="button"
@@ -1082,11 +1090,11 @@ export default function RegistroInscripciones() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="p-4 border-t border-yellow-400/20 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="p-3 sm:p-4 border-t border-yellow-400/20 flex flex-col sm:flex-row justify-between items-center gap-3">
               <div className="text-xs text-gray-400">
                 Pagina {currentPage} de {totalPages}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
                 <button
                   onClick={() => paginate(currentPage - 1)}
                   disabled={currentPage === 1}
@@ -1156,21 +1164,25 @@ export default function RegistroInscripciones() {
 
         {/* Details Modal */}
         {isDetailsModalOpen && selectedInscripcion && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fadeIn">
-              <div className="sticky top-0 bg-zinc-900 border-b border-yellow-400/20 p-4 flex justify-between items-center z-10">
-                <h2 className="text-xl font-bold text-yellow-400 flex items-center gap-2">
-                  <Users className="w-5 h-5" />
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
+            <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto animate-fadeIn">
+              <div className="sticky top-0 bg-zinc-900 border-b border-yellow-400/20 p-3 sm:p-4 flex justify-between items-center gap-2 z-10">
+                <h2 className="text-base sm:text-xl font-bold text-yellow-400 flex items-center gap-2 min-w-0">
+                  <Users className="w-5 h-5 flex-shrink-0" />
                   Detalles de Inscripcion
                 </h2>
-                <button onClick={closeDetailsModal} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
+                <button
+                  onClick={closeDetailsModal}
+                  aria-label="Cerrar"
+                  className="p-2 rounded-lg hover:bg-zinc-800 transition-colors flex-shrink-0"
+                >
                   <X className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-3 sm:p-6 space-y-4">
                 {/* Personal Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <User className="w-4 h-4" />
                     Informacion Personal
@@ -1192,7 +1204,7 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Contact Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Mail className="w-4 h-4" />
                     Informacion de Contacto
@@ -1270,7 +1282,7 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Event Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <ClipboardList className="w-4 h-4" />
                     Informacion del Evento
@@ -1310,7 +1322,7 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Payment Info */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <DollarSign className="w-4 h-4" />
                     Informacion de Pago
@@ -1349,7 +1361,7 @@ export default function RegistroInscripciones() {
                 </div>
 
                 {/* Status and Notes */}
-                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-4">
+                <div className="bg-zinc-800/50 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
                   <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-3">
                     <Edit className="w-4 h-4" />
                     Estado y Notas
@@ -1463,17 +1475,17 @@ export default function RegistroInscripciones() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-4 flex justify-between items-center">
+              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-3 sm:p-4 flex justify-between items-center gap-2">
                 <button
                   onClick={closeDetailsModal}
-                  className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-white hover:bg-zinc-700 transition-all text-sm"
+                  className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-white hover:bg-zinc-700 transition-all text-sm flex-shrink-0"
                 >
                   Cerrar
                 </button>
                 <button
                   onClick={updateStatus}
                   disabled={updatingStatus}
-                  className="px-4 py-2 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-500 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-500 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-0"
                 >
                   {updatingStatus ? (
                     <>
