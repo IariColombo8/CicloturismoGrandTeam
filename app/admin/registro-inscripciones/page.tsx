@@ -33,6 +33,7 @@ import {
   XCircle as XCircleIcon,
   Loader2,
   AlertTriangle,
+  Gift,
 } from "lucide-react"
 
 // Columnas que pedimos a Supabase (sin comprobante_base64, que es pesado).
@@ -372,18 +373,32 @@ export default function RegistroInscripciones() {
    * llenar la grilla de etiquetas.
    */
   const getPagoBadge = (insc: any) => {
+    // Mismo criterio que el badge de estado: en celular solo el icono.
+    const clases =
+      "inline-flex items-center gap-1 rounded-full text-[10px] font-semibold px-1.5 py-0.5 sm:px-2 border"
+
     if (insc.pagoEstado === "gratis") {
       return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
-          Gratis
+        <span
+          title="Inscripcion gratis"
+          className={`${clases} bg-blue-500/15 text-blue-300 border-blue-500/30`}
+        >
+          <Gift className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Gratis</span>
+          <span className="sr-only">Inscripcion gratis</span>
         </span>
       )
     }
 
     if (insc.pagoEstado !== "pagado") {
       return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40">
-          Falta pagar
+        <span
+          title="Falta pagar"
+          className={`${clases} bg-orange-500/20 text-orange-300 border-orange-500/40`}
+        >
+          <AlertTriangle className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Falta pagar</span>
+          <span className="sr-only">Falta pagar</span>
         </span>
       )
     }
@@ -391,7 +406,10 @@ export default function RegistroInscripciones() {
     const monto = insc.montoPagado != null ? Number(insc.montoPagado) : null
     if (monto != null && monto !== precioInscripcion) {
       return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-700/60 text-gray-300 border border-zinc-600">
+        <span
+          title={`Pago ${formatearMonto(monto)}`}
+          className={`${clases} bg-zinc-700/60 text-gray-300 border-zinc-600`}
+        >
           {formatearMonto(monto)}
         </span>
       )
@@ -400,27 +418,44 @@ export default function RegistroInscripciones() {
     return null
   }
 
+  // En celular el badge se reduce al icono y su color: el texto hacia que la
+  // celda ocupara dos renglones. El title mantiene la info a mano.
+  const CLASES_BADGE =
+    "inline-flex items-center gap-1 rounded-full text-xs font-semibold px-1.5 py-1 sm:px-3 border"
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmada":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
-            <CheckCircle className="w-3 h-3 inline mr-1" />
-            Confirmada
+          <span
+            title="Confirmada"
+            className={`${CLASES_BADGE} bg-green-500/20 text-green-400 border-green-500/30`}
+          >
+            <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Confirmada</span>
+            <span className="sr-only">Confirmada</span>
           </span>
         )
       case "rechazada":
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
-            <XCircleIcon className="w-3 h-3 inline mr-1" />
-            Rechazada
+          <span
+            title="Rechazada"
+            className={`${CLASES_BADGE} bg-red-500/20 text-red-400 border-red-500/30`}
+          >
+            <XCircleIcon className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Rechazada</span>
+            <span className="sr-only">Rechazada</span>
           </span>
         )
       default:
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-            <Clock className="w-3 h-3 inline mr-1" />
-            Pendiente
+          <span
+            title="Pendiente"
+            className={`${CLASES_BADGE} bg-yellow-500/20 text-yellow-400 border-yellow-500/30`}
+          >
+            <Clock className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Pendiente</span>
+            <span className="sr-only">Pendiente</span>
           </span>
         )
     }
@@ -990,8 +1025,10 @@ export default function RegistroInscripciones() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.email}</td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.ciudad}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col items-start gap-1">
+                      <td className="px-2 py-3 sm:px-4">
+                        {/* En celular los dos badges van en linea (solo iconos);
+                            en desktop se apilan con su texto. */}
+                        <div className="flex flex-row sm:flex-col items-center sm:items-start gap-1">
                           {getStatusBadge(insc.estado)}
                           {insc.estado === "confirmada" && getPagoBadge(insc)}
                         </div>
