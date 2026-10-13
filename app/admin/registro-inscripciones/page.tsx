@@ -42,7 +42,7 @@ const INSCRIPCIONES_COLUMNS =
   "id, estado, nombre, apellido, email, dni, pais, localidad, grupo_ciclistas, es_celiaco, " +
   "metodo_pago, numero_referencia, fecha_nacimiento, grupo_sanguineo, telefono, " +
   "tiene_alergias, alergias, tiene_problemas_salud, condicion_salud, comprobante_pago_url, " +
-  "nota_estado, numero_inscripcion, fecha_inscripcion, token_qr"
+  "nota_estado, numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado"
 
 // Respaldo temporal para bases que todavía tengan una vista, función o política
 // desactualizada que falle al resolver la ubicación. Permite que el administrador
@@ -51,11 +51,24 @@ const INSCRIPCIONES_COLUMNS_WITHOUT_LOCATION =
   "id, estado, nombre, apellido, email, dni, metodo_pago, numero_referencia, " +
   "fecha_nacimiento, grupo_sanguineo, telefono, tiene_alergias, alergias, " +
   "tiene_problemas_salud, condicion_salud, comprobante_pago_url, nota_estado, " +
-  "numero_inscripcion, fecha_inscripcion, token_qr"
+  "numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado"
 
 // "participantes" es historico (acumula todas las ediciones via anios[]).
 // Esta pantalla es de la edicion actual: siempre filtramos por anio.
 const EDICION_ACTUAL = 2026
+
+// Precio de lista si todavia no cargaron event_settings.
+const PRECIO_FALLBACK = 25000
+
+/**
+ * Opciones de pago que ofrece el modal al confirmar una inscripcion.
+ * Se traducen a las columnas pago_estado + monto_pagado de participantes.
+ */
+type OpcionPago = "pagado" | "falta" | "otro" | "gratis"
+
+/** Formatea un monto en pesos, sin decimales. */
+const formatearMonto = (monto: number): string =>
+  monto.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 })
 
 interface Stats {
   total: number
@@ -66,7 +79,10 @@ interface Stats {
 
 export default function RegistroInscripciones() {
   const router = useRouter()
-  const { user, session, userRole, loading: authLoading } = useSupabaseContext()
+  const { user, session, userRole, loading: authLoading, eventSettings } = useSupabaseContext()
+  // Precio de lista de la inscripcion (event_settings.precio), con fallback
+  // por si todavia no cargo el contexto.
+  const precioInscripcion = Number(eventSettings?.precio) || PRECIO_FALLBACK
   const isMobile = useIsMobile()
 
   // Datos paginados
@@ -100,6 +116,9 @@ export default function RegistroInscripciones() {
   const [emailEditValue, setEmailEditValue] = useState("")
   const [reenviandoEmail, setReenviandoEmail] = useState(false)
   const [resultadoReenvio, setResultadoReenvio] = useState<{ ok: boolean; texto: string } | null>(null)
+  // Pago de la inscripcion: se elige al confirmar.
+  const [pagoOpcion, setPagoOpcion] = useState<OpcionPago>("pagado")
+  const [montoOtro, setMontoOtro] = useState("")
   const [openingComprobante, setOpeningComprobante] = useState<string | null>(null)
   const [comprobanteModal, setComprobanteModal] = useState<{
     url: string
@@ -247,6 +266,8 @@ export default function RegistroInscripciones() {
           numeroInscripcion: d.numero_inscripcion,
           fechaInscripcion: d.fecha_inscripcion,
           tokenQR: d.token_qr,
+          pagoEstado: d.pago_estado ?? "pendiente",
+          montoPagado: d.monto_pagado != null ? Number(d.monto_pagado) : null,
         }))
       )
     },
@@ -345,6 +366,40 @@ export default function RegistroInscripciones() {
     }
   }
 
+  /**
+   * Marca el estado de pago de una inscripcion confirmada. Solo se muestra
+   * cuando aporta algo: si pago el precio de lista no se dibuja nada, para no
+   * llenar la grilla de etiquetas.
+   */
+  const getPagoBadge = (insc: any) => {
+    if (insc.pagoEstado === "gratis") {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+          Gratis
+        </span>
+      )
+    }
+
+    if (insc.pagoEstado !== "pagado") {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40">
+          Falta pagar
+        </span>
+      )
+    }
+
+    const monto = insc.montoPagado != null ? Number(insc.montoPagado) : null
+    if (monto != null && monto !== precioInscripcion) {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-700/60 text-gray-300 border border-zinc-600">
+          {formatearMonto(monto)}
+        </span>
+      )
+    }
+
+    return null
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmada":
@@ -378,7 +433,36 @@ export default function RegistroInscripciones() {
     setNumeroEditValue(insc.numeroInscripcion != null ? String(insc.numeroInscripcion) : "")
     setEmailEditValue(insc.email || "")
     setResultadoReenvio(null)
+
+    // Deriva la opcion de pago desde lo guardado, para que el modal abra
+    // mostrando lo que realmente paso y no un default enganoso.
+    const monto = insc.montoPagado != null ? Number(insc.montoPagado) : null
+    if (insc.pagoEstado === "gratis") {
+      setPagoOpcion("gratis")
+      setMontoOtro("")
+    } else if (insc.pagoEstado === "pagado") {
+      const esPrecioDeLista = monto == null || monto === precioInscripcion
+      setPagoOpcion(esPrecioDeLista ? "pagado" : "otro")
+      setMontoOtro(esPrecioDeLista ? "" : String(monto))
+    } else {
+      // Pendiente de pago: si la inscripcion es nueva se asume que al
+      // confirmarla pago el precio de lista, que es el caso habitual.
+      setPagoOpcion(insc.estado === "confirmada" ? "falta" : "pagado")
+      setMontoOtro("")
+    }
+
     setIsDetailsModalOpen(true)
+  }
+
+  /** Traduce la opcion elegida a las columnas que guarda la base. */
+  const resolverPago = (): { pago_estado: string; monto_pagado: number } | null => {
+    if (pagoOpcion === "falta") return { pago_estado: "pendiente", monto_pagado: 0 }
+    if (pagoOpcion === "gratis") return { pago_estado: "gratis", monto_pagado: 0 }
+    if (pagoOpcion === "pagado") return { pago_estado: "pagado", monto_pagado: precioInscripcion }
+
+    const monto = Number(montoOtro.replace(/[^\d.,]/g, "").replace(",", "."))
+    if (!Number.isFinite(monto) || monto < 0) return null
+    return { pago_estado: "pagado", monto_pagado: monto }
   }
 
   /**
@@ -572,6 +656,16 @@ export default function RegistroInscripciones() {
   const updateStatus = async () => {
     if (!selectedInscripcion) return
 
+    // El pago solo se define al confirmar: en pendiente o rechazada no hay
+    // nada que cobrar, asi que el bloque ni se muestra.
+    const confirmandoAhora = newStatus === "confirmada"
+    const pago = confirmandoAhora ? resolverPago() : null
+
+    if (confirmandoAhora && !pago) {
+      alert("Escribi un monto valido para el pago.")
+      return
+    }
+
     setUpdatingStatus(true)
     try {
       const { error: updateError } = await supabase
@@ -579,6 +673,7 @@ export default function RegistroInscripciones() {
         .update({
           estado: newStatus,
           nota_estado: statusNote,
+          ...(pago ?? {}),
         })
         .eq("id", selectedInscripcion.id)
 
@@ -621,7 +716,15 @@ export default function RegistroInscripciones() {
       setInscripciones((prev) =>
         prev.map((insc) =>
           insc.id === selectedInscripcion.id
-            ? { ...insc, estado: newStatus, nota: statusNote, numeroInscripcion }
+            ? {
+                ...insc,
+                estado: newStatus,
+                nota: statusNote,
+                numeroInscripcion,
+                ...(pago
+                  ? { pagoEstado: pago.pago_estado, montoPagado: pago.monto_pagado }
+                  : {}),
+              }
             : insc
         )
       )
@@ -671,6 +774,13 @@ export default function RegistroInscripciones() {
       "Metodo Pago": d.metodo_pago || "",
       "N Referencia": d.numero_referencia || "",
       Estado: d.estado || "pendiente",
+      Pago:
+        d.pago_estado === "gratis"
+          ? "Gratis"
+          : d.pago_estado === "pagado"
+            ? "Pagado"
+            : "Falta pagar",
+      "Monto Pagado": d.monto_pagado != null ? Number(d.monto_pagado) : "",
       Nota: d.nota_estado || "",
       "Fecha Inscripcion": d.fecha_inscripcion
         ? new Date(d.fecha_inscripcion).toLocaleDateString("es-AR")
@@ -880,7 +990,12 @@ export default function RegistroInscripciones() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.email}</td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.ciudad}</td>
-                      <td className="px-4 py-3">{getStatusBadge(insc.estado)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-start gap-1">
+                          {getStatusBadge(insc.estado)}
+                          {insc.estado === "confirmada" && getPagoBadge(insc)}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center justify-end gap-2">
                           {insc.comprobantePagoUrl && (
@@ -1225,6 +1340,61 @@ export default function RegistroInscripciones() {
                         placeholder="Agregar nota..."
                       />
                     </div>
+                    {/* Pago: solo tiene sentido al confirmar la inscripcion */}
+                    {newStatus === "confirmada" && (
+                      <div className="md:col-span-2 bg-zinc-900/70 border border-yellow-400/20 rounded-lg p-3">
+                        <label className="text-xs text-gray-400 block mb-2">Pago</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {(
+                            [
+                              { id: "pagado", label: `Pagó ${formatearMonto(precioInscripcion)}` },
+                              { id: "falta", label: "Falta pagar" },
+                              { id: "otro", label: "Pagó otro monto" },
+                              { id: "gratis", label: "Inscripción gratis" },
+                            ] as { id: OpcionPago; label: string }[]
+                          ).map((opcion) => (
+                            <button
+                              key={opcion.id}
+                              type="button"
+                              onClick={() => setPagoOpcion(opcion.id)}
+                              className={`px-3 py-2 rounded-lg border text-sm text-left transition-all ${
+                                pagoOpcion === opcion.id
+                                  ? "bg-yellow-400/15 border-yellow-400/50 text-yellow-400 font-semibold"
+                                  : "bg-zinc-900 border-zinc-700 text-gray-300 hover:border-yellow-400/30"
+                              }`}
+                            >
+                              {opcion.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {pagoOpcion === "otro" && (
+                          <div className="mt-2">
+                            <input
+                              type="number"
+                              min={0}
+                              step={100}
+                              value={montoOtro}
+                              onChange={(e) => setMontoOtro(e.target.value)}
+                              autoFocus
+                              className="w-full px-3 py-2 bg-zinc-900 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
+                              placeholder={`Monto que pagó (ej: ${precioInscripcion})`}
+                            />
+                          </div>
+                        )}
+
+                        <p className="text-xs text-gray-500 mt-2">
+                          {pagoOpcion === "falta"
+                            ? "Queda confirmado pero marcado como pendiente de pago."
+                            : pagoOpcion === "gratis"
+                              ? "No se le cobra la inscripción. Suma $0 a los ingresos."
+                              : pagoOpcion === "otro"
+                                ? "Se registra el monto que indiques en vez del precio de lista."
+                                : "Precio de lista actual del evento."}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="md:col-span-2">
                       <label className="text-xs text-gray-400 block mb-1">
                         N° de inscripción (editable por si quedó desparejo)
