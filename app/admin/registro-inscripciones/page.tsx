@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
@@ -67,6 +67,32 @@ const PRECIO_FALLBACK = 25000
  */
 type OpcionPago = "pagado" | "falta" | "otro" | "gratis"
 
+/** Filtros que viajan a la query de Supabase junto con estado y busqueda. */
+interface FiltrosAvanzados {
+  pais: string
+  ciudad: string
+  grupo: string
+  sangre: string
+  /** all | sin-pagar | otro-precio | gratis | pagado */
+  pago: string
+  /** all | problemas | alergias | celiaco */
+  salud: string
+  conNota: boolean
+  /** Precio de lista, para resolver "pago otro precio". */
+  precioLista: number
+}
+
+const FILTROS_VACIOS: FiltrosAvanzados = {
+  pais: "all",
+  ciudad: "all",
+  grupo: "all",
+  sangre: "all",
+  pago: "all",
+  salud: "all",
+  conNota: false,
+  precioLista: PRECIO_FALLBACK,
+}
+
 /** Formatea un monto en pesos, sin decimales. */
 const formatearMonto = (monto: number): string =>
   monto.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 })
@@ -97,6 +123,25 @@ export default function RegistroInscripciones() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [showFilters, setShowFilters] = useState(false)
+
+  // Filtros avanzados. Se aplican en la query (no en el cliente) porque el
+  // listado esta paginado server-side: filtrar la hoja actual daria resultados
+  // incompletos.
+  const [filtroPais, setFiltroPais] = useState("all")
+  const [filtroCiudad, setFiltroCiudad] = useState("all")
+  const [filtroGrupo, setFiltroGrupo] = useState("all")
+  const [filtroSangre, setFiltroSangre] = useState("all")
+  const [filtroPago, setFiltroPago] = useState("all")
+  const [filtroSalud, setFiltroSalud] = useState("all")
+  const [soloConNota, setSoloConNota] = useState(false)
+
+  // Valores disponibles para los selects, derivados de las inscripciones reales.
+  const [opcionesFiltro, setOpcionesFiltro] = useState<{
+    paises: string[]
+    ciudades: string[]
+    grupos: string[]
+    sangres: string[]
+  }>({ paises: [], ciudades: [], grupos: [], sangres: [] })
 
   // Paginacion server-side
   const [currentPage, setCurrentPage] = useState(1)
@@ -152,7 +197,13 @@ export default function RegistroInscripciones() {
 
   // --- Fetch paginado server-side ---
   const fetchPage = useCallback(
-    async (page: number, perPage: number, search: string, status: string) => {
+    async (
+      page: number,
+      perPage: number,
+      search: string,
+      status: string,
+      filtros: FiltrosAvanzados = FILTROS_VACIOS
+    ) => {
       const from = (page - 1) * perPage
       const to = from + perPage - 1
 
@@ -183,6 +234,49 @@ export default function RegistroInscripciones() {
           query = query.or(
             `nombre.ilike.${term},apellido.ilike.${term},email.ilike.${term},dni.ilike.${term}`
           )
+        }
+
+        // --- Filtros avanzados ---
+        if (filtros.pais !== "all") query = query.eq("pais", filtros.pais)
+        if (filtros.ciudad !== "all") query = query.eq("localidad", filtros.ciudad)
+        if (filtros.grupo !== "all") query = query.eq("grupo_ciclistas", filtros.grupo)
+        // El grupo sanguineo se cargo con distinta grafia ("a+", "A+"), por eso ilike.
+        if (filtros.sangre !== "all") query = query.ilike("grupo_sanguineo", filtros.sangre)
+
+        if (filtros.conNota) {
+          query = query.not("nota_estado", "is", null).neq("nota_estado", "")
+        }
+
+        switch (filtros.pago) {
+          case "sin-pagar":
+            // Confirmados que todavia deben la inscripcion.
+            query = query.eq("estado", "confirmada").eq("pago_estado", "pendiente")
+            break
+          case "otro-precio":
+            query = query
+              .eq("pago_estado", "pagado")
+              .not("monto_pagado", "is", null)
+              .neq("monto_pagado", filtros.precioLista)
+            break
+          case "gratis":
+            query = query.eq("pago_estado", "gratis")
+            break
+          case "pagado":
+            query = query.eq("pago_estado", "pagado")
+            break
+        }
+
+        switch (filtros.salud) {
+          // Los datos migrados traen "si"/"no" y algun "true"/"false" suelto.
+          case "problemas":
+            query = query.in("tiene_problemas_salud", ["si", "true"])
+            break
+          case "alergias":
+            query = query.in("tiene_alergias", ["si", "true"])
+            break
+          case "celiaco":
+            query = query.eq("es_celiaco", true)
+            break
         }
 
         return query.range(from, to)
@@ -299,6 +393,84 @@ export default function RegistroInscripciones() {
     })
   }, [])
 
+  // Objeto estable con los filtros avanzados: alimenta la query y es la
+  // dependencia de los efectos que recargan el listado.
+  const filtrosAvanzados = useMemo<FiltrosAvanzados>(
+    () => ({
+      pais: filtroPais,
+      ciudad: filtroCiudad,
+      grupo: filtroGrupo,
+      sangre: filtroSangre,
+      pago: filtroPago,
+      salud: filtroSalud,
+      conNota: soloConNota,
+      precioLista: precioInscripcion,
+    }),
+    [
+      filtroPais,
+      filtroCiudad,
+      filtroGrupo,
+      filtroSangre,
+      filtroPago,
+      filtroSalud,
+      soloConNota,
+      precioInscripcion,
+    ]
+  )
+
+  const filtrosActivos =
+    (statusFilter !== "all" ? 1 : 0) +
+    (filtroPais !== "all" ? 1 : 0) +
+    (filtroCiudad !== "all" ? 1 : 0) +
+    (filtroGrupo !== "all" ? 1 : 0) +
+    (filtroSangre !== "all" ? 1 : 0) +
+    (filtroPago !== "all" ? 1 : 0) +
+    (filtroSalud !== "all" ? 1 : 0) +
+    (soloConNota ? 1 : 0)
+
+  const limpiarFiltros = () => {
+    setSearchTerm("")
+    setStatusFilter("all")
+    setFiltroPais("all")
+    setFiltroCiudad("all")
+    setFiltroGrupo("all")
+    setFiltroSangre("all")
+    setFiltroPago("all")
+    setFiltroSalud("all")
+    setSoloConNota(false)
+    setCurrentPage(1)
+  }
+
+  // Opciones de los selects: una sola consulta liviana con los campos que se
+  // filtran, de la que se derivan los valores unicos.
+  useEffect(() => {
+    if (!isAuthorized || !user) return
+
+    const cargarOpciones = async () => {
+      const { data, error: errOpciones } = await supabase
+        .from("participantes")
+        .select("pais, localidad, grupo_ciclistas, grupo_sanguineo")
+        .contains("anios", [EDICION_ACTUAL])
+
+      if (errOpciones || !data) return
+
+      const unicos = (valores: (string | null)[]) =>
+        Array.from(new Set(valores.map((v) => (v || "").trim()).filter(Boolean))).sort((a, b) =>
+          a.localeCompare(b, "es")
+        )
+
+      setOpcionesFiltro({
+        paises: unicos(data.map((d: any) => d.pais)),
+        ciudades: unicos(data.map((d: any) => d.localidad)),
+        grupos: unicos(data.map((d: any) => d.grupo_ciclistas)),
+        // El grupo sanguineo se normaliza a mayusculas para no repetir "a+"/"A+".
+        sangres: unicos(data.map((d: any) => (d.grupo_sanguineo || "").toUpperCase())),
+      })
+    }
+
+    cargarOpciones()
+  }, [isAuthorized, user])
+
   // Carga inicial
   useEffect(() => {
     if (!isAuthorized || !user) return
@@ -306,7 +478,7 @@ export default function RegistroInscripciones() {
     const loadData = async () => {
       setLoading(true)
       await Promise.all([
-        fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter),
+        fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter, filtrosAvanzados),
         fetchStats(),
       ])
       setLoading(false)
@@ -317,7 +489,7 @@ export default function RegistroInscripciones() {
     const channel = supabase
       .channel("registro-inscripciones")
       .on("postgres_changes", { event: "*", schema: "public", table: "participantes" }, () => {
-        fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter)
+        fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter, filtrosAvanzados)
         fetchStats()
       })
       .subscribe()
@@ -325,7 +497,7 @@ export default function RegistroInscripciones() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isAuthorized, user, currentPage, itemsPerPage, statusFilter])
+  }, [isAuthorized, user, currentPage, itemsPerPage, statusFilter, filtrosAvanzados])
   // searchTerm se maneja via debounce, no como dependencia directa
 
   // Debounce de busqueda (400ms)
@@ -334,18 +506,18 @@ export default function RegistroInscripciones() {
 
     searchTimerRef.current = setTimeout(() => {
       setCurrentPage(1)
-      fetchPage(1, itemsPerPage, searchTerm, statusFilter)
+      fetchPage(1, itemsPerPage, searchTerm, statusFilter, filtrosAvanzados)
     }, 400)
 
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
-  }, [searchTerm, fetchPage, itemsPerPage, statusFilter])
+  }, [searchTerm, fetchPage, itemsPerPage, statusFilter, filtrosAvanzados])
 
   const handleRefresh = async () => {
     setRefreshing(true)
     await Promise.all([
-      fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter),
+      fetchPage(currentPage, itemsPerPage, searchTerm, statusFilter, filtrosAvanzados),
       fetchStats(),
     ])
     setRefreshing(false)
@@ -792,6 +964,32 @@ export default function RegistroInscripciones() {
       )
     }
 
+    // El CSV respeta los mismos filtros que la grilla: exportar algo distinto
+    // de lo que esta viendo el admin seria confuso.
+    const f = filtrosAvanzados
+    if (f.pais !== "all") query = query.eq("pais", f.pais)
+    if (f.ciudad !== "all") query = query.eq("localidad", f.ciudad)
+    if (f.grupo !== "all") query = query.eq("grupo_ciclistas", f.grupo)
+    if (f.sangre !== "all") query = query.ilike("grupo_sanguineo", f.sangre)
+    if (f.conNota) query = query.not("nota_estado", "is", null).neq("nota_estado", "")
+
+    if (f.pago === "sin-pagar") {
+      query = query.eq("estado", "confirmada").eq("pago_estado", "pendiente")
+    } else if (f.pago === "otro-precio") {
+      query = query
+        .eq("pago_estado", "pagado")
+        .not("monto_pagado", "is", null)
+        .neq("monto_pagado", f.precioLista)
+    } else if (f.pago === "gratis") {
+      query = query.eq("pago_estado", "gratis")
+    } else if (f.pago === "pagado") {
+      query = query.eq("pago_estado", "pagado")
+    }
+
+    if (f.salud === "problemas") query = query.in("tiene_problemas_salud", ["si", "true"])
+    else if (f.salud === "alergias") query = query.in("tiene_alergias", ["si", "true"])
+    else if (f.salud === "celiaco") query = query.eq("es_celiaco", true)
+
     const { data } = await query
     const datos = (data || []).map((d: any) => ({
       "N Inscripcion": d.numero_inscripcion || "",
@@ -956,6 +1154,11 @@ export default function RegistroInscripciones() {
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4" />
                   Filtros
+                  {filtrosActivos > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-yellow-400 text-black text-[10px] font-bold">
+                      {filtrosActivos}
+                    </span>
+                  )}
                 </div>
                 {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -963,35 +1166,137 @@ export default function RegistroInscripciones() {
 
             {/* Filters */}
             <div className={`${showFilters ? "block" : "hidden"} md:block`}>
-              <div className="flex flex-col md:flex-row gap-2">
-                <select
-                  // En celular ocupa todo el ancho; en desktop se ajusta al contenido.
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-full md:w-auto px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
-                >
-                  <option value="all">Todos los estados</option>
-                  <option value="pendiente">Pendientes</option>
-                  <option value="confirmada">Confirmadas</option>
-                  <option value="rechazada">Rechazadas</option>
-                </select>
-                {(searchTerm || statusFilter !== "all") && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm("")
-                      setStatusFilter("all")
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {[
+                  {
+                    etiqueta: "Estado",
+                    value: statusFilter,
+                    set: setStatusFilter,
+                    opciones: [
+                      { v: "all", t: "Todos los estados" },
+                      { v: "pendiente", t: "Pendientes" },
+                      { v: "confirmada", t: "Confirmadas" },
+                      { v: "rechazada", t: "Rechazadas" },
+                    ],
+                  },
+                  {
+                    etiqueta: "Pago",
+                    value: filtroPago,
+                    set: setFiltroPago,
+                    opciones: [
+                      { v: "all", t: "Cualquier pago" },
+                      { v: "sin-pagar", t: "Confirmados sin pagar" },
+                      { v: "otro-precio", t: "Pagaron otro precio" },
+                      { v: "gratis", t: "Inscripcion gratis" },
+                      { v: "pagado", t: "Pagados" },
+                    ],
+                  },
+                  {
+                    etiqueta: "Salud",
+                    value: filtroSalud,
+                    set: setFiltroSalud,
+                    opciones: [
+                      { v: "all", t: "Sin filtro de salud" },
+                      { v: "problemas", t: "Con problemas de salud" },
+                      { v: "alergias", t: "Con alergias" },
+                      { v: "celiaco", t: "Celiacos" },
+                    ],
+                  },
+                  {
+                    etiqueta: "Grupo sanguineo",
+                    value: filtroSangre,
+                    set: setFiltroSangre,
+                    opciones: [
+                      { v: "all", t: "Todos los grupos sanguineos" },
+                      ...opcionesFiltro.sangres.map((s) => ({ v: s, t: s })),
+                    ],
+                  },
+                  {
+                    etiqueta: "Pais",
+                    value: filtroPais,
+                    set: setFiltroPais,
+                    opciones: [
+                      { v: "all", t: "Todos los paises" },
+                      ...opcionesFiltro.paises.map((p) => ({ v: p, t: p })),
+                    ],
+                  },
+                  {
+                    etiqueta: "Ciudad",
+                    value: filtroCiudad,
+                    set: setFiltroCiudad,
+                    opciones: [
+                      { v: "all", t: "Todas las ciudades" },
+                      ...opcionesFiltro.ciudades.map((c) => ({ v: c, t: c })),
+                    ],
+                  },
+                  {
+                    etiqueta: "Grupo de ciclistas",
+                    value: filtroGrupo,
+                    set: setFiltroGrupo,
+                    opciones: [
+                      { v: "all", t: "Todos los grupos" },
+                      ...opcionesFiltro.grupos.map((g) => ({ v: g, t: g })),
+                    ],
+                  },
+                ].map((filtro) => (
+                  <select
+                    key={filtro.etiqueta}
+                    aria-label={filtro.etiqueta}
+                    title={filtro.etiqueta}
+                    value={filtro.value}
+                    onChange={(e) => {
+                      filtro.set(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-yellow-400 hover:bg-zinc-700 transition-all text-sm whitespace-nowrap"
+                    className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-sm focus:outline-none focus:border-yellow-400/40 ${
+                      filtro.value !== "all"
+                        ? "border-yellow-400/50 text-yellow-400"
+                        : "border-yellow-400/20 text-white"
+                    }`}
+                  >
+                    {filtro.opciones.map((opcion) => (
+                      <option key={opcion.v} value={opcion.v}>
+                        {opcion.t}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSoloConNota((v) => !v)
+                    setCurrentPage(1)
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                    soloConNota
+                      ? "bg-yellow-400/15 border-yellow-400/50 text-yellow-400 font-semibold"
+                      : "bg-zinc-800 border-yellow-400/20 text-white hover:bg-zinc-700"
+                  }`}
+                >
+                  <Edit className="w-4 h-4 flex-shrink-0" />
+                  Solo con nota
+                </button>
+              </div>
+
+              {(searchTerm || filtrosActivos > 0) && (
+                <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                  <button
+                    onClick={limpiarFiltros}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-yellow-400 hover:bg-zinc-700 transition-all text-sm whitespace-nowrap"
                   >
                     <FilterX className="w-4 h-4" />
                     Limpiar filtros
                   </button>
-                )}
-              </div>
+                  <span className="text-xs text-gray-400 text-center sm:text-left">
+                    {filtrosActivos > 0
+                      ? `${filtrosActivos} filtro${filtrosActivos !== 1 ? "s" : ""} activo${
+                          filtrosActivos !== 1 ? "s" : ""
+                        } · ${totalCount} resultado${totalCount !== 1 ? "s" : ""}`
+                      : `${totalCount} resultado${totalCount !== 1 ? "s" : ""}`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
