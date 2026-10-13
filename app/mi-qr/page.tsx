@@ -87,6 +87,11 @@ export default function MiQRPage() {
   const [error, setError] = useState<string | null>(null)
   const qrRef = useRef<HTMLDivElement>(null)
 
+  // Reenvio del mail de confirmacion a la casilla de la inscripcion.
+  const [emailReenvio, setEmailReenvio] = useState("")
+  const [reenviando, setReenviando] = useState(false)
+  const [avisoReenvio, setAvisoReenvio] = useState<{ ok: boolean; texto: string } | null>(null)
+
   const buscar = useCallback(
     async (event?: React.FormEvent) => {
       event?.preventDefault()
@@ -121,6 +126,46 @@ export default function MiQRPage() {
   const descargar = useCallback(() => {
     descargarQRDesdeSVG(qrRef.current, nombreArchivoQR(inscripcion?.numeroInscripcion))
   }, [inscripcion?.numeroInscripcion])
+
+  /**
+   * Pide el reenvio del mail de confirmacion. El servidor solo lo manda si el
+   * correo escrito coincide con el de la inscripcion: el QR es la credencial
+   * de acreditacion y no puede ir a una direccion cualquiera.
+   */
+  const reenviarConfirmacion = useCallback(
+    async (event?: React.FormEvent) => {
+      event?.preventDefault()
+      if (reenviando) return
+
+      setReenviando(true)
+      setAvisoReenvio(null)
+
+      try {
+        const res = await fetch("/api/mi-inscripcion/reenviar-confirmacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dni, email: emailReenvio }),
+        })
+        const data = await res.json().catch(() => ({}))
+
+        if (!res.ok || !data.success) {
+          setAvisoReenvio({
+            ok: false,
+            texto: data.error || "No pudimos reenviarte el correo. Probá de nuevo en un rato.",
+          })
+          return
+        }
+
+        setAvisoReenvio({ ok: true, texto: data.mensaje })
+        setEmailReenvio("")
+      } catch {
+        setAvisoReenvio({ ok: false, texto: "Error de red. Probá de nuevo en unos segundos." })
+      } finally {
+        setReenviando(false)
+      }
+    },
+    [dni, emailReenvio, reenviando]
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black">
@@ -314,6 +359,48 @@ export default function MiQRPage() {
                       Es personal e intransferible. No lo compartas.
                     </p>
                   </div>
+
+                  {/* Reenvio del mail de confirmacion */}
+                  <form
+                    onSubmit={reenviarConfirmacion}
+                    className="mt-7 pt-6 border-t border-yellow-400/10 text-left max-w-md mx-auto"
+                  >
+                    <h3 className="text-sm font-bold text-white mb-1">
+                      ¿No te llegó el mail de confirmación?
+                    </h3>
+                    <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+                      Escribí el correo con el que te inscribiste y te lo reenviamos con el QR.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="email"
+                        value={emailReenvio}
+                        onChange={(event) => {
+                          setEmailReenvio(event.target.value)
+                          setAvisoReenvio(null)
+                        }}
+                        placeholder="tucorreo@ejemplo.com"
+                        autoComplete="email"
+                        className="w-full px-4 py-2.5 bg-zinc-900 border border-yellow-400/20 rounded-lg text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-yellow-400/40"
+                      />
+                      <button
+                        type="submit"
+                        disabled={reenviando || !emailReenvio.trim()}
+                        className="px-5 py-2.5 rounded-lg bg-zinc-800 border border-yellow-400/30 text-yellow-400 text-sm font-semibold hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {reenviando ? "Enviando..." : "Reenviar"}
+                      </button>
+                    </div>
+                    {avisoReenvio && (
+                      <p
+                        className={`text-xs mt-2.5 leading-relaxed ${
+                          avisoReenvio.ok ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
+                        {avisoReenvio.texto}
+                      </p>
+                    )}
+                  </form>
                 </section>
               )}
 

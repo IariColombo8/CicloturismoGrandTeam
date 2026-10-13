@@ -168,6 +168,10 @@ POST /api/email/send             -> Envia con plantilla del repo o HTML/texto pr
 POST /api/email/reply            -> Responde un hilo manteniendo el enhebrado
 POST /api/email/acciones         -> leido / no-leido / archivar / a-recibidos / destacar / papelera
 GET  /api/email/adjunto          -> Descarga un adjunto de un correo recibido
+
+POST /api/mi-inscripcion/reenviar-confirmacion -> Reenvio del mail de confirmacion desde /mi-qr.
+  PUBLICA: solo envia si el email del body coincide con el de la inscripcion (el QR es la
+  credencial de acreditacion). Exige estado confirmada y limita a 3 intentos por DNI+IP cada 10 min.
 ```
 
 Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam`
@@ -229,6 +233,15 @@ Setup completo en **`docs/gmail-setup.md`** (Cloud Console, scopes, refresh toke
 7. **Scopes**: `gmail.modify` + `gmail.send`. La app OAuth debe estar **publicada** (no en modo Testing) o el refresh token caduca cada 7 dias.
 
 Limite practico: Gmail gratuito permite ~500 destinatarios por dia; `/api/email/send` corta en 50 por request.
+
+**Reenvio de la confirmacion** (dos caminos):
+- **Admin** (`/admin/registro-inscripciones`, modal de detalle): el email es editable y el boton
+  "Reenviar confirmacion" pasa a "Corregir y reenviar" cuando se modifica. Guarda el email nuevo en
+  `participantes` y recien despues envia, para que base y mail no digan cosas distintas. Solo
+  habilitado si la inscripcion esta confirmada.
+- **Participante** (`/mi-qr`): formulario bajo el QR. Solo se envia a la direccion que ya figura en
+  la inscripcion — nunca a una cualquiera — porque el QR es la credencial de acreditacion.
+  El bloque de remera se recalcula en cada reenvio, asi que refleja el estado actual del pedido.
 
 ### Dashboard Admin
 

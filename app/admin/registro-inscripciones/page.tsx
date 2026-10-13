@@ -96,6 +96,10 @@ export default function RegistroInscripciones() {
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [numeroEditValue, setNumeroEditValue] = useState("")
   const [savingNumero, setSavingNumero] = useState(false)
+  // Reenvio del mail de confirmacion, con correccion del email si hace falta.
+  const [emailEditValue, setEmailEditValue] = useState("")
+  const [reenviandoEmail, setReenviandoEmail] = useState(false)
+  const [resultadoReenvio, setResultadoReenvio] = useState<{ ok: boolean; texto: string } | null>(null)
   const [openingComprobante, setOpeningComprobante] = useState<string | null>(null)
   const [comprobanteModal, setComprobanteModal] = useState<{
     url: string
@@ -372,7 +376,76 @@ export default function RegistroInscripciones() {
     setNewStatus(insc.estado || "pendiente")
     setStatusNote(insc.nota || "")
     setNumeroEditValue(insc.numeroInscripcion != null ? String(insc.numeroInscripcion) : "")
+    setEmailEditValue(insc.email || "")
+    setResultadoReenvio(null)
     setIsDetailsModalOpen(true)
+  }
+
+  /**
+   * Reenvia el mail de confirmacion al participante.
+   * Si el admin corrigio el email en el modal, primero lo guarda en
+   * `participantes` y recien despues envia, asi la base y el mail no quedan
+   * diciendo cosas distintas.
+   */
+  const reenviarConfirmacion = async () => {
+    if (!selectedInscripcion || reenviandoEmail) return
+
+    const emailNuevo = emailEditValue.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNuevo)) {
+      setResultadoReenvio({ ok: false, texto: "El email no tiene un formato valido." })
+      return
+    }
+
+    const emailCambio = emailNuevo.toLowerCase() !== (selectedInscripcion.email || "").toLowerCase()
+
+    setReenviandoEmail(true)
+    setResultadoReenvio(null)
+    try {
+      if (emailCambio) {
+        const { error: updateError } = await supabase
+          .from("participantes")
+          .update({ email: emailNuevo })
+          .eq("id", selectedInscripcion.id)
+
+        if (updateError) throw updateError
+
+        setInscripciones((prev) =>
+          prev.map((insc) =>
+            insc.id === selectedInscripcion.id ? { ...insc, email: emailNuevo } : insc
+          )
+        )
+        setSelectedInscripcion((prev: any) => (prev ? { ...prev, email: emailNuevo } : prev))
+      }
+
+      const resultado = await emailService.sendConfirmationEmail({
+        email: emailNuevo,
+        nombreCompleto: `${selectedInscripcion.nombres} ${selectedInscripcion.apellidos}`,
+        numeroInscripcion:
+          selectedInscripcion.numeroInscripcion != null
+            ? String(selectedInscripcion.numeroInscripcion)
+            : undefined,
+        tokenQR: selectedInscripcion.tokenQR,
+        ubicacion: "Concepcion del Uruguay, Entre Rios",
+        dni: selectedInscripcion.dni,
+      })
+
+      if (!resultado.success) {
+        setResultadoReenvio({ ok: false, texto: resultado.error || "No se pudo enviar el email." })
+        return
+      }
+
+      setResultadoReenvio({
+        ok: true,
+        texto: emailCambio
+          ? `Email corregido y confirmacion enviada a ${emailNuevo}`
+          : `Confirmacion reenviada a ${emailNuevo}`,
+      })
+    } catch (err: any) {
+      console.error("Error reenviando confirmacion:", err)
+      setResultadoReenvio({ ok: false, texto: err?.message || "Error al reenviar el email." })
+    } finally {
+      setReenviandoEmail(false)
+    }
   }
 
   // Correccion manual del numero de inscripcion, para arreglar casos puntuales
@@ -605,6 +678,15 @@ export default function RegistroInscripciones() {
     }))
     exportToCSV(datos, `inscripciones_${new Date().toISOString().slice(0, 10)}`)
   }
+
+  // Derivados del modal de detalle: si el admin toco el email y si la
+  // inscripcion esta en un estado donde el mail de confirmacion tiene sentido.
+  const emailCambiado =
+    !!selectedInscripcion &&
+    emailEditValue.trim().toLowerCase() !== (selectedInscripcion.email || "").toLowerCase()
+  const puedeReenviarConfirmacion =
+    !!selectedInscripcion &&
+    (selectedInscripcion.estado === "confirmada" || selectedInscripcion.estado === "aprobado")
 
   if (loading || !isAuthorized) {
     return (
@@ -964,9 +1046,61 @@ export default function RegistroInscripciones() {
                     Informacion de Contacto
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs text-gray-400">Email</div>
-                      <div className="text-sm text-white break-words">{selectedInscripcion.email}</div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs text-gray-400 block mb-1">
+                        Email {emailCambiado && <span className="text-yellow-400">(modificado, sin guardar)</span>}
+                      </label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="email"
+                          value={emailEditValue}
+                          onChange={(e) => {
+                            setEmailEditValue(e.target.value)
+                            setResultadoReenvio(null)
+                          }}
+                          className="w-full px-3 py-2 bg-zinc-900 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
+                          placeholder="email@ejemplo.com"
+                        />
+                        <button
+                          type="button"
+                          onClick={reenviarConfirmacion}
+                          disabled={reenviandoEmail || !puedeReenviarConfirmacion}
+                          title={
+                            puedeReenviarConfirmacion
+                              ? "Reenvia el mail de confirmacion con el QR"
+                              : "Solo se puede reenviar si la inscripcion esta confirmada"
+                          }
+                          className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/30 text-yellow-400 hover:bg-zinc-700 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-2"
+                        >
+                          {reenviandoEmail ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4" />
+                              {emailCambiado ? "Corregir y reenviar" : "Reenviar confirmacion"}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {puedeReenviarConfirmacion
+                          ? emailCambiado
+                            ? "Se guarda el email corregido en la inscripcion y se le manda la confirmacion con el QR."
+                            : "Vuelve a enviar el mail de confirmacion con el QR de acreditacion."
+                          : "El mail de confirmacion solo se puede enviar si la inscripcion esta confirmada."}
+                      </p>
+                      {resultadoReenvio && (
+                        <p
+                          className={`text-xs mt-1.5 ${
+                            resultadoReenvio.ok ? "text-green-400" : "text-red-400"
+                          }`}
+                        >
+                          {resultadoReenvio.texto}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <div className="text-xs text-gray-400">Telefono</div>
