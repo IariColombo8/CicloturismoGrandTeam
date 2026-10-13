@@ -1,208 +1,164 @@
 // lib/emailService.ts
-import emailjs from "@emailjs/browser"
+// Fachada de envio de emails para el panel admin (codigo cliente).
+//
+// Antes hablaba directo con EmailJS desde el navegador. Ahora delega en
+// POST /api/email/send, que renderiza la plantilla del repo (lib/email/
+// templates.ts) y envia por la Gmail API con la cuenta del evento. La firma
+// publica se mantiene para no tocar las pantallas que ya lo usan.
 
-// Inicializar EmailJS con tu Public Key
-const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || ""
-const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || ""
+import { supabase } from "@/lib/supabase"
+import { construirUrlQr } from "@/lib/email/templates"
 
-// IDs de templates - actualiza estos con tus propios template IDs
-const TEMPLATE_IDS = {
-  CONFIRMATION: "template_8ml1cks", // Template de confirmación
-  REJECTION: "template_rejection",   // Crea este template en EmailJS
-  REMINDER: "template_reminder"      // Crea este template en EmailJS
-}
-
-// Inicializar EmailJS
-if (typeof window !== "undefined") {
-  emailjs.init(EMAILJS_PUBLIC_KEY)
-}
-
-// Los clientes de correo (Gmail, Outlook) no resuelven rutas relativas:
-// toda imagen del template debe usar una URL absoluta y publica.
-// Se usa el dominio de Vercel a proposito: grandteambike.com.ar todavia no resuelve.
-const SITE_URL = "https://grand-team.vercel.app"
-// Version liviana del logo (~94 KB). El /logo.png original pesa 830 KB y Gmail
-// suele no cargarlo al proxear la imagen.
-const LOGO_URL = `${SITE_URL}/email/logo.png`
-
-/** Genera la URL de la imagen QR (300x300, PNG) para el token indicado. */
-function buildQrUrl(token: string): string {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=${encodeURIComponent(token)}`
+/** Resultado uniforme: nunca lanza, para no cortar el flujo del admin. */
+export interface ResultadoEnvio {
+  success: boolean
+  id?: string
+  error?: string
 }
 
 interface EmailParams {
   email: string
   nombreCompleto: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface ConfirmationEmailParams extends EmailParams {
-  numeroInscripcion?: string
+  numeroInscripcion?: string | number | null
   fechaEvento?: string
   ubicacion?: string
   qrCodeUrl?: string
-  tokenQR?: string
+  tokenQR?: string | null
 }
 
 interface RejectionEmailParams extends EmailParams {
   motivo?: string
 }
 
-export const emailService = {
-  /**
-   * Envía email de confirmación de inscripción
-   */
-  async sendConfirmationEmail(params: ConfirmationEmailParams) {
-    try {
-      // Generar URL de imagen QR. Si no hay token (inscripciones migradas sin
-      // token_qr) se usa el numero de inscripcion para no mandar un QR vacio.
-      const qrData = params.tokenQR || params.numeroInscripcion || ""
-      const qrCodeUrl = qrData ? buildQrUrl(qrData) : params.qrCodeUrl || ""
+/** Token de la sesion admin: la API route valida rol antes de enviar. */
+async function obtenerToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}
 
-      // El spread va primero: los valores calculados abajo no deben ser pisados.
-      const templateParams = {
-        ...params,
-        to_email: params.email,
-        logo_url: LOGO_URL,
-        site_url: SITE_URL,
-        to_name: params.nombreCompleto,
-        nombre: params.nombreCompleto.split(" ")[0], // Primer nombre
-        apellido: params.nombreCompleto.split(" ").slice(1).join(" "), // Apellidos
-        numero_inscripcion: params.numeroInscripcion || "Pendiente",
-        fecha_evento: params.fechaEvento || "Por confirmar",
-        ubicacion: params.ubicacion || "Concepción del Uruguay, Entre Ríos",
-        talle_remera: "No incluye",
-        qr_code_url: qrCodeUrl,
-      }
+interface CuerpoEnvio {
+  para: string | string[]
+  asunto?: string
+  plantilla?: "confirmacion" | "rechazo" | "generico"
+  datos?: Record<string, unknown>
+  html?: string
+  texto?: string
+  individual?: boolean
+}
 
-      const response = await emailjs.send(
-        SERVICE_ID,
-        TEMPLATE_IDS.CONFIRMATION,
-        templateParams
-      )
+async function postEnviar(cuerpo: CuerpoEnvio): Promise<ResultadoEnvio> {
+  const token = await obtenerToken()
+  if (!token) {
+    return { success: false, error: "No hay sesion activa para enviar correos" }
+  }
 
-      return { success: true, response }
-    } catch (error: any) {
-      console.error(
-        "Error enviando email de confirmación:",
-        error?.text || error?.message || JSON.stringify(error)
-      )
+  try {
+    const res = await fetch("/api/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(cuerpo),
+    })
+
+    const data = (await res.json().catch(() => ({}))) as {
+      success?: boolean
+      id?: string
+      error?: string
+    }
+
+    if (!res.ok || !data.success) {
+      const error = data.error || `Error HTTP ${res.status}`
+      console.error("Error enviando email:", error)
       return { success: false, error }
     }
-  },
 
-  /**
-   * Envía email de rechazo de inscripción
-   */
-  async sendRejectionEmail(params: RejectionEmailParams) {
-    try {
-      const templateParams = {
-        to_email: params.email,
-        to_name: params.nombreCompleto,
-        nombre: params.nombreCompleto.split(" ")[0],
-        motivo: params.motivo || "No se especificó un motivo",
-        ...params
-      }
-
-      const response = await emailjs.send(
-        SERVICE_ID,
-        TEMPLATE_IDS.REJECTION,
-        templateParams
-      )
-
-      return { success: true, response }
-    } catch (error) {
-      console.error("Error enviando email de rechazo:", error)
-      return { success: false, error }
-    }
-  },
-
-  /**
-   * Envía email recordatorio genérico
-   */
-  async sendReminderEmail(params: EmailParams) {
-    try {
-      const templateParams = {
-        to_email: params.email,
-        to_name: params.nombreCompleto,
-        ...params
-      }
-
-      const response = await emailjs.send(
-        SERVICE_ID,
-        TEMPLATE_IDS.REMINDER,
-        templateParams
-      )
-
-      return { success: true, response }
-    } catch (error) {
-      console.error("Error enviando email recordatorio:", error)
-      return { success: false, error }
-    }
-  },
-
-  /**
-   * Envía email personalizado con template específico
-   */
-  async sendCustomEmail(templateId: string, params: EmailParams) {
-    try {
-      const response = await emailjs.send(
-        SERVICE_ID,
-        templateId,
-        params
-      )
-
-      return { success: true, response }
-    } catch (error) {
-      console.error("Error enviando email personalizado:", error)
-      return { success: false, error }
-    }
-  },
-
-  /**
-   * Envía múltiples emails en lote (con delay para no saturar)
-   */
-  async sendBulkEmails(
-    templateId: string,
-    recipients: EmailParams[],
-    delayMs: number = 1000
-  ) {
-    const results = []
-    
-    for (const recipient of recipients) {
-      try {
-        const result = await this.sendCustomEmail(templateId, recipient)
-        results.push({ ...recipient, ...result })
-        
-        // Delay entre envíos para no saturar el servicio
-        if (delayMs > 0) {
-          await new Promise(resolve => setTimeout(resolve, delayMs))
-        }
-      } catch (error) {
-        results.push({ ...recipient, success: false, error })
-      }
-    }
-    
-    return results
+    return { success: true, id: data.id }
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : "Error de red al enviar el email"
+    console.error("Error enviando email:", mensaje)
+    return { success: false, error: mensaje }
   }
 }
 
-// Ejemplo de uso:
-/*
-import { emailService } from "@/lib/emailService"
+export const emailService = {
+  /** Email de confirmacion de inscripcion (incluye el QR de acreditacion). */
+  async sendConfirmationEmail(params: ConfirmationEmailParams): Promise<ResultadoEnvio> {
+    return postEnviar({
+      para: params.email,
+      plantilla: "confirmacion",
+      datos: {
+        nombreCompleto: params.nombreCompleto,
+        numeroInscripcion: params.numeroInscripcion ?? null,
+        fechaEvento: params.fechaEvento,
+        ubicacion: params.ubicacion,
+        tokenQR: params.tokenQR ?? null,
+        qrCodeUrl: params.qrCodeUrl,
+      },
+    })
+  },
 
-// Enviar confirmación
-await emailService.sendConfirmationEmail({
-  email: "participante@email.com",
-  nombreCompleto: "Juan Pérez",
-  numeroInscripcion: "2025-001",
-  fechaEvento: "8 de Noviembre de 2025"
-})
+  /** Email de inscripcion no aprobada, con el motivo. */
+  async sendRejectionEmail(params: RejectionEmailParams): Promise<ResultadoEnvio> {
+    return postEnviar({
+      para: params.email,
+      plantilla: "rechazo",
+      datos: {
+        nombreCompleto: params.nombreCompleto,
+        motivo: params.motivo,
+      },
+    })
+  },
 
-// Enviar rechazo
-await emailService.sendRejectionEmail({
-  email: "participante@email.com",
-  nombreCompleto: "Juan Pérez",
-  motivo: "Comprobante de pago no válido"
-})
-*/
+  /** Email suelto con el diseño del evento (recordatorios, avisos). */
+  async sendReminderEmail(
+    params: EmailParams & { titulo?: string; mensaje?: string }
+  ): Promise<ResultadoEnvio> {
+    const titulo = params.titulo || "Recordatorio del evento"
+    return postEnviar({
+      para: params.email,
+      asunto: titulo,
+      plantilla: "generico",
+      datos: {
+        nombreCompleto: params.nombreCompleto,
+        titulo,
+        mensaje: params.mensaje || "",
+      },
+    })
+  },
+
+  /** Email con contenido propio (HTML o texto) sin pasar por una plantilla. */
+  async sendCustomEmail(opciones: {
+    para: string | string[]
+    asunto: string
+    html?: string
+    texto?: string
+    individual?: boolean
+  }): Promise<ResultadoEnvio> {
+    return postEnviar(opciones)
+  },
+
+  /**
+   * Envia el mismo mensaje a varias personas, una copia individual por
+   * destinatario (nadie ve las otras direcciones). El servidor serializa los
+   * envios, asi que no hace falta delay del lado del cliente.
+   */
+  async sendBulkEmails(opciones: {
+    destinatarios: string[]
+    titulo: string
+    mensaje: string
+  }): Promise<ResultadoEnvio> {
+    return postEnviar({
+      para: opciones.destinatarios,
+      asunto: opciones.titulo,
+      plantilla: "generico",
+      datos: { titulo: opciones.titulo, mensaje: opciones.mensaje },
+      individual: true,
+    })
+  },
+}
+
+// Reexport para las pantallas que muestran el QR de un participante.
+export { construirUrlQr }

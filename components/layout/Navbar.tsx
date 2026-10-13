@@ -22,6 +22,7 @@ import {
   Images,
   UserCog,
   Settings,
+  Mail,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
@@ -174,6 +175,7 @@ export default function Navbar() {
       { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/registro-inscripciones", label: "Inscripciones", icon: ClipboardList },
       { href: "/admin/check-in", label: "Check-in QR", icon: QrCode },
+      { href: "/admin/emails", label: "Correos", icon: Mail },
       { href: "/admin/remera", label: "Remeras", icon: Shirt },
       { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
       { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },

@@ -23,6 +23,7 @@ npm run dev      # Servidor de desarrollo (puerto 3000)
 npm run build    # Build de produccion
 npm run lint     # Ejecutar ESLint
 npm run start    # Servidor de produccion
+npm run gmail:auth  # Genera el GOOGLE_REFRESH_TOKEN de Gmail (ver docs/gmail-setup.md)
 ```
 
 No hay tests configurados en este proyecto.
@@ -46,6 +47,8 @@ No hay tests configurados en este proyecto.
 - Eliminar tablas o registros de Supabase sin confirmacion.
 - Reintroducir Firebase o cualquier dependencia de Firebase/Firestore en el proyecto.
 - Usar `SUPABASE_SERVICE_ROLE_KEY` en componentes cliente o codigo frontend (solo en `app/api/**`).
+- Usar `GOOGLE_CLIENT_SECRET` / `GOOGLE_REFRESH_TOKEN` fuera de `lib/google/**` (que solo se importa desde `app/api/email/**`).
+- Renderizar HTML de emails recibidos con `dangerouslySetInnerHTML`: va siempre en el `<iframe sandbox>` de `VisorMensaje.tsx`.
 - Exponer claves secretas en el cliente bajo ningun concepto.
 
 ### Reglas de commits
@@ -65,7 +68,7 @@ No hay tests configurados en este proyecto.
 | Tailwind CSS v4 | Estilos con tema negro/dorado |
 | shadcn/ui (new-york) | Componentes UI en `components/ui/` |
 | Supabase | Base de datos principal (inscripciones, participantes, sponsors, remera, gastos, administradores) |
-| EmailJS | Emails transaccionales (confirmacion, rechazo) |
+| Gmail API (Google OAuth2) | Envio y recepcion de emails. Reemplazo de EmailJS, sin dependencias nuevas (REST + `fetch`) |
 | react-hook-form + zod | Formularios con validacion |
 | framer-motion | Animaciones |
 | recharts | Graficos del dashboard admin |
@@ -106,6 +109,9 @@ public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url,
   redes: instagram, facebook, website
   servicios TEXT[], activo, orden
   RLS: SELECT publico, ALL solo admin
+public.emails_enviados       -> destinatarios TEXT[], asunto, plantilla, enviado_por, exito, detalle, creado_en
+  Log de cada envio por Gmail API. Lo escribe lib/email/registro.ts (service_role, best-effort)
+  RLS: SELECT solo admin/grandteam
 public.alojamientos          -> nombre, descripcion, logo_url, website, telefono, whatsapp,
                                 direccion, instagram, imagenes TEXT[], activo, orden
   imagenes = galeria de fotos extra (URLs del bucket `sponsors`, carpeta alojamientos/)
@@ -136,6 +142,7 @@ public.alojamientos          -> nombre, descripcion, logo_url, website, telefono
 /admin/configuraciones       -> Configuracion legacy (puede redirigir a /admin/settings)
 /admin/gastos                -> Gestion de gastos del evento
 /admin/check-in              -> Check-in de participantes por QR o DNI
+/admin/emails                -> Bandeja de correos (Gmail API): leer, responder y redactar
 /admin/ciclos                -> Gestion de ciclos/categorias
 /admin/grandteam             -> Panel especifico para rol Grand Team
 /admin/sponsors              -> CRUD completo de sponsors (oro/plata/bronce) con upload de logo
@@ -153,7 +160,18 @@ POST /api/sponsors/upload-logo   -> Sube logo de sponsor a Supabase Storage (max
 POST /api/galeria/upload         -> Sube foto de galeria al bucket publico `galeria` (max 6MB, jpg/png/webp/avif)
 POST /api/alojamientos/upload-imagen -> Sube foto de alojamiento al bucket `sponsors` (max 6MB, jpg/png/webp/avif)
 POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y participantes a "pendiente"
+
+GET  /api/email/estado           -> Diagnostico de la conexion con Gmail (que variables faltan, casilla)
+GET  /api/email/inbox            -> Lista hilos por carpeta (recibidos/no-leidos/enviados/archivados/papelera/todos)
+GET  /api/email/thread?id=X      -> Hilo completo con cuerpos parseados y saneados (marca leido)
+POST /api/email/send             -> Envia con plantilla del repo o HTML/texto propio (max 50 destinatarios)
+POST /api/email/reply            -> Responde un hilo manteniendo el enhebrado
+POST /api/email/acciones         -> leido / no-leido / archivar / a-recibidos / destacar / papelera
+GET  /api/email/adjunto          -> Descarga un adjunto de un correo recibido
 ```
+
+Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam`
+(helper `lib/api/autorizar.ts`).
 
 ### Flujo "Pedir Remera"
 
@@ -198,6 +216,20 @@ POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y part
 4. Al tocar una tarjeta se abre `components/home/AlojamientoModal.tsx` (dynamic import) con galeria, descripcion, direccion (link a Google Maps), telefono, WhatsApp, Instagram y boton "Ver sitio web"
 5. Tipos y helpers compartidos en `lib/alojamientos.ts`
 
+### Flujo de Correos (Gmail API)
+
+Setup completo en **`docs/gmail-setup.md`** (Cloud Console, scopes, refresh token, Vercel).
+
+1. **Auth**: `lib/google/oauth.ts` canjea `GOOGLE_REFRESH_TOKEN` por access tokens (cache en memoria del proceso, renovacion 2 min antes de expirar, reintento unico ante 401).
+2. **Cliente**: `lib/google/gmail.ts` habla con la REST API de Gmail via `fetch` (sin SDK). `lib/google/mime.ts` arma los mensajes RFC 5322 (UTF-8 con encoded-word, multipart/alternative, adjuntos).
+3. **Plantillas**: `lib/email/templates.ts` — `confirmacion` (con QR), `rechazo`, `generico`. Antes vivian en EmailJS; ahora el HTML esta versionado en el repo. Layout con tablas y estilos inline, imagenes con URL absoluta (`/email/logo.png`, `/email/grandteam.png`).
+4. **Envio desde el panel**: `lib/emailService.ts` mantiene la firma vieja (`sendConfirmationEmail`, `sendRejectionEmail`, ...) pero ahora hace POST a `/api/email/send` con el token de la sesion.
+5. **Bandeja**: `/admin/emails` lista hilos, abre conversaciones, responde enhebrado, archiva/manda a papelera y permite redactar (uno o varios destinatarios, con envio individual).
+6. **Seguridad del HTML entrante**: doble capa — `sanearHtmlEmail()` en el servidor + `<iframe sandbox="">` con CSP propia en `components/admin/emails/VisorMensaje.tsx`.
+7. **Scopes**: `gmail.modify` + `gmail.send`. La app OAuth debe estar **publicada** (no en modo Testing) o el refresh token caduca cada 7 dias.
+
+Limite practico: Gmail gratuito permite ~500 destinatarios por dia; `/api/email/send` corta en 50 por request.
+
 ### Dashboard Admin
 
 - Stats en tiempo real: total inscriptos, confirmados, pendientes, rechazados
@@ -236,9 +268,14 @@ POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y part
 ### Variables de Entorno (.env.local)
 
 ```
-NEXT_PUBLIC_EMAILJS_SERVICE_ID
-NEXT_PUBLIC_EMAILJS_TEMPLATE_ID
-NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
+GOOGLE_CLIENT_ID                       # Cliente OAuth de Google Cloud Console
+GOOGLE_CLIENT_SECRET                   # SECRETO. Solo servidor (lib/google/**)
+GOOGLE_REFRESH_TOKEN                   # SECRETO. Se genera con `npm run gmail:auth`
+GMAIL_SENDER                           # Casilla que envia y cuya bandeja se lee
+GMAIL_SENDER_NAME                      # Nombre visible del remitente (default "Grand Team Bike")
+NEXT_PUBLIC_EMAILJS_SERVICE_ID         # LEGACY: ya no se usa (migrado a Gmail API)
+NEXT_PUBLIC_EMAILJS_TEMPLATE_ID        # LEGACY
+NEXT_PUBLIC_EMAILJS_PUBLIC_KEY         # LEGACY
 NEXT_PUBLIC_SITE_URL                   # opcional, default grandteambike.com.ar
 NEXT_PUBLIC_SUPABASE_URL               # URL del proyecto Supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY          # Clave publica (anon) de Supabase
