@@ -54,6 +54,20 @@ export default function GastosPage() {
     })
   }, [movimientos, filtroTipo, filtroEstado])
 
+  // Ingresos y egresos por separado, como en el PDF: mezclados en una sola
+  // lista no se entendia de donde salia la plata ni en que se fue.
+  const { movIngresos, movGastos, totalIngresos, totalGastos } = useMemo(() => {
+    const movIngresos = movimientosFiltrados.filter((m) => m.tipo === "ingreso")
+    const movGastos = movimientosFiltrados.filter((m) => m.tipo === "gasto")
+    return {
+      movIngresos,
+      movGastos,
+      totalIngresos: movIngresos.reduce((s, m) => s + m.monto, 0),
+      // Los gastos vienen en negativo: se muestra el valor absoluto.
+      totalGastos: movGastos.reduce((s, m) => s + Math.abs(m.monto), 0),
+    }
+  }, [movimientosFiltrados])
+
   const pendientes = gastos.filter((g) => g.estado === "pendiente")
   const aprobados = gastos.filter((g) => g.estado === "aprobado")
   const rechazados = gastos.filter((g) => g.estado === "rechazado")
@@ -449,13 +463,74 @@ export default function GastosPage() {
             </Popover>
           </CardHeader>
           <CardContent className="px-3 sm:px-6">
+            {/* Vista "todo": dos secciones, igual que el PDF. */}
             {vista === "todo" && (
-              <MovimientosTable
-                movimientos={movimientos}
-                onVerGasto={setSelectedGasto}
-                filtroTipo={filtroTipo}
-                filtroEstado={filtroEstado}
-              />
+              <div className="space-y-6">
+                {filtroTipo !== "gasto" && (
+                  <section>
+                    <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-green-500 flex items-center gap-1.5">
+                        <TrendingUp className="w-4 h-4" />
+                        Ingresos
+                        <span className="text-xs text-gray-500 font-normal">
+                          ({movIngresos.length})
+                        </span>
+                      </h3>
+                      <span className="text-sm font-bold text-green-500">
+                        +{formatARS(totalIngresos)}
+                      </span>
+                    </div>
+                    <MovimientosTable
+                      movimientos={movIngresos}
+                      onVerGasto={setSelectedGasto}
+                      filtroTipo="todos"
+                      filtroEstado="todos"
+                    />
+                  </section>
+                )}
+
+                {filtroTipo !== "ingreso" && (
+                  <section>
+                    <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-red-400 flex items-center gap-1.5">
+                        <TrendingDown className="w-4 h-4" />
+                        Egresos
+                        <span className="text-xs text-gray-500 font-normal">
+                          ({movGastos.length})
+                        </span>
+                      </h3>
+                      <span className="text-sm font-bold text-red-400">
+                        -{formatARS(totalGastos)}
+                      </span>
+                    </div>
+                    <MovimientosTable
+                      movimientos={movGastos}
+                      onVerGasto={setSelectedGasto}
+                      filtroTipo="todos"
+                      filtroEstado="todos"
+                    />
+                  </section>
+                )}
+
+                {/* Diferencia de lo que se esta mirando, con los filtros puestos. */}
+                <div
+                  className={`rounded-lg border p-3 text-center ${
+                    totalIngresos - totalGastos >= 0
+                      ? "border-yellow-400/30 bg-yellow-400/10"
+                      : "border-red-500/40 bg-red-500/10"
+                  }`}
+                >
+                  <p className="text-xs text-gray-400">Ingresos menos egresos (con estos filtros)</p>
+                  <p
+                    className={`text-xl font-bold ${
+                      totalIngresos - totalGastos >= 0 ? "text-yellow-400" : "text-red-500"
+                    }`}
+                  >
+                    {totalIngresos - totalGastos < 0 ? "-" : ""}
+                    {formatARS(Math.abs(totalIngresos - totalGastos))}
+                  </p>
+                </div>
+              </div>
             )}
 
             {vista === "gastos" && (

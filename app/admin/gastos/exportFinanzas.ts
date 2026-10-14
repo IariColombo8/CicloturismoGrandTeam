@@ -54,18 +54,37 @@ interface FilaIngreso {
   fecha: string
 }
 
+/** "13 inscriptos" / "1 inscripto". */
+function cuantos(cantidad: number): string {
+  return `${cantidad} inscripto${cantidad === 1 ? "" : "s"}`
+}
+
 /**
  * Filas de ingreso por inscripciones, desglosadas por situacion de pago.
  * El PDF mostraba solo los ingresos cargados a mano, asi que la plata de las
  * inscripciones (que es la mayor parte) no aparecia en ningun lado.
+ *
+ * `conNombres` decide si se lista quien compone cada fila: en el PDF va corto
+ * (como en pantalla), porque 16 nombres en una celda hacen ilegible la tabla;
+ * en el Excel van completos, que para eso es una planilla de trabajo.
  */
-function filasInscripciones(resumen: ResumenFinanciero, precioBase: number): FilaIngreso[] {
+function filasInscripciones(
+  resumen: ResumenFinanciero,
+  precioBase: number,
+  conNombres: boolean,
+): FilaIngreso[] {
   const d = resumen.desglosePagos
   const filas: FilaIngreso[] = []
 
+  /** Agrega los nombres a la descripcion solo si corresponde. */
+  const con = (base: string, nombres: string[]): string =>
+    conNombres && nombres.length > 0 ? `${base}: ${nombres.join(", ")}` : base
+
   if (d.precioLista.cantidad > 0) {
     filas.push({
-      descripcion: `Inscripciones que pagaron ${formatARS(precioBase)} (${d.precioLista.cantidad})`,
+      descripcion: `Inscripciones que pagaron ${formatARS(precioBase)} (${cuantos(
+        d.precioLista.cantidad,
+      )})`,
       categoria: "inscripciones",
       monto: d.precioLista.total,
       estado: "cobrado",
@@ -75,9 +94,10 @@ function filasInscripciones(resumen: ResumenFinanciero, precioBase: number): Fil
 
   if (d.otroMonto.cantidad > 0) {
     filas.push({
-      descripcion: `Inscripciones que pagaron otro monto (${d.otroMonto.cantidad}): ${d.otroMonto.items
-        .map((i) => `${i.nombre} ${i.apellido} ${formatARS(i.montoPagado ?? 0)}`)
-        .join(", ")}`,
+      descripcion: con(
+        `Inscripciones que pagaron otro monto (${cuantos(d.otroMonto.cantidad)})`,
+        d.otroMonto.items.map((i) => `${i.nombre} ${i.apellido} ${formatARS(i.montoPagado ?? 0)}`),
+      ),
       categoria: "inscripciones",
       monto: d.otroMonto.total,
       estado: "cobrado",
@@ -87,9 +107,10 @@ function filasInscripciones(resumen: ResumenFinanciero, precioBase: number): Fil
 
   if (d.sinPagar.cantidad > 0) {
     filas.push({
-      descripcion: `Confirmados que todavia no pagaron (${d.sinPagar.cantidad}): ${d.sinPagar.items
-        .map((i) => `${i.nombre} ${i.apellido}`)
-        .join(", ")}`,
+      descripcion: con(
+        `Confirmados que todavia no pagaron (${cuantos(d.sinPagar.cantidad)})`,
+        d.sinPagar.items.map((i) => `${i.nombre} ${i.apellido}`),
+      ),
       categoria: "inscripciones",
       monto: d.sinPagar.total,
       estado: "por_cobrar",
@@ -99,11 +120,12 @@ function filasInscripciones(resumen: ResumenFinanciero, precioBase: number): Fil
 
   if (d.otraForma.cantidad > 0) {
     filas.push({
-      descripcion: `Pagaron de otra forma, no entro a la caja (${
-        d.otraForma.cantidad
-      }): ${d.otraForma.items
-        .map((i) => `${i.nombre} ${i.apellido}${i.pagoNota ? ` (${i.pagoNota})` : ""}`)
-        .join(", ")}`,
+      descripcion: con(
+        `Pagaron de otra forma, no entro a la caja (${cuantos(d.otraForma.cantidad)})`,
+        d.otraForma.items.map(
+          (i) => `${i.nombre} ${i.apellido}${i.pagoNota ? ` (${i.pagoNota})` : ""}`,
+        ),
+      ),
       categoria: "inscripciones",
       monto: d.otraForma.total,
       estado: "por_cobrar",
@@ -113,9 +135,10 @@ function filasInscripciones(resumen: ResumenFinanciero, precioBase: number): Fil
 
   if (d.gratis.cantidad > 0) {
     filas.push({
-      descripcion: `Inscripciones sin cargo (${d.gratis.cantidad}): ${d.gratis.items
-        .map((i) => `${i.nombre} ${i.apellido}`)
-        .join(", ")}`,
+      descripcion: con(
+        `Inscripciones sin cargo (${cuantos(d.gratis.cantidad)})`,
+        d.gratis.items.map((i) => `${i.nombre} ${i.apellido}`),
+      ),
       categoria: "inscripciones",
       monto: 0,
       estado: "cobrado",
@@ -332,7 +355,11 @@ export async function exportarFinanzasPDF(
 
   // Detalle de ingresos: primero las inscripciones (que son la mayor parte de
   // la plata) y despues los ingresos cargados a mano.
-  const ingresosTodos = [...filasInscripciones(resumen, precioBase), ...filasIngresosManuales(ingresos)]
+  const ingresosTodos = [
+    // Sin nombres: la tabla del PDF se lee como la pantalla ("13 inscriptos").
+    ...filasInscripciones(resumen, precioBase, false),
+    ...filasIngresosManuales(ingresos),
+  ]
   const filasIngresos = ingresosTodos.map((i) => [
     i.descripcion,
     i.categoria,
@@ -457,7 +484,8 @@ export async function exportarFinanzasExcel(
 
   const hojaIngresos = XLSX.utils.json_to_sheet([
     // Las inscripciones primero: son la mayor parte de la plata del evento.
-    ...filasInscripciones(resumen, precioBase).map((i) => ({
+    // Aca si van los nombres: es una planilla para trabajar, no un informe.
+    ...filasInscripciones(resumen, precioBase, true).map((i) => ({
       Descripción: i.descripcion,
       Categoría: i.categoria,
       Monto: i.monto,
