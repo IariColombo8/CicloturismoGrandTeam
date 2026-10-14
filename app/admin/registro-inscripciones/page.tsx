@@ -39,6 +39,7 @@ import {
   Gift,
   MailX,
   StickyNote,
+  type LucideIcon,
 } from "lucide-react"
 
 // Columnas que pedimos a Supabase (sin comprobante_base64, que es pesado).
@@ -120,6 +121,26 @@ interface PagoDistinto {
   pagado: number
   /** Positivo si pago de menos, negativo si pago de mas. */
   diferencia: number
+}
+
+/** Cuantas tarjetas de resumen se ven de una vez (el resto, con las flechas). */
+const TARJETAS_POR_PAGINA = 4
+
+/** Una tarjeta del resumen de arriba. */
+interface TarjetaResumen {
+  id: string
+  titulo: string
+  valor: number | string
+  icono: LucideIcon
+  /** Clase de color del icono, completa (Tailwind no arma clases en runtime). */
+  color: string
+  /** Texto chico debajo del numero. */
+  pie?: string
+  colorPie?: string
+  /** Abre la lista de quienes componen el numero. */
+  onVer?: () => void
+  /** Aplica el filtro correspondiente al listado. */
+  onFiltrar?: () => void
 }
 
 /** Una inscripcion para mostrar en una lista simple (modal de "ver"). */
@@ -220,6 +241,8 @@ export default function RegistroInscripciones() {
   // Resumen de pagos de las confirmadas (quien pago, quien no, quien pago otro monto).
   const [resumenPagos, setResumenPagos] = useState<ResumenPagos>(RESUMEN_PAGOS_VACIO)
   const [verPagosDistintos, setVerPagosDistintos] = useState(false)
+  // Pagina del carrusel de tarjetas de resumen (se ven 4 por vez).
+  const [paginaTarjetas, setPaginaTarjetas] = useState(0)
   // Modal generico de "ver la lista": las tarjetas muestran solo el numero.
   const [listaModal, setListaModal] = useState<{
     titulo: string
@@ -1281,6 +1304,120 @@ export default function RegistroInscripciones() {
     exportToCSV(datos, `inscripciones_${new Date().toISOString().slice(0, 10)}`)
   }
 
+  // --- Tarjetas de resumen (carrusel de 4 en 4) ---
+  // Son 9: las 4 de estado y las 5 de pago. Mostrarlas todas juntas ocupaba
+  // media pantalla antes de llegar al listado.
+  const tarjetas = useMemo<TarjetaResumen[]>(
+    () => [
+      // El color va completo y no interpolado: Tailwind no genera clases
+      // armadas en runtime (text-${color}-400 quedaba sin estilo).
+      { id: "total", titulo: "Total", valor: stats.total, icono: Users, color: "text-blue-400" },
+      {
+        id: "confirmadas",
+        titulo: "Confirmadas",
+        valor: stats.confirmadas,
+        icono: CheckCircle,
+        color: "text-green-400",
+      },
+      {
+        id: "pendientes",
+        titulo: "Pendientes",
+        valor: stats.pendientes,
+        icono: Clock,
+        color: "text-yellow-400",
+      },
+      {
+        id: "rechazadas",
+        titulo: "Rechazadas",
+        valor: stats.rechazadas,
+        icono: XCircleIcon,
+        color: "text-red-400",
+      },
+      {
+        id: "pagaron",
+        titulo: "Pagaron",
+        valor: resumenPagos.pagaron,
+        icono: DollarSign,
+        color: "text-green-400",
+        pie: `${formatearMonto(resumenPagos.cobrado)} cobrado`,
+        colorPie: "text-green-400",
+        onFiltrar: () => {
+          setFiltroPago("pagado")
+          setCurrentPage(1)
+        },
+      },
+      {
+        id: "no-pagaron",
+        titulo: "No pagaron",
+        valor: resumenPagos.noPagaron,
+        icono: AlertTriangle,
+        color: "text-orange-400",
+        pie: `faltan ${formatearMonto(resumenPagos.faltaCobrar)}`,
+        colorPie: "text-orange-400",
+        onVer:
+          resumenPagos.sinPagar.length > 0
+            ? () =>
+                setListaModal({
+                  titulo: "Confirmados que todavía no pagaron",
+                  descripcion: `${resumenPagos.noPagaron} inscriptos · faltan ${formatearMonto(
+                    resumenPagos.faltaCobrar
+                  )}`,
+                  items: resumenPagos.sinPagar,
+                })
+            : undefined,
+        onFiltrar: () => {
+          setFiltroPago("sin-pagar")
+          setCurrentPage(1)
+        },
+      },
+      {
+        id: "otro-monto",
+        titulo: "Pagaron otro monto",
+        valor: resumenPagos.distintos.length,
+        icono: ClipboardList,
+        color: "text-blue-400",
+        onVer: resumenPagos.distintos.length > 0 ? () => setVerPagosDistintos(true) : undefined,
+      },
+      {
+        // Pagaron de una forma que no entro a la caja (otra moneda, se lo
+        // dieron a alguien del equipo). No suma plata, pero no son deudores.
+        id: "otra-forma",
+        titulo: "Pagó de otra forma",
+        valor: resumenPagos.otraForma.length,
+        icono: StickyNote,
+        color: "text-purple-400",
+        onVer:
+          resumenPagos.otraForma.length > 0
+            ? () =>
+                setListaModal({
+                  titulo: "Pagaron de otra forma",
+                  descripcion: "Ya pagaron, pero esa plata todavía no entró a la caja",
+                  items: resumenPagos.otraForma,
+                })
+            : undefined,
+      },
+      {
+        id: "gratis",
+        titulo: "Gratis",
+        valor: resumenPagos.gratis,
+        icono: Gift,
+        color: "text-blue-400",
+        pie: "sin cargo",
+      },
+    ],
+    [stats, resumenPagos, precioInscripcion]
+  )
+
+  const totalPaginasTarjetas = Math.ceil(tarjetas.length / TARJETAS_POR_PAGINA)
+  const tarjetasVisibles = tarjetas.slice(
+    paginaTarjetas * TARJETAS_POR_PAGINA,
+    paginaTarjetas * TARJETAS_POR_PAGINA + TARJETAS_POR_PAGINA
+  )
+
+  /** Avanza o retrocede de pagina, dando la vuelta en los extremos. */
+  const moverTarjetas = (paso: number) =>
+    setPaginaTarjetas((p) => (p + paso + totalPaginasTarjetas) % totalPaginasTarjetas)
+
   // Derivados del modal de detalle: si el admin toco el email y si la
   // inscripcion esta en un estado donde el mail de confirmacion tiene sentido.
   const emailCambiado =
@@ -1368,162 +1505,99 @@ export default function RegistroInscripciones() {
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-4 mb-6 animate-fadeIn">
-          {[
-            // El color va completo y no interpolado: Tailwind no genera clases
-            // armadas en runtime (text-${color}-400 quedaba sin estilo).
-            { title: "Total", value: stats.total, icon: Users, color: "text-blue-400" },
-            { title: "Confirmadas", value: stats.confirmadas, icon: CheckCircle, color: "text-green-400" },
-            { title: "Pendientes", value: stats.pendientes, icon: Clock, color: "text-yellow-400" },
-            { title: "Rechazadas", value: stats.rechazadas, icon: XCircleIcon, color: "text-red-400" },
-          ].map((stat) => {
-            const Icon = stat.icon
-            return (
-              <div
-                key={stat.title}
-                className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-yellow-400/40 transition-all"
+        {/* Tarjetas de resumen: 9 en total, pero se muestran 4 por vez y el
+            resto se ve con las flechas. Las 9 juntas se comian la pantalla. */}
+        <div className="mb-6 animate-fadeIn">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5">
+              {/* Un punto por pagina, para saber donde estas y saltar directo. */}
+              {Array.from({ length: totalPaginasTarjetas }).map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setPaginaTarjetas(i)}
+                  aria-label={`Ver tarjetas ${i + 1} de ${totalPaginasTarjetas}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === paginaTarjetas ? "w-5 bg-yellow-400" : "w-1.5 bg-zinc-700 hover:bg-zinc-600"
+                  }`}
+                />
+              ))}
+              <span className="text-[11px] text-gray-500 ml-1.5">
+                {paginaTarjetas + 1}/{totalPaginasTarjetas}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => moverTarjetas(-1)}
+                aria-label="Tarjetas anteriores"
+                className="p-1.5 rounded-lg bg-zinc-900 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-800 transition-all"
               >
-                <div className="flex justify-between items-start gap-1 mb-2">
-                  <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">{stat.title}</div>
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${stat.color}`} />
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-white">{stat.value}</div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Resumen de pagos de las confirmadas. Se calcula con monto_pagado real,
-            no con confirmadas * precio: una confirmada impaga no es plata. */}
-        <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-5 mb-6 animate-fadeIn">
-          <button
-            type="button"
-            onClick={() => {
-              setFiltroPago("pagado")
-              setCurrentPage(1)
-            }}
-            title="Ver solo las que pagaron"
-            className="text-left bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-green-400/50 transition-all"
-          >
-            <div className="flex justify-between items-start gap-1 mb-2">
-              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Pagaron</div>
-              <DollarSign className="w-4 h-4 flex-shrink-0 text-green-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.pagaron}</div>
-            <div className="text-[11px] sm:text-xs text-green-400 mt-1 truncate">
-              {formatearMonto(resumenPagos.cobrado)} cobrado
-            </div>
-          </button>
-
-          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
-            <div className="flex justify-between items-start gap-1 mb-2">
-              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">No pagaron</div>
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 text-orange-400" />
-            </div>
-            <div className="flex items-end justify-between gap-2">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-white">
-                  {resumenPagos.noPagaron}
-                </div>
-                <div className="text-[11px] sm:text-xs text-orange-400 mt-1 truncate">
-                  faltan {formatearMonto(resumenPagos.faltaCobrar)}
-                </div>
-              </div>
-              <div className="flex flex-col gap-1 flex-shrink-0">
-                {resumenPagos.sinPagar.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setListaModal({
-                        titulo: "Confirmados que todavía no pagaron",
-                        descripcion: `${resumenPagos.noPagaron} inscriptos · faltan ${formatearMonto(
-                          resumenPagos.faltaCobrar
-                        )}`,
-                        items: resumenPagos.sinPagar,
-                      })
-                    }
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-orange-400/30 text-orange-300 text-[11px] sm:text-xs hover:bg-zinc-700 transition-all"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    Ver
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFiltroPago("sin-pagar")
-                    setCurrentPage(1)
-                  }}
-                  title="Filtrar el listado por los que no pagaron"
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-gray-400 text-[11px] sm:text-xs hover:text-white transition-all"
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  Filtrar
-                </button>
-              </div>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moverTarjetas(1)}
+                aria-label="Tarjetas siguientes"
+                className="p-1.5 rounded-lg bg-zinc-900 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-800 transition-all"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
-            <div className="flex justify-between items-start gap-1 mb-2">
-              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Pagaron otro monto</div>
-              <ClipboardList className="w-4 h-4 flex-shrink-0 text-blue-400" />
-            </div>
-            <div className="flex items-end justify-between gap-2">
-              <div className="text-xl sm:text-2xl font-bold text-white">
-                {resumenPagos.distintos.length}
-              </div>
-              {resumenPagos.distintos.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setVerPagosDistintos(true)}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-blue-400/30 text-blue-300 text-[11px] sm:text-xs hover:bg-zinc-700 transition-all"
+          <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-4">
+            {tarjetasVisibles.map((tarjeta) => {
+              const Icono = tarjeta.icono
+              return (
+                <div
+                  key={tarjeta.id}
+                  className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-yellow-400/40 transition-all"
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  Ver
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Pagaron de una forma que no entro a la caja (otra moneda, se lo
-              dieron a alguien del equipo). No suma plata, pero no son deudores. */}
-          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
-            <div className="flex justify-between items-start gap-1 mb-2">
-              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Pagó de otra forma</div>
-              <StickyNote className="w-4 h-4 flex-shrink-0 text-purple-400" />
-            </div>
-            <div className="flex items-end justify-between gap-2">
-              <div className="text-xl sm:text-2xl font-bold text-white">
-                {resumenPagos.otraForma.length}
-              </div>
-              {resumenPagos.otraForma.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setListaModal({
-                      titulo: "Pagaron de otra forma",
-                      descripcion: "Ya pagaron, pero esa plata todavía no entró a la caja",
-                      items: resumenPagos.otraForma,
-                    })
-                  }
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-purple-400/30 text-purple-300 text-[11px] sm:text-xs hover:bg-zinc-700 transition-all"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  Ver
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
-            <div className="flex justify-between items-start gap-1 mb-2">
-              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Gratis</div>
-              <Gift className="w-4 h-4 flex-shrink-0 text-blue-400" />
-            </div>
-            <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.gratis}</div>
-            <div className="text-[11px] sm:text-xs text-gray-500 mt-1 truncate">sin cargo</div>
+                  <div className="flex justify-between items-start gap-1 mb-2">
+                    <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">
+                      {tarjeta.titulo}
+                    </div>
+                    <Icono className={`w-4 h-4 flex-shrink-0 ${tarjeta.color}`} />
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-xl sm:text-2xl font-bold text-white">{tarjeta.valor}</div>
+                      {tarjeta.pie && (
+                        <div className={`text-[11px] sm:text-xs mt-1 truncate ${tarjeta.colorPie ?? "text-gray-500"}`}>
+                          {tarjeta.pie}
+                        </div>
+                      )}
+                    </div>
+                    {(tarjeta.onVer || tarjeta.onFiltrar) && (
+                      <div className="flex flex-col gap-1 flex-shrink-0">
+                        {tarjeta.onVer && (
+                          <button
+                            type="button"
+                            onClick={tarjeta.onVer}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-yellow-400/30 text-yellow-400 text-[11px] sm:text-xs hover:bg-zinc-700 transition-all"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Ver
+                          </button>
+                        )}
+                        {tarjeta.onFiltrar && (
+                          <button
+                            type="button"
+                            onClick={tarjeta.onFiltrar}
+                            title="Filtrar el listado"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-gray-400 text-[11px] sm:text-xs hover:text-white transition-all"
+                          >
+                            <Filter className="w-3.5 h-3.5" />
+                            Filtrar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
