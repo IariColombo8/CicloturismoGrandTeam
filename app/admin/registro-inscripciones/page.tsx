@@ -36,6 +36,7 @@ import {
   Loader2,
   AlertTriangle,
   Gift,
+  MailX,
 } from "lucide-react"
 
 // Columnas que pedimos a Supabase (sin comprobante_base64, que es pesado).
@@ -164,6 +165,9 @@ export default function RegistroInscripciones() {
   const [newStatus, setNewStatus] = useState("")
   const [statusNote, setStatusNote] = useState("")
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  // Cual de los dos botones de guardado se apreto, solo para mostrar el spinner
+  // en el que corresponde.
+  const [guardandoSinEmail, setGuardandoSinEmail] = useState(false)
   const [numeroEditValue, setNumeroEditValue] = useState("")
   const [savingNumero, setSavingNumero] = useState(false)
   // Reenvio del mail de confirmacion, con correccion del email si hace falta.
@@ -845,6 +849,11 @@ export default function RegistroInscripciones() {
     setSelectedInscripcion(null)
   }
 
+  // El mail de confirmacion solo sale cuando la inscripcion pasa a confirmada
+  // desde otro estado. Si ya estaba confirmada, guardar no manda nada.
+  const enviaraEmailAlGuardar =
+    newStatus === "confirmada" && selectedInscripcion?.estado !== "confirmada"
+
   const openComprobante = async (source?: string | null) => {
     if (!source) return
 
@@ -908,7 +917,15 @@ export default function RegistroInscripciones() {
     }
   }, [comprobanteModal])
 
-  const updateStatus = async () => {
+  /**
+   * Guarda el estado, la nota y el pago de la inscripcion.
+   *
+   * `enviarEmail` en false confirma igual (numero de inscripcion incluido) pero
+   * no manda el mail de confirmacion. Sirve para los casos en que el mail ya se
+   * aviso por otra via, el email esta mal o simplemente no se quiere notificar.
+   * Despues se puede mandar a mano con "Reenviar confirmacion".
+   */
+  const updateStatus = async ({ enviarEmail = true }: { enviarEmail?: boolean } = {}) => {
     if (!selectedInscripcion) return
 
     // El pago solo se define al confirmar: en pendiente o rechazada no hay
@@ -921,6 +938,7 @@ export default function RegistroInscripciones() {
       return
     }
 
+    setGuardandoSinEmail(!enviarEmail)
     setUpdatingStatus(true)
     try {
       const { error: updateError } = await supabase
@@ -950,8 +968,9 @@ export default function RegistroInscripciones() {
       const numeroInscripcion = confirmada ? numeroAsignado : null
 
       // Enviar email de confirmacion con QR recien acá, al aprobar.
-      // Evita reenviarlo si ya estaba confirmada (edicion de nota, etc).
-      if (newStatus === "confirmada" && selectedInscripcion.estado !== "confirmada") {
+      // Evita reenviarlo si ya estaba confirmada (edicion de nota, etc) y lo
+      // omite por completo si se confirmo con "Confirmar sin enviar email".
+      if (enviarEmail && newStatus === "confirmada" && selectedInscripcion.estado !== "confirmada") {
         try {
           await emailService.sendConfirmationEmail({
             email: selectedInscripcion.email,
@@ -990,6 +1009,7 @@ export default function RegistroInscripciones() {
       alert("Error al actualizar el estado: " + (err?.message || ""))
     } finally {
       setUpdatingStatus(false)
+      setGuardandoSinEmail(false)
     }
   }
 
@@ -1758,6 +1778,12 @@ export default function RegistroInscripciones() {
                         <option value="confirmada">Confirmada</option>
                         <option value="rechazada">Rechazada</option>
                       </select>
+                      {enviaraEmailAlGuardar && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Al confirmar se le manda el mail con el QR. Si no querés que le llegue,
+                          usá «Confirmar sin enviar email».
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Nota</label>
@@ -1855,30 +1881,54 @@ export default function RegistroInscripciones() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-3 sm:p-4 flex justify-between items-center gap-2">
+              <div className="sticky bottom-0 bg-zinc-900 border-t border-yellow-400/20 p-3 sm:p-4 flex flex-wrap justify-between items-center gap-2">
                 <button
                   onClick={closeDetailsModal}
                   className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-white hover:bg-zinc-700 transition-all text-sm flex-shrink-0"
                 >
                   Cerrar
                 </button>
-                <button
-                  onClick={updateStatus}
-                  disabled={updatingStatus}
-                  className="px-4 py-2 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-500 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-0"
-                >
-                  {updatingStatus ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Actualizando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Actualizar Estado
-                    </>
+                <div className="flex flex-wrap items-center gap-2 ml-auto">
+                  {/* Solo aparece cuando el guardado mandaria el mail: si ya estaba
+                      confirmada no se envia nada y el boton no tendria sentido. */}
+                  {enviaraEmailAlGuardar && (
+                    <button
+                      onClick={() => updateStatus({ enviarEmail: false })}
+                      disabled={updatingStatus}
+                      title="Confirma la inscripción y le asigna número, pero no le manda el mail"
+                      className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/30 text-yellow-400 font-semibold hover:bg-zinc-700 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-0"
+                    >
+                      {updatingStatus && guardandoSinEmail ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Confirmando...
+                        </>
+                      ) : (
+                        <>
+                          <MailX className="w-4 h-4" />
+                          Confirmar sin enviar email
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
+                  <button
+                    onClick={() => updateStatus()}
+                    disabled={updatingStatus}
+                    className="px-4 py-2 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-500 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-0"
+                  >
+                    {updatingStatus && !guardandoSinEmail ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        {enviaraEmailAlGuardar ? "Confirmar y enviar email" : "Actualizar Estado"}
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
