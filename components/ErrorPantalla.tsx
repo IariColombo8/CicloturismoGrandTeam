@@ -1,6 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+
+/** Marca en la pestaña que ya se intento recuperar, para no recargar en loop. */
+const CLAVE_REINTENTO = "gt-reintento-chunk"
+
+/** URLs de archivos .js que aparecen en el mensaje o el stack del error. */
+function archivosDelError(error: Error): string[] {
+  const texto = `${error.message || ""}\n${error.stack || ""}`
+  const encontradas = texto.match(/https?:\/\/[^\s)"']+\.js/g) || []
+  return Array.from(new Set(encontradas))
+}
 
 interface ErrorPantallaProps {
   error: Error & { digest?: string }
@@ -35,7 +45,7 @@ export default function ErrorPantalla({ error, reset }: ErrorPantallaProps) {
     )
 
   /** Borra service workers y caches de este sitio y recarga de cero. */
-  const limpiarYRecargar = async () => {
+  const limpiarYRecargar = useCallback(async () => {
     setLimpiando(true)
     try {
       if ("serviceWorker" in navigator) {
@@ -46,11 +56,49 @@ export default function ErrorPantalla({ error, reset }: ErrorPantallaProps) {
         const nombres = await caches.keys()
         await Promise.all(nombres.map((n) => caches.delete(n)))
       }
+
+      // Los archivos JS se sirven con `immutable`, asi que si uno quedo cortado
+      // o corrupto en la cache del navegador, este lo sigue usando sin pedirlo
+      // de nuevo y el error se repite para siempre. No hay API para vaciar esa
+      // cache, pero `cache: "reload"` fuerza bajarlo otra vez y sobrescribe la
+      // entrada mala.
+      await Promise.all(
+        archivosDelError(error).map((url) =>
+          fetch(url, { cache: "reload", mode: "no-cors" }).catch(() => undefined)
+        )
+      )
     } catch {
       // Si no se puede limpiar, igual recargamos.
     }
     // El parametro rompe la cache del HTML.
     window.location.replace(`${window.location.pathname}?r=${Date.now()}`)
+  }, [error])
+
+  // Si lo que fallo es un archivo JS, se intenta arreglar solo una vez por
+  // pestaña: baja de nuevo el archivo y recarga. Asi el usuario no tiene que
+  // entender nada ni tocar ningun boton. Si despues de eso vuelve a fallar, ya
+  // se muestra la pantalla con el detalle.
+  useEffect(() => {
+    if (!esAppVieja) return
+
+    let yaIntentado = true
+    try {
+      yaIntentado = sessionStorage.getItem(CLAVE_REINTENTO) === "1"
+      if (!yaIntentado) sessionStorage.setItem(CLAVE_REINTENTO, "1")
+    } catch {
+      // Sin sessionStorage no hay forma de evitar el loop: no se reintenta.
+      return
+    }
+
+    if (!yaIntentado) limpiarYRecargar()
+  }, [esAppVieja, limpiarYRecargar])
+
+  if (limpiando) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <p className="text-yellow-400 text-sm animate-pulse">Actualizando la página...</p>
+      </div>
+    )
   }
 
   return (
