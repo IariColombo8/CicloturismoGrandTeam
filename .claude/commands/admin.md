@@ -5,8 +5,12 @@ Eres un experto en el panel admin del proyecto Grand Team Bike 2026.
 ## Archivos principales
 - `app/admin/layout.tsx` - Layout (Navbar + AdminSidebar + main)
 - `app/admin/page.tsx` - Redirección a dashboard
-- `app/admin/dashboard/page.tsx` - Dashboard con stats y gráficos (378 líneas)
-- `app/admin/dashboard/DashboardCharts.tsx` - 7 gráficos recharts (carga dinámica sin SSR)
+- `app/admin/dashboard/page.tsx` - Dashboard: cabecera (precio editable) + las tres secciones
+- `app/admin/dashboard/panorama.ts` - Cálculo puro: agrupaciones, salud, edades, remeras
+- `app/admin/dashboard/usePanorama.ts` - Carga de participantes y remeras + realtime
+- `app/admin/dashboard/SeccionPlata.tsx` / `SeccionGente.tsx` / `SeccionExtra.tsx` - Los tres bloques
+- `app/admin/dashboard/GraficosPlata.tsx` / `GraficosGente.tsx` - Recharts (dynamic import, sin SSR)
+- `app/admin/dashboard/piezas.tsx` - Tarjeta, Seccion, Panel, FilaConteo, Dato
 - `app/admin/registro-inscripciones/page.tsx` - Tabla de inscripciones (695 líneas)
 - `app/admin/configuraciones/page.tsx` - Config del evento (373 líneas)
 - `app/admin/gastos/page.tsx` - Control de gastos (527 líneas)
@@ -22,11 +26,27 @@ Eres un experto en el panel admin del proyecto Grand Team Bike 2026.
 - Colección Firestore: `administrador/{emailKey}`
 
 ## Dashboard
-- 4 stats principales: total, pendientes, confirmadas, ingresos
-- 3 stats secundarias: tasa conversión, rechazadas, ingreso promedio
-- 7 gráficos: área acumulada, pie estado, línea diaria, pie categoría, bar provincias, radar métricas, bar financiero
-- Datos en tiempo real con `onSnapshot()`
-- Precio fijo: $40,000 por inscripción confirmada
+Tres secciones, en este orden:
+1. **Plata**: usa el mismo `useFinanzas` de `/admin/gastos` (nunca recalcular los ingresos aparte:
+   los dos paneles tienen que decir lo mismo). Tarjetas de lo cobrado / gastos / banco / balance,
+   cómo pagaron los confirmados (con los nombres en `ListaModal`), gastos por categoría y 2 gráficos.
+2. **Inscripciones y gente**: estado y cupo, salud (celíacos, problemas de salud, alergias, menores),
+   grupos ciclistas con sus integrantes, procedencia, edades y 5 gráficos. Tiene un selector de
+   alcance (todos los que van al evento / solo confirmados).
+3. **Ritmo, remeras y últimas altas**: inscripciones de los últimos 7 días, día récord, talles
+   pedidos para encargar al proveedor, estado de los pedidos.
+
+Reglas al tocarlo:
+- Los gráficos y los conteos se calculan sobre **todas** las filas de la edición, nunca sobre una
+  muestra: el dashboard viejo dibujaba "todo el evento" con las últimas 5 inscripciones.
+- Las localidades y los grupos se agrupan sin acentos ni mayúsculas (`panorama.ts`): los datos
+  vienen a mano y "CONCORDIA", "Concordia" y "Paysandú"/"Paysandu" son lo mismo. 32 localidades
+  crudas son 19 reales.
+- Las listas de nombres van en `ListaModal`, nunca escritas en la fila.
+- Un gráfico, una unidad: no mezclar pesos con cantidad de personas en el mismo eje.
+- Fecha de nacimiento que no da una edad creíble (3 a 100 años) no se cuenta: se avisa aparte para
+  corregirla. Hay inscripciones con el año en curso cargado como año de nacimiento.
+- Datos en tiempo real por canal de Supabase sobre `participantes` y `remera`.
 
 ## Registro de inscripciones
 - Tabla paginada (50/100/150 por página)

@@ -322,11 +322,37 @@ push de inscripcion nueva lo usa `lib/finanzas/saldoEsperado.ts`.
 
 ### Dashboard Admin
 
-- Stats en tiempo real: total inscriptos, confirmados, pendientes, rechazados
-- Precio de entrada editable inline (se guarda en `event_settings.precio`)
-- Ingresos: suma de `monto_pagado` de las confirmadas pagadas (ver la regla de arriba).
-  Los confirmados sin pagar se muestran aparte y van a "potenciales"
-- Graficos con recharts (cargados via dynamic import)
+`/admin/dashboard` tiene tres secciones, y todas se calculan sobre **todas** las filas de la
+edicion (la version vieja pedia conteos sueltos y las ultimas 5 inscripciones, y dibujaba los
+graficos de "todo el evento" con esas 5 filas: los grupos, las localidades y el acumulado nunca
+coincidian con el registro).
+
+1. **Plata** (`SeccionPlata.tsx`): usa el mismo `useFinanzas` de `/admin/gastos`, asi que los dos
+   paneles dicen siempre lo mismo. Lo cobrado, gastos aprobados/pagados/sin pagar, plata en banco,
+   balance, como pagaron los confirmados (desglose con nombres en modal), gastos por categoria,
+   costo por confirmado y notas de caja sin resolver.
+2. **Inscripciones y gente** (`SeccionGente.tsx`): estado y ocupacion del cupo, acreditados, salud
+   (celiacos, problemas de salud, alergias, menores de edad, sin grupo sanguineo, sin experiencia),
+   grupos ciclistas con sus integrantes, procedencia (paises y localidades), edades y grupos
+   sanguineos. Selector de alcance: todos los que van al evento, o solo los confirmados.
+3. **Ritmo, remeras y ultimas altas** (`SeccionExtra.tsx`): inscripciones de los ultimos 7 dias,
+   promedio por dia, dia record, dias sin inscripciones, y los pedidos de remera desglosados por
+   talle (lo que hay que encargar), retiro vs envio y comprobantes.
+
+El calculo vive en `panorama.ts` (puro, sin Supabase) y la carga en `usePanorama.ts` (realtime
+sobre `participantes` y `remera`). Los graficos (`GraficosPlata.tsx`, `GraficosGente.tsx`) van por
+dynamic import porque recharts es la libreria mas pesada del panel.
+
+Reglas del dashboard:
+- Localidades y grupos se agrupan ignorando acentos y mayusculas: los datos se cargan a mano y
+  "CONCORDIA"/"Concordia" o "Paysandu"/"Paysandú" son lo mismo. Sin eso, 32 localidades crudas se
+  mostraban como 32 cuando son 19.
+- Las listas de nombres van siempre en `ListaModal`, nunca escritas en la fila.
+- Un grafico, una unidad: no mezclar pesos con cantidad de personas en el mismo eje.
+- Fecha de nacimiento que no da una edad creible (3 a 100 anios) no se cuenta en edades ni en
+  menores: se avisa aparte para corregirla en el registro.
+- Precio de entrada editable inline en la cabecera (se guarda en `event_settings.precio` e invalida
+  el cache de sessionStorage del provider).
 
 ### Acceso a Supabase Management API (SQL directo)
 
