@@ -101,6 +101,13 @@ export function PagosTable({
                         son otra situacion y conviene que se lea asi. */}
                     {insc.pagoEstado === "pendiente" ? (
                       <Badge className="bg-orange-500/20 text-orange-400">Sin pagar</Badge>
+                    ) : insc.pagoEstado === "otro" ? (
+                      <Badge
+                        className="bg-purple-500/20 text-purple-300"
+                        title={insc.pagoNota || "Pago de otra forma"}
+                      >
+                        Otra forma
+                      </Badge>
                     ) : insc.pagoEstado === "gratis" ? (
                       <Badge className="bg-blue-500/20 text-blue-400">Gratis</Badge>
                     ) : diferencia === 0 ? (

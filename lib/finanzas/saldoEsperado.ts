@@ -74,9 +74,14 @@ export async function calcularSaldoEsperado(): Promise<SaldoEsperado | null> {
     for (const p of participantes) {
       if (p.estado === "confirmada") {
         confirmados += 1
-        // Una inscripcion confirmada pero marcada como impaga o gratis no
-        // aporta plata a la cuenta.
-        if (p.pago_estado === "gratis" || p.pago_estado === "pendiente") continue
+        // Una inscripcion confirmada pero impaga, gratis, o pagada de una forma
+        // que no entro a la caja ("otro") no aporta plata a la cuenta.
+        if (
+          p.pago_estado === "gratis" ||
+          p.pago_estado === "pendiente" ||
+          p.pago_estado === "otro"
+        )
+          continue
         inscripcionesConfirmadas += p.monto_pagado != null ? Number(p.monto_pagado) : precio
       } else if (p.estado === "pendiente") {
         pendientes += 1

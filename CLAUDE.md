@@ -284,6 +284,14 @@ sale siempre de `participantes.pago_estado` + `participantes.monto_pagado`:
   como quedaron las inscripciones viejas).
 - `pago_estado = 'pendiente'` -> suma 0 (y se cuenta aparte como "falta cobrar").
 - `pago_estado = 'gratis'` -> suma 0 y no se espera que pague.
+- `pago_estado = 'otro'` -> **pago que no entro a la caja**: pago en otra moneda, o le
+  transfirio a alguien del equipo. Suma 0 hasta que se lo pase a 'pagado'. La aclaracion
+  va en `pago_nota` ("Pago 700 uruguayos, Lore nos transfiere esa plata") y se ve en el
+  badge de la grilla, en el modal, en finanzas y en los exports.
+
+Las listas de nombres (quienes no pagaron, quienes pagaron otro monto) **no se escriben
+en la fila**: la fila dice la cantidad y los nombres se abren con el boton "ver"
+(`app/admin/gastos/ListaModal.tsx`, y el modal de lista en el registro de inscripciones).
 
 Helpers: `montoCobrado()` (lo que entro) y `montoEsperado()` (lo que deberia entrar) en
 `app/admin/gastos/tipos.ts`. El desglose (`DesglosePagos`: precio de lista / otro monto /

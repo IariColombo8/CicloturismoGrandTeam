@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Wallet, ChevronDown } from "lucide-react"
+import { Wallet, ChevronDown, List } from "lucide-react"
+import { ListaModal } from "./ListaModal"
 import { formatARS, totalGasto, type DesglosePagos, type Gasto, type Ingreso } from "./tipos"
 
 interface Item {
@@ -16,6 +17,8 @@ interface Item {
   /** Si arranca tildado (osea, plata que ya se considera real). */
   defaultChecked: boolean
   etiqueta?: string
+  /** Nombres detras del numero, para el boton "ver". */
+  listado?: { titulo: string; items: string[] }
 }
 
 interface CalculadoraCajaProps {
@@ -43,6 +46,8 @@ export function CalculadoraCaja({
   precioBase,
 }: CalculadoraCajaProps) {
   const [abierto, setAbierto] = useState(false)
+  // Nombres detras de una fila, cuando se toca "ver".
+  const [lista, setLista] = useState<{ titulo: string; items: string[] } | null>(null)
 
   const itemsEntra = useMemo<Item[]>(() => {
     const deIngresos: Item[] = ingresos.map((i) => ({
@@ -73,11 +78,15 @@ export function CalculadoraCaja({
       deInscripciones.push({
         id: "inscripciones-otro-monto",
         label: "Pagaron otro monto",
-        detalle: desglosePagos.otroMonto.items
-          .map((i) => `${i.nombre}: ${formatARS(i.montoPagado ?? 0)}`)
-          .join(" · "),
+        detalle: `${desglosePagos.otroMonto.cantidad} inscriptos`,
         monto: desglosePagos.otroMonto.total,
         defaultChecked: true,
+        listado: {
+          titulo: "Pagaron otro monto",
+          items: desglosePagos.otroMonto.items.map(
+            (i) => `${i.nombre} ${i.apellido} — ${formatARS(i.montoPagado ?? 0)}`,
+          ),
+        },
       })
     }
 
@@ -85,15 +94,42 @@ export function CalculadoraCaja({
       deInscripciones.push({
         id: "inscripciones-sin-pagar",
         label: "Confirmados que no pagaron",
-        detalle: desglosePagos.sinPagar.items.map((i) => `${i.nombre} ${i.apellido}`).join(" · "),
+        // Solo la cantidad: los nombres van al modal del boton "ver".
+        detalle: `${desglosePagos.sinPagar.cantidad} inscriptos`,
         monto: desglosePagos.sinPagar.total,
         defaultChecked: false,
         etiqueta: "Falta que transfieran",
+        listado: {
+          titulo: "Confirmados que no pagaron",
+          items: desglosePagos.sinPagar.items.map((i) => `${i.nombre} ${i.apellido}`),
+        },
       })
     }
 
+    if (desglosePagos.otraForma.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-otra-forma",
+        label: "Pagaron de otra forma",
+        detalle: `${desglosePagos.otraForma.cantidad} inscriptos`,
+        monto: desglosePagos.otraForma.total,
+        defaultChecked: false,
+        etiqueta: "No entró a la caja",
+        listado: {
+          titulo: "Pagaron de otra forma",
+          items: desglosePagos.otraForma.items.map(
+            (i) => `${i.nombre} ${i.apellido}${i.pagoNota ? ` — ${i.pagoNota}` : ""}`,
+          ),
+        },
+      })
+    }
+
+    // Lo que falta de las inscripciones que ni siquiera estan confirmadas: al
+    // proyectado se le quitan los confirmados que ya aparecen en sus filas.
     const pendienteProyectado =
-      ingresoInscripcionesProyectado - ingresoInscripciones - desglosePagos.sinPagar.total
+      ingresoInscripcionesProyectado -
+      ingresoInscripciones -
+      desglosePagos.sinPagar.total -
+      desglosePagos.otraForma.total
     if (pendienteProyectado > 0) {
       deInscripciones.push({
         id: "inscripciones-pendientes",
@@ -193,7 +229,7 @@ export function CalculadoraCaja({
                           <Checkbox checked={marcado} onCheckedChange={() => toggleEntra(item.id)} />
                           <div className="min-w-0">
                             <p className="text-white text-sm truncate">{item.label}</p>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {item.detalle && (
                                 <span className="text-xs text-gray-500 capitalize">{item.detalle}</span>
                               )}
@@ -201,6 +237,22 @@ export function CalculadoraCaja({
                                 <Badge className="bg-blue-500/20 text-blue-400 text-[10px] px-1.5 py-0">
                                   {item.etiqueta}
                                 </Badge>
+                              )}
+                              {/* preventDefault para que al tocar "ver" no se
+                                  tilde/destilde el item (esta dentro del label). */}
+                              {item.listado && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setLista(item.listado!)
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded border border-blue-400/40 px-1.5 py-0 text-[10px] text-blue-300 hover:bg-blue-400/10"
+                                >
+                                  <List className="w-3 h-3" />
+                                  ver
+                                </button>
                               )}
                             </div>
                           </div>
@@ -281,6 +333,14 @@ export function CalculadoraCaja({
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
+
+      <ListaModal
+        abierto={lista !== null}
+        onCerrar={() => setLista(null)}
+        titulo={lista?.titulo || ""}
+        descripcion={lista ? `${lista.items.length} inscriptos` : undefined}
+        items={lista?.items || []}
+      />
     </Card>
   )
 }

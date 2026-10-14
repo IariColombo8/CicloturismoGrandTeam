@@ -265,6 +265,12 @@ export default function GastosPage() {
                     {formatARS(resumen.desglosePagos.sinPagar.total)} por cobrar
                   </p>
                 )}
+                {resumen.desglosePagos.otraForma.cantidad > 0 && (
+                  <p className="text-[10px] sm:text-xs text-purple-300 mt-1">
+                    {resumen.desglosePagos.otraForma.cantidad} pagaron de otra forma (no entró a la
+                    caja)
+                  </p>
+                )}
                 <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
                   Proyectado: {formatARS(resumen.totalIngresosProyectado)}
                 </p>
@@ -502,13 +508,8 @@ export default function GastosPage() {
           </CardContent>
         </Card>
 
-        {/* Notas de caja: se cargan en el registro de inscripciones y se leen aca */}
-        <div className="mt-6 sm:mt-8">
-          <NotasCaja notas={notas} onCambio={recargar} puedeEditar={esAdmin} />
-        </div>
-
         {/* Calculadora de caja y estimador: al final, colapsados */}
-        <div className="mt-4 space-y-4">
+        <div className="mt-6 sm:mt-8 space-y-4">
           <CalculadoraCaja
             gastos={gastos}
             ingresos={ingresos}
@@ -525,6 +526,9 @@ export default function GastosPage() {
             ingresosPorCobrar={resumen.ingresosPorCobrar}
             inscriptosActuales={resumen.inscriptosTotales}
           />
+          {/* Notas de caja al final: se cargan en el registro de inscripciones
+              y acá se leen (lo puntual de cada pago va en la nota del pago). */}
+          <NotasCaja notas={notas} onCambio={recargar} puedeEditar={esAdmin} />
         </div>
 
         <GastoFormModal

@@ -103,7 +103,9 @@ function mapIngreso(i: any): Ingreso {
 
 function mapInscripcion(i: any): InscripcionPago {
   const pagoEstado: EstadoPago =
-    i.pago_estado === "pagado" || i.pago_estado === "gratis" ? i.pago_estado : ESTADO_PENDIENTE
+    i.pago_estado === "pagado" || i.pago_estado === "gratis" || i.pago_estado === "otro"
+      ? i.pago_estado
+      : ESTADO_PENDIENTE
   return {
     id: i.id,
     nombre: i.nombre || "",
@@ -112,6 +114,7 @@ function mapInscripcion(i: any): InscripcionPago {
     estado: i.estado || ESTADO_PENDIENTE,
     montoPagado: i.monto_pagado === null || i.monto_pagado === undefined ? null : Number(i.monto_pagado),
     pagoEstado,
+    pagoNota: i.pago_nota ?? null,
   }
 }
 
@@ -135,7 +138,7 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
         supabase.from("ingresos").select("*").order("fecha", { ascending: false }),
         supabase
           .from("participantes")
-          .select("id, nombre, apellido, dni, estado, monto_pagado, pago_estado")
+          .select("id, nombre, apellido, dni, estado, monto_pagado, pago_estado, pago_nota")
           .contains("anios", [EDICION_ACTUAL])
           .in("estado", [ESTADO_CONFIRMADA, ESTADO_PENDIENTE]),
         supabase
@@ -196,6 +199,7 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       precioLista: { cantidad: 0, total: 0 },
       otroMonto: { cantidad: 0, total: 0, items: [] },
       sinPagar: { cantidad: 0, total: 0, items: [] },
+      otraForma: { cantidad: 0, total: 0, items: [] },
       gratis: { cantidad: 0, items: [] },
     }
 
@@ -203,6 +207,14 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       if (insc.pagoEstado === "gratis") {
         desglosePagos.gratis.cantidad += 1
         desglosePagos.gratis.items.push(insc)
+        continue
+      }
+      // Pago que no entro a la caja: el inscripto ya pago, asi que no es un
+      // deudor, pero la plata todavia no esta y no puede sumar.
+      if (insc.pagoEstado === "otro") {
+        desglosePagos.otraForma.cantidad += 1
+        desglosePagos.otraForma.total += precioBase
+        desglosePagos.otraForma.items.push(insc)
         continue
       }
       if (insc.pagoEstado === "pendiente") {
@@ -327,14 +339,18 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
         id: "inscripciones-otro-monto",
         tipo: "ingreso",
         descripcion: "Inscripciones que pagaron otro monto",
-        detalle: d.otroMonto.items
-          .map((i) => `${i.nombre} ${i.apellido}: ${formatARS(i.montoPagado ?? 0)}`)
-          .join(" · "),
+        detalle: `${d.otroMonto.cantidad} inscriptos`,
         categoria: "inscripciones",
         monto: d.otroMonto.total,
         estado: "cobrado",
         fecha: null,
         origen: null,
+        listado: {
+          titulo: "Pagaron otro monto",
+          items: d.otroMonto.items.map(
+            (i) => `${i.nombre} ${i.apellido} — ${formatARS(i.montoPagado ?? 0)}`,
+          ),
+        },
       })
     }
 
@@ -343,14 +359,36 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
         id: "inscripciones-sin-pagar",
         tipo: "ingreso",
         descripcion: "Confirmados que todavía no pagaron",
-        detalle: `${d.sinPagar.cantidad} inscriptos · ${d.sinPagar.items
-          .map((i) => `${i.nombre} ${i.apellido}`)
-          .join(", ")}`,
+        detalle: `${d.sinPagar.cantidad} inscriptos`,
         categoria: "inscripciones",
         monto: d.sinPagar.total,
         estado: "por_cobrar",
         fecha: null,
         origen: null,
+        listado: {
+          titulo: "Confirmados que todavía no pagaron",
+          items: d.sinPagar.items.map((i) => `${i.nombre} ${i.apellido}`),
+        },
+      })
+    }
+
+    if (d.otraForma.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-otra-forma",
+        tipo: "ingreso",
+        descripcion: "Pagaron de otra forma (no entró a la caja)",
+        detalle: `${d.otraForma.cantidad} inscriptos`,
+        categoria: "inscripciones",
+        monto: d.otraForma.total,
+        estado: "por_cobrar",
+        fecha: null,
+        origen: null,
+        listado: {
+          titulo: "Pagaron de otra forma",
+          items: d.otraForma.items.map(
+            (i) => `${i.nombre} ${i.apellido}${i.pagoNota ? ` — ${i.pagoNota}` : ""}`,
+          ),
+        },
       })
     }
 
@@ -359,12 +397,16 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
         id: "inscripciones-gratis",
         tipo: "ingreso",
         descripcion: "Inscripciones sin cargo",
-        detalle: d.gratis.items.map((i) => `${i.nombre} ${i.apellido}`).join(", "),
+        detalle: `${d.gratis.cantidad} inscriptos`,
         categoria: "inscripciones",
         monto: 0,
         estado: "cobrado",
         fecha: null,
         origen: null,
+        listado: {
+          titulo: "Inscripciones sin cargo",
+          items: d.gratis.items.map((i) => `${i.nombre} ${i.apellido}`),
+        },
       })
     }
 

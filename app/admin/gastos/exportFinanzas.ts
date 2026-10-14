@@ -97,6 +97,20 @@ function filasInscripciones(resumen: ResumenFinanciero, precioBase: number): Fil
     })
   }
 
+  if (d.otraForma.cantidad > 0) {
+    filas.push({
+      descripcion: `Pagaron de otra forma, no entro a la caja (${
+        d.otraForma.cantidad
+      }): ${d.otraForma.items
+        .map((i) => `${i.nombre} ${i.apellido}${i.pagoNota ? ` (${i.pagoNota})` : ""}`)
+        .join(", ")}`,
+      categoria: "inscripciones",
+      monto: d.otraForma.total,
+      estado: "por_cobrar",
+      fecha: "-",
+    })
+  }
+
   if (d.gratis.cantidad > 0) {
     filas.push({
       descripcion: `Inscripciones sin cargo (${d.gratis.cantidad}): ${d.gratis.items
@@ -421,6 +435,10 @@ export async function exportarFinanzasExcel(
     {
       Indicador: "Confirmados sin pagar",
       Valor: `${d.sinPagar.cantidad} · falta ${formatARS(d.sinPagar.total)}`,
+    },
+    {
+      Indicador: "Pagaron de otra forma (no entro a la caja)",
+      Valor: `${d.otraForma.cantidad} · ${formatARS(d.otraForma.total)}`,
     },
     { Indicador: "Inscripciones sin cargo", Valor: `${d.gratis.cantidad}` },
   ])

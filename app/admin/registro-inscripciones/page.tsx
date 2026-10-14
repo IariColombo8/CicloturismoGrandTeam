@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   Gift,
   MailX,
+  StickyNote,
 } from "lucide-react"
 
 // Columnas que pedimos a Supabase (sin comprobante_base64, que es pesado).
@@ -47,7 +48,7 @@ const INSCRIPCIONES_COLUMNS =
   "id, estado, nombre, apellido, email, dni, pais, localidad, grupo_ciclistas, es_celiaco, " +
   "metodo_pago, numero_referencia, fecha_nacimiento, grupo_sanguineo, telefono, " +
   "tiene_alergias, alergias, tiene_problemas_salud, condicion_salud, comprobante_pago_url, " +
-  "nota_estado, numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado"
+  "nota_estado, numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado, pago_nota"
 
 // Respaldo temporal para bases que todavía tengan una vista, función o política
 // desactualizada que falle al resolver la ubicación. Permite que el administrador
@@ -56,7 +57,7 @@ const INSCRIPCIONES_COLUMNS_WITHOUT_LOCATION =
   "id, estado, nombre, apellido, email, dni, metodo_pago, numero_referencia, " +
   "fecha_nacimiento, grupo_sanguineo, telefono, tiene_alergias, alergias, " +
   "tiene_problemas_salud, condicion_salud, comprobante_pago_url, nota_estado, " +
-  "numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado"
+  "numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado, pago_nota"
 
 // "participantes" es historico (acumula todas las ediciones via anios[]).
 // Esta pantalla es de la edicion actual: siempre filtramos por anio.
@@ -69,7 +70,10 @@ const PRECIO_FALLBACK = 25000
  * Opciones de pago que ofrece el modal al confirmar una inscripcion.
  * Se traducen a las columnas pago_estado + monto_pagado de participantes.
  */
-type OpcionPago = "pagado" | "falta" | "otro" | "gratis"
+// "otra-forma": pago de una manera que no entro a la caja (otra moneda, le
+// transfirio a alguien del equipo). Queda registrado con una nota y NO suma
+// plata hasta que se lo pase a "pagado" o "otro monto".
+type OpcionPago = "pagado" | "falta" | "otro" | "gratis" | "otra-forma"
 
 /** Filtros que viajan a la query de Supabase junto con estado y busqueda. */
 interface FiltrosAvanzados {
@@ -77,7 +81,7 @@ interface FiltrosAvanzados {
   ciudad: string
   grupo: string
   sangre: string
-  /** all | sin-pagar | otro-precio | gratis | pagado */
+  /** all | sin-pagar | otro-precio | gratis | pagado | otra-forma */
   pago: string
   /** all | problemas | alergias | celiaco */
   salud: string
@@ -118,6 +122,15 @@ interface PagoDistinto {
   diferencia: number
 }
 
+/** Una inscripcion para mostrar en una lista simple (modal de "ver"). */
+interface InscriptoSimple {
+  id: string
+  nombre: string
+  dni: string
+  /** Aclaracion opcional, por ejemplo la nota del pago. */
+  nota?: string | null
+}
+
 /**
  * Resumen de la plata de las inscripciones confirmadas. Se calcula sobre las
  * columnas `pago_estado` / `monto_pagado`, no sobre `confirmadas * precio`:
@@ -132,10 +145,14 @@ interface ResumenPagos {
   noPagaron: number
   /** Lo que falta entrar por esas inscripciones (al precio de lista). */
   faltaCobrar: number
+  /** Quienes no pagaron, para el modal de "ver". */
+  sinPagar: InscriptoSimple[]
   /** Confirmadas marcadas como gratis. */
   gratis: number
   /** Quienes pagaron un monto distinto al de lista, para que quede registrado. */
   distintos: PagoDistinto[]
+  /** Pagaron de una forma que no entro a la caja (con su nota). */
+  otraForma: InscriptoSimple[]
 }
 
 const RESUMEN_PAGOS_VACIO: ResumenPagos = {
@@ -143,8 +160,10 @@ const RESUMEN_PAGOS_VACIO: ResumenPagos = {
   cobrado: 0,
   noPagaron: 0,
   faltaCobrar: 0,
+  sinPagar: [],
   gratis: 0,
   distintos: [],
+  otraForma: [],
 }
 
 export default function RegistroInscripciones() {
@@ -201,6 +220,12 @@ export default function RegistroInscripciones() {
   // Resumen de pagos de las confirmadas (quien pago, quien no, quien pago otro monto).
   const [resumenPagos, setResumenPagos] = useState<ResumenPagos>(RESUMEN_PAGOS_VACIO)
   const [verPagosDistintos, setVerPagosDistintos] = useState(false)
+  // Modal generico de "ver la lista": las tarjetas muestran solo el numero.
+  const [listaModal, setListaModal] = useState<{
+    titulo: string
+    descripcion?: string
+    items: InscriptoSimple[]
+  } | null>(null)
 
   // Modal
   const [selectedInscripcion, setSelectedInscripcion] = useState<any>(null)
@@ -220,6 +245,9 @@ export default function RegistroInscripciones() {
   // Pago de la inscripcion: se elige al confirmar.
   const [pagoOpcion, setPagoOpcion] = useState<OpcionPago>("pagado")
   const [montoOtro, setMontoOtro] = useState("")
+  // Aclaracion del pago cuando no es un monto en pesos ("Pago 700 uruguayos,
+  // Lore nos transfiere esa plata").
+  const [pagoNota, setPagoNota] = useState("")
   const [openingComprobante, setOpeningComprobante] = useState<string | null>(null)
   const [comprobanteModal, setComprobanteModal] = useState<{
     url: string
@@ -318,6 +346,9 @@ export default function RegistroInscripciones() {
             break
           case "pagado":
             query = query.eq("pago_estado", "pagado")
+            break
+          case "otra-forma":
+            query = query.eq("pago_estado", "otro")
             break
         }
 
@@ -418,6 +449,7 @@ export default function RegistroInscripciones() {
           tokenQR: d.token_qr,
           pagoEstado: d.pago_estado ?? "pendiente",
           montoPagado: d.monto_pagado != null ? Number(d.monto_pagado) : null,
+          pagoNota: d.pago_nota ?? null,
         }))
       )
     },
@@ -452,7 +484,7 @@ export default function RegistroInscripciones() {
     // confirmadas, asi que la consulta sigue siendo liviana.
     const { data: pagosData, error: pagosError } = await supabase
       .from("participantes")
-      .select("id, nombre, apellido, dni, pago_estado, monto_pagado")
+      .select("id, nombre, apellido, dni, pago_estado, monto_pagado, pago_nota")
       .contains("anios", [EDICION_ACTUAL])
       .eq("estado", "confirmada")
 
@@ -466,18 +498,34 @@ export default function RegistroInscripciones() {
       cobrado: 0,
       noPagaron: 0,
       faltaCobrar: 0,
+      sinPagar: [],
       gratis: 0,
       distintos: [],
+      otraForma: [],
     }
 
     for (const p of pagosData as any[]) {
+      const nombreCompleto = `${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()
+
       if (p.pago_estado === "gratis") {
         resumen.gratis += 1
+        continue
+      }
+      // Pago que no entro a la caja: cuenta como "falta cobrar" pero se
+      // distingue de los que no pagaron nada, porque el inscripto ya pago.
+      if (p.pago_estado === "otro") {
+        resumen.otraForma.push({
+          id: p.id,
+          nombre: nombreCompleto,
+          dni: p.dni ?? "",
+          nota: p.pago_nota ?? null,
+        })
         continue
       }
       if (p.pago_estado === "pendiente") {
         resumen.noPagaron += 1
         resumen.faltaCobrar += precioInscripcion
+        resumen.sinPagar.push({ id: p.id, nombre: nombreCompleto, dni: p.dni ?? "" })
         continue
       }
 
@@ -490,7 +538,7 @@ export default function RegistroInscripciones() {
       if (pagado !== precioInscripcion) {
         resumen.distintos.push({
           id: p.id,
-          nombre: `${p.nombre ?? ""} ${p.apellido ?? ""}`.trim(),
+          nombre: nombreCompleto,
           dni: p.dni ?? "",
           pagado,
           diferencia: precioInscripcion - pagado,
@@ -500,6 +548,8 @@ export default function RegistroInscripciones() {
 
     // Primero los que mas plata deben.
     resumen.distintos.sort((a, b) => b.diferencia - a.diferencia)
+    resumen.sinPagar.sort((a, b) => a.nombre.localeCompare(b.nombre))
+    resumen.otraForma.sort((a, b) => a.nombre.localeCompare(b.nombre))
     setResumenPagos(resumen)
   }, [precioInscripcion])
 
@@ -712,6 +762,21 @@ export default function RegistroInscripciones() {
       )
     }
 
+    // Pago que no entro a la caja: ya pago, pero esa plata no esta. Se muestra
+    // distinto de "falta pagar" y con la nota en el title.
+    if (insc.pagoEstado === "otro") {
+      return (
+        <span
+          title={insc.pagoNota || "Pago de otra forma"}
+          className={`${clases} bg-purple-500/15 text-purple-300 border-purple-500/30`}
+        >
+          <StickyNote className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Otra forma</span>
+          <span className="sr-only">{insc.pagoNota || "Pago de otra forma"}</span>
+        </span>
+      )
+    }
+
     if (insc.pagoEstado !== "pagado") {
       return (
         <span
@@ -794,8 +859,12 @@ export default function RegistroInscripciones() {
     // Deriva la opcion de pago desde lo guardado, para que el modal abra
     // mostrando lo que realmente paso y no un default enganoso.
     const monto = insc.montoPagado != null ? Number(insc.montoPagado) : null
+    setPagoNota(insc.pagoNota || "")
     if (insc.pagoEstado === "gratis") {
       setPagoOpcion("gratis")
+      setMontoOtro("")
+    } else if (insc.pagoEstado === "otro") {
+      setPagoOpcion("otra-forma")
       setMontoOtro("")
     } else if (insc.pagoEstado === "pagado") {
       const esPrecioDeLista = monto == null || monto === precioInscripcion
@@ -812,14 +881,25 @@ export default function RegistroInscripciones() {
   }
 
   /** Traduce la opcion elegida a las columnas que guarda la base. */
-  const resolverPago = (): { pago_estado: string; monto_pagado: number } | null => {
-    if (pagoOpcion === "falta") return { pago_estado: "pendiente", monto_pagado: 0 }
-    if (pagoOpcion === "gratis") return { pago_estado: "gratis", monto_pagado: 0 }
-    if (pagoOpcion === "pagado") return { pago_estado: "pagado", monto_pagado: precioInscripcion }
+  const resolverPago = ():
+    | { pago_estado: string; monto_pagado: number; pago_nota: string | null }
+    | null => {
+    if (pagoOpcion === "falta")
+      return { pago_estado: "pendiente", monto_pagado: 0, pago_nota: null }
+    if (pagoOpcion === "gratis") return { pago_estado: "gratis", monto_pagado: 0, pago_nota: null }
+    if (pagoOpcion === "pagado")
+      return { pago_estado: "pagado", monto_pagado: precioInscripcion, pago_nota: null }
+
+    // Pago que no entro a la caja: no suma plata, pero queda anotado como pago.
+    if (pagoOpcion === "otra-forma") {
+      const nota = pagoNota.trim()
+      if (!nota) return null
+      return { pago_estado: "otro", monto_pagado: 0, pago_nota: nota }
+    }
 
     const monto = Number(montoOtro.replace(/[^\d.,]/g, "").replace(",", "."))
     if (!Number.isFinite(monto) || monto < 0) return null
-    return { pago_estado: "pagado", monto_pagado: monto }
+    return { pago_estado: "pagado", monto_pagado: monto, pago_nota: null }
   }
 
   /**
@@ -1032,7 +1112,11 @@ export default function RegistroInscripciones() {
     const pago = confirmandoAhora ? resolverPago() : null
 
     if (confirmandoAhora && !pago) {
-      alert("Escribi un monto valido para el pago.")
+      alert(
+        pagoOpcion === "otra-forma"
+          ? "Escribí la nota del pago (cómo pagó)."
+          : "Escribí un monto válido para el pago."
+      )
       return
     }
 
@@ -1094,7 +1178,11 @@ export default function RegistroInscripciones() {
                 nota: statusNote,
                 numeroInscripcion,
                 ...(pago
-                  ? { pagoEstado: pago.pago_estado, montoPagado: pago.monto_pagado }
+                  ? {
+                      pagoEstado: pago.pago_estado,
+                      montoPagado: pago.monto_pagado,
+                      pagoNota: pago.pago_nota,
+                    }
                   : {}),
               }
             : insc
@@ -1150,6 +1238,8 @@ export default function RegistroInscripciones() {
       query = query.eq("pago_estado", "gratis")
     } else if (f.pago === "pagado") {
       query = query.eq("pago_estado", "pagado")
+    } else if (f.pago === "otra-forma") {
+      query = query.eq("pago_estado", "otro")
     }
 
     if (f.salud === "problemas") query = query.in("tiene_problemas_salud", ["si", "true"])
@@ -1178,8 +1268,11 @@ export default function RegistroInscripciones() {
           ? "Gratis"
           : d.pago_estado === "pagado"
             ? "Pagado"
-            : "Falta pagar",
+            : d.pago_estado === "otro"
+              ? "Pago de otra forma"
+              : "Falta pagar",
       "Monto Pagado": d.monto_pagado != null ? Number(d.monto_pagado) : "",
+      "Nota del Pago": d.pago_nota || "",
       Nota: d.nota_estado || "",
       "Fecha Inscripcion": d.fecha_inscripcion
         ? new Date(d.fecha_inscripcion).toLocaleDateString("es-AR")
@@ -1303,7 +1396,7 @@ export default function RegistroInscripciones() {
 
         {/* Resumen de pagos de las confirmadas. Se calcula con monto_pagado real,
             no con confirmadas * precio: una confirmada impaga no es plata. */}
-        <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-4 mb-6 animate-fadeIn">
+        <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-5 mb-6 animate-fadeIn">
           <button
             type="button"
             onClick={() => {
@@ -1323,24 +1416,54 @@ export default function RegistroInscripciones() {
             </div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setFiltroPago("sin-pagar")
-              setCurrentPage(1)
-            }}
-            title="Ver las confirmadas que todavia no pagaron"
-            className="text-left bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-orange-400/50 transition-all"
-          >
+          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
             <div className="flex justify-between items-start gap-1 mb-2">
               <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">No pagaron</div>
               <AlertTriangle className="w-4 h-4 flex-shrink-0 text-orange-400" />
             </div>
-            <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.noPagaron}</div>
-            <div className="text-[11px] sm:text-xs text-orange-400 mt-1 truncate">
-              faltan {formatearMonto(resumenPagos.faltaCobrar)}
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <div className="text-xl sm:text-2xl font-bold text-white">
+                  {resumenPagos.noPagaron}
+                </div>
+                <div className="text-[11px] sm:text-xs text-orange-400 mt-1 truncate">
+                  faltan {formatearMonto(resumenPagos.faltaCobrar)}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 flex-shrink-0">
+                {resumenPagos.sinPagar.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setListaModal({
+                        titulo: "Confirmados que todavía no pagaron",
+                        descripcion: `${resumenPagos.noPagaron} inscriptos · faltan ${formatearMonto(
+                          resumenPagos.faltaCobrar
+                        )}`,
+                        items: resumenPagos.sinPagar,
+                      })
+                    }
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-orange-400/30 text-orange-300 text-[11px] sm:text-xs hover:bg-zinc-700 transition-all"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Ver
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFiltroPago("sin-pagar")
+                    setCurrentPage(1)
+                  }}
+                  title="Filtrar el listado por los que no pagaron"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-gray-400 text-[11px] sm:text-xs hover:text-white transition-all"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  Filtrar
+                </button>
+              </div>
             </div>
-          </button>
+          </div>
 
           <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
             <div className="flex justify-between items-start gap-1 mb-2">
@@ -1364,6 +1487,36 @@ export default function RegistroInscripciones() {
             </div>
           </div>
 
+          {/* Pagaron de una forma que no entro a la caja (otra moneda, se lo
+              dieron a alguien del equipo). No suma plata, pero no son deudores. */}
+          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+            <div className="flex justify-between items-start gap-1 mb-2">
+              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Pagó de otra forma</div>
+              <StickyNote className="w-4 h-4 flex-shrink-0 text-purple-400" />
+            </div>
+            <div className="flex items-end justify-between gap-2">
+              <div className="text-xl sm:text-2xl font-bold text-white">
+                {resumenPagos.otraForma.length}
+              </div>
+              {resumenPagos.otraForma.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setListaModal({
+                      titulo: "Pagaron de otra forma",
+                      descripcion: "Ya pagaron, pero esa plata todavía no entró a la caja",
+                      items: resumenPagos.otraForma,
+                    })
+                  }
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-purple-400/30 text-purple-300 text-[11px] sm:text-xs hover:bg-zinc-700 transition-all"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Ver
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
             <div className="flex justify-between items-start gap-1 mb-2">
               <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Gratis</div>
@@ -1372,12 +1525,6 @@ export default function RegistroInscripciones() {
             <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.gratis}</div>
             <div className="text-[11px] sm:text-xs text-gray-500 mt-1 truncate">sin cargo</div>
           </div>
-        </div>
-
-        {/* Notas de caja: se cargan acá, donde se ven los pagos raros, y se
-            leen también en /admin/gastos y en el PDF de finanzas. */}
-        <div className="mb-6 animate-fadeIn">
-          <NotasCaja />
         </div>
 
         {/* Main Content */}
@@ -1466,6 +1613,7 @@ export default function RegistroInscripciones() {
                       { v: "all", t: "Cualquier pago" },
                       { v: "sin-pagar", t: "Confirmados sin pagar" },
                       { v: "otro-precio", t: "Pagaron otro precio" },
+                      { v: "otra-forma", t: "Pagaron de otra forma" },
                       { v: "gratis", t: "Inscripcion gratis" },
                       { v: "pagado", t: "Pagados" },
                     ],
@@ -1738,6 +1886,12 @@ export default function RegistroInscripciones() {
           )}
         </div>
 
+        {/* Notas de caja, al final: observaciones generales de plata. Lo que es
+            de una inscripción puntual va en la nota del pago, en su modal. */}
+        <div className="mt-6 animate-fadeIn">
+          <NotasCaja />
+        </div>
+
         {/* Scroll to top */}
         <button
           type="button"
@@ -1992,6 +2146,7 @@ export default function RegistroInscripciones() {
                               { id: "falta", label: "Falta pagar" },
                               { id: "otro", label: "Pagó otro monto" },
                               { id: "gratis", label: "Inscripción gratis" },
+                              { id: "otra-forma", label: "Pagó de otra forma (con nota)" },
                             ] as { id: OpcionPago; label: string }[]
                           ).map((opcion) => (
                             <button
@@ -2024,6 +2179,22 @@ export default function RegistroInscripciones() {
                           </div>
                         )}
 
+                        {/* Pago que no entró a la caja: se anota como fue y no
+                            suma plata hasta que se lo pase a pagado. */}
+                        {pagoOpcion === "otra-forma" && (
+                          <div className="mt-2">
+                            <input
+                              type="text"
+                              value={pagoNota}
+                              onChange={(e) => setPagoNota(e.target.value)}
+                              autoFocus
+                              maxLength={200}
+                              className="w-full px-3 py-2 bg-zinc-900 border border-yellow-400/20 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-400/40"
+                              placeholder="Ej: Pagó 700 uruguayos, Lore nos transfiere esa plata"
+                            />
+                          </div>
+                        )}
+
                         <p className="text-xs text-gray-500 mt-2">
                           {pagoOpcion === "falta"
                             ? "Queda confirmado pero marcado como pendiente de pago."
@@ -2031,7 +2202,9 @@ export default function RegistroInscripciones() {
                               ? "No se le cobra la inscripción. Suma $0 a los ingresos."
                               : pagoOpcion === "otro"
                                 ? "Se registra el monto que indiques en vez del precio de lista."
-                                : "Precio de lista actual del evento."}
+                                : pagoOpcion === "otra-forma"
+                                  ? "Queda registrado que pagó, con tu nota, pero no suma plata a la caja hasta que lo pases a «Pagó $…» u «otro monto»."
+                                  : "Precio de lista actual del evento."}
                         </p>
                       </div>
                     )}
@@ -2116,6 +2289,55 @@ export default function RegistroInscripciones() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Lista simple de inscriptos (se abre desde el "Ver" de las tarjetas).
+            Las tarjetas muestran solo el numero: la lista entera no cabe. */}
+        {listaModal && (
+          <div
+            className="fixed inset-0 z-[65] flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setListaModal(null)
+            }}
+          >
+            <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg w-full max-w-lg max-h-[90vh] flex flex-col">
+              <div className="flex items-start justify-between gap-2 p-3 sm:p-4 border-b border-yellow-400/20">
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-bold text-white">{listaModal.titulo}</h3>
+                  {listaModal.descripcion && (
+                    <p className="text-xs text-gray-400 mt-0.5">{listaModal.descripcion}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setListaModal(null)}
+                  className="p-2 rounded-lg hover:bg-zinc-800 text-gray-400 hover:text-white transition-all flex-shrink-0"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <ol className="overflow-y-auto p-3 sm:p-4 space-y-1.5">
+                {listaModal.items.map((item, i) => (
+                  <li
+                    key={item.id}
+                    className="flex items-start gap-2 bg-zinc-800/50 border border-yellow-400/10 rounded-lg px-3 py-2"
+                  >
+                    <span className="text-xs text-gray-500 w-5 flex-shrink-0 pt-0.5">{i + 1}.</span>
+                    <div className="min-w-0">
+                      <p className="text-sm text-white break-words">{item.nombre}</p>
+                      <p className="text-xs text-gray-500">DNI {item.dni || "-"}</p>
+                      {item.nota && (
+                        <p className="text-xs text-purple-300 mt-0.5 break-words">{item.nota}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
         )}

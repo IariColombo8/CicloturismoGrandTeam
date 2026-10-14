@@ -4,8 +4,9 @@ import { useMemo, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Eye, TrendingDown, TrendingUp, Users } from "lucide-react"
+import { Eye, List, TrendingDown, TrendingUp, Users } from "lucide-react"
 import { Paginacion } from "./Paginacion"
+import { ListaModal } from "./ListaModal"
 import { formatARS, type Gasto, type Movimiento } from "./tipos"
 
 const PAGE_SIZE = 15
@@ -49,6 +50,8 @@ function badgeEstado(estado: string) {
 /** Vista unificada de toda la plata del evento, filtrada por tipo y estado (controlado desde afuera). */
 export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEstado }: MovimientosTableProps) {
   const [page, setPage] = useState(1)
+  // Lista de nombres de una fila calculada, cuando se toca "Ver".
+  const [lista, setLista] = useState<{ titulo: string; items: string[] } | null>(null)
 
   const filtrados = useMemo(() => {
     return movimientos.filter((mov) => {
@@ -111,7 +114,7 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{badgeEstado(mov.estado)}</TableCell>
                     <TableCell className="text-right px-1 sm:px-4 py-2">
-                      {mov.origen && (
+                      {mov.origen ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -120,6 +123,18 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
                         >
                           <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </Button>
+                      ) : (
+                        mov.listado && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            title={`Ver los ${mov.listado.items.length} inscriptos`}
+                            className="border-blue-500/50 text-blue-400 bg-transparent px-1.5 sm:px-2"
+                            onClick={() => setLista(mov.listado!)}
+                          >
+                            <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </Button>
+                        )
                       )}
                     </TableCell>
                   </TableRow>
@@ -131,6 +146,14 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
           <Paginacion page={page} pageSize={PAGE_SIZE} total={filtrados.length} onChange={setPage} />
         </>
       )}
+
+      <ListaModal
+        abierto={lista !== null}
+        onCerrar={() => setLista(null)}
+        titulo={lista?.titulo || ""}
+        descripcion={lista ? `${lista.items.length} inscriptos` : undefined}
+        items={lista?.items || []}
+      />
     </div>
   )
 }

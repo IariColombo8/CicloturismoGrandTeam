@@ -33,8 +33,12 @@ export interface Ingreso {
   notas: string | null
 }
 
-/** Como esta el pago de una inscripcion (columna pago_estado de participantes). */
-export type EstadoPago = "pagado" | "pendiente" | "gratis"
+/**
+ * Como esta el pago de una inscripcion (columna pago_estado de participantes).
+ * "otro" = pago de una forma que no entro a la caja (otra moneda, se lo dio a
+ * alguien del equipo); la aclaracion va en `pagoNota`.
+ */
+export type EstadoPago = "pagado" | "pendiente" | "gratis" | "otro"
 
 export interface InscripcionPago {
   id: string
@@ -44,6 +48,8 @@ export interface InscripcionPago {
   estado: string
   montoPagado: number | null
   pagoEstado: EstadoPago
+  /** Aclaracion del pago cuando `pagoEstado` es "otro". */
+  pagoNota: string | null
 }
 
 // Nota suelta sobre la caja ("pagaron en pesos uruguayos", "falta la
@@ -63,6 +69,11 @@ export interface DesglosePagos {
   otroMonto: { cantidad: number; total: number; items: InscripcionPago[] }
   /** Confirmados que todavia no pagaron: `total` es lo que falta que entre. */
   sinPagar: { cantidad: number; total: number; items: InscripcionPago[] }
+  /**
+   * Pagaron de una forma que no entro a la caja (ver `pagoNota` de cada uno).
+   * `total` es lo que deberia entrar cuando esa plata llegue.
+   */
+  otraForma: { cantidad: number; total: number; items: InscripcionPago[] }
   /** Inscripciones sin cargo. */
   gratis: { cantidad: number; items: InscripcionPago[] }
 }
@@ -94,6 +105,12 @@ export interface Movimiento {
   fecha: string | null
   /** El gasto/ingreso original, para abrir el detalle. Null en filas calculadas. */
   origen: Gasto | null
+  /**
+   * Nombres que componen una fila calculada (quienes no pagaron, quienes
+   * pagaron otro monto). Van en un modal aparte: pegados en el detalle hacian
+   * ilegible la fila.
+   */
+  listado?: { titulo: string; items: string[] }
 }
 
 /**
@@ -122,8 +139,8 @@ export function montoCobrado(inscripcion: InscripcionPago, precioBase: number): 
 export function montoEsperado(inscripcion: InscripcionPago, precioBase: number): number {
   if (inscripcion.pagoEstado === "gratis") return 0
   if (inscripcion.pagoEstado === "pagado") return inscripcion.montoPagado ?? precioBase
-  // Pendiente de pago: se espera el precio de lista (el 0 guardado al confirmar
-  // significa "todavia no pago", no "paga cero").
+  // Pendiente de pago, o pago que no entro a la caja: se espera el precio de
+  // lista (el 0 guardado al confirmar significa "no entro", no "paga cero").
   return precioBase
 }
 
