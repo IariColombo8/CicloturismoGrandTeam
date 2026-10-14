@@ -10,6 +10,7 @@ import { emailService } from "@/lib/emailService"
 import { SIN_NUMERO } from "@/lib/numeroInscripcion"
 import { reproducirAviso } from "@/lib/sonidoAviso"
 import NotificacionesPush from "@/components/admin/NotificacionesPush"
+import NotasCaja from "@/components/admin/NotasCaja"
 import {
   Users,
   CheckCircle,
@@ -1371,6 +1372,12 @@ export default function RegistroInscripciones() {
             <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.gratis}</div>
             <div className="text-[11px] sm:text-xs text-gray-500 mt-1 truncate">sin cargo</div>
           </div>
+        </div>
+
+        {/* Notas de caja: se cargan acá, donde se ven los pagos raros, y se
+            leen también en /admin/gastos y en el PDF de finanzas. */}
+        <div className="mb-6 animate-fadeIn">
+          <NotasCaja />
         </div>
 
         {/* Main Content */}

@@ -1,7 +1,7 @@
 // Exportacion de gastos e ingresos a PDF y Excel.
 // Las librerias se importan de forma dinamica (dynamic import) para no engordar
 // el bundle inicial: solo se cargan cuando el usuario realmente descarga algo.
-import type { Gasto, Ingreso } from "./tipos"
+import type { Gasto, Ingreso, NotaCaja } from "./tipos"
 import { formatARS, totalGasto } from "./tipos"
 import type { ResumenFinanciero } from "./useFinanzas"
 
@@ -42,6 +42,85 @@ interface TarjetaResumen {
   titulo: string
   valor: string
   color: RGB
+}
+
+/** Fila de la tabla de ingresos, ya lista para el PDF y para el Excel. */
+interface FilaIngreso {
+  descripcion: string
+  categoria: string
+  monto: number
+  /** "cobrado" | "por_cobrar", para pintar el estado. */
+  estado: string
+  fecha: string
+}
+
+/**
+ * Filas de ingreso por inscripciones, desglosadas por situacion de pago.
+ * El PDF mostraba solo los ingresos cargados a mano, asi que la plata de las
+ * inscripciones (que es la mayor parte) no aparecia en ningun lado.
+ */
+function filasInscripciones(resumen: ResumenFinanciero, precioBase: number): FilaIngreso[] {
+  const d = resumen.desglosePagos
+  const filas: FilaIngreso[] = []
+
+  if (d.precioLista.cantidad > 0) {
+    filas.push({
+      descripcion: `Inscripciones que pagaron ${formatARS(precioBase)} (${d.precioLista.cantidad})`,
+      categoria: "inscripciones",
+      monto: d.precioLista.total,
+      estado: "cobrado",
+      fecha: "-",
+    })
+  }
+
+  if (d.otroMonto.cantidad > 0) {
+    filas.push({
+      descripcion: `Inscripciones que pagaron otro monto (${d.otroMonto.cantidad}): ${d.otroMonto.items
+        .map((i) => `${i.nombre} ${i.apellido} ${formatARS(i.montoPagado ?? 0)}`)
+        .join(", ")}`,
+      categoria: "inscripciones",
+      monto: d.otroMonto.total,
+      estado: "cobrado",
+      fecha: "-",
+    })
+  }
+
+  if (d.sinPagar.cantidad > 0) {
+    filas.push({
+      descripcion: `Confirmados que todavia no pagaron (${d.sinPagar.cantidad}): ${d.sinPagar.items
+        .map((i) => `${i.nombre} ${i.apellido}`)
+        .join(", ")}`,
+      categoria: "inscripciones",
+      monto: d.sinPagar.total,
+      estado: "por_cobrar",
+      fecha: "-",
+    })
+  }
+
+  if (d.gratis.cantidad > 0) {
+    filas.push({
+      descripcion: `Inscripciones sin cargo (${d.gratis.cantidad}): ${d.gratis.items
+        .map((i) => `${i.nombre} ${i.apellido}`)
+        .join(", ")}`,
+      categoria: "inscripciones",
+      monto: 0,
+      estado: "cobrado",
+      fecha: "-",
+    })
+  }
+
+  return filas
+}
+
+/** Ingresos cargados a mano, en el mismo formato que las filas de inscripciones. */
+function filasIngresosManuales(ingresos: Ingreso[]): FilaIngreso[] {
+  return ingresos.map((i) => ({
+    descripcion: i.descripcion,
+    categoria: i.categoria,
+    monto: i.monto,
+    estado: i.estado,
+    fecha: fechaLegible(i.fecha),
+  }))
 }
 
 function armarTarjetas(resumen: ResumenFinanciero): TarjetaResumen[] {
@@ -142,6 +221,8 @@ export async function exportarFinanzasPDF(
   ingresos: Ingreso[],
   resumen: ResumenFinanciero,
   confirmados: number,
+  precioBase: number,
+  notas: NotaCaja[] = [],
 ): Promise<void> {
   const { default: jsPDF } = await import("jspdf")
   const autoTable = (await import("jspdf-autotable")).default
@@ -235,14 +316,21 @@ export async function exportarFinanzasPDF(
 
   const yDespuesGastos = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 22
 
-  // Detalle de ingresos.
-  const filasIngresos = ingresos.map((i) => [
+  // Detalle de ingresos: primero las inscripciones (que son la mayor parte de
+  // la plata) y despues los ingresos cargados a mano.
+  const ingresosTodos = [...filasInscripciones(resumen, precioBase), ...filasIngresosManuales(ingresos)]
+  const filasIngresos = ingresosTodos.map((i) => [
     i.descripcion,
     i.categoria,
     formatARS(i.monto),
     i.estado === "cobrado" ? "Cobrado" : "Por cobrar",
-    fechaLegible(i.fecha),
+    i.fecha,
   ])
+
+  // Fila de cierre con lo efectivamente cobrado (inscripciones + otros).
+  if (ingresosTodos.length > 0) {
+    filasIngresos.push(["TOTAL COBRADO", "", formatARS(resumen.totalIngresos), "", ""])
+  }
 
   doc.setFont("helvetica", "bold")
   doc.setFontSize(12)
@@ -255,15 +343,53 @@ export async function exportarFinanzasPDF(
     head: [["Descripción", "Categoría", "Monto", "Estado", "Fecha"]],
     body: filasIngresos.length > 0 ? filasIngresos : [["Sin ingresos registrados", "", "", "", ""]],
     didParseCell: (data) => {
-      if (data.section !== "body" || filasIngresos.length === 0) return
+      if (data.section !== "body" || ingresosTodos.length === 0) return
+
+      // Ultima fila: el total, en dorado y negrita.
+      const esTotal = data.row.index === ingresosTodos.length
+      if (esTotal) {
+        data.cell.styles.textColor = DORADO
+        data.cell.styles.fontStyle = "bold"
+        return
+      }
+
       if (data.column.index === 2) {
         data.cell.styles.textColor = VERDE
         data.cell.styles.fontStyle = "bold"
       } else if (data.column.index === 3) {
-        data.cell.styles.textColor = colorEstadoIngreso(ingresos[data.row.index]?.estado || "por_cobrar")
+        data.cell.styles.textColor = colorEstadoIngreso(
+          ingresosTodos[data.row.index]?.estado || "por_cobrar",
+        )
       }
     },
   })
+
+  // Notas de caja: lo que no entra en ninguna tabla pero hay que recordar.
+  const notasVisibles = notas.filter((n) => n.texto.trim())
+  if (notasVisibles.length > 0) {
+    const yDespuesIngresos =
+      (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 22
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(...DORADO)
+    doc.text("Notas de caja", marginX, yDespuesIngresos)
+
+    autoTable(doc, {
+      ...estiloTabla,
+      startY: yDespuesIngresos + 8,
+      head: [["Nota", "Estado", "Fecha"]],
+      body: notasVisibles.map((n) => [
+        n.texto,
+        n.resuelta ? "Resuelta" : "Pendiente",
+        fechaLegible(n.creadaEn),
+      ]),
+      didParseCell: (data) => {
+        if (data.section !== "body" || data.column.index !== 1) return
+        data.cell.styles.textColor = notasVisibles[data.row.index]?.resuelta ? VERDE : NARANJA
+      },
+    })
+  }
 
   doc.save(`${NOMBRE_ARCHIVO_BASE}-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
@@ -274,13 +400,30 @@ export async function exportarFinanzasExcel(
   ingresos: Ingreso[],
   resumen: ResumenFinanciero,
   confirmados: number,
+  precioBase: number,
+  notas: NotaCaja[] = [],
 ): Promise<void> {
   const XLSX = await import("xlsx")
 
+  const d = resumen.desglosePagos
   const tarjetas = armarTarjetas(resumen)
-  const hojaResumen = XLSX.utils.json_to_sheet(
-    tarjetas.map((c) => ({ Indicador: c.titulo, Valor: c.valor })),
-  )
+  const hojaResumen = XLSX.utils.json_to_sheet([
+    ...tarjetas.map((c) => ({ Indicador: c.titulo, Valor: c.valor })),
+    { Indicador: "", Valor: "" },
+    {
+      Indicador: `Pagaron ${formatARS(precioBase)}`,
+      Valor: `${d.precioLista.cantidad} · ${formatARS(d.precioLista.total)}`,
+    },
+    {
+      Indicador: "Pagaron otro monto",
+      Valor: `${d.otroMonto.cantidad} · ${formatARS(d.otroMonto.total)}`,
+    },
+    {
+      Indicador: "Confirmados sin pagar",
+      Valor: `${d.sinPagar.cantidad} · falta ${formatARS(d.sinPagar.total)}`,
+    },
+    { Indicador: "Inscripciones sin cargo", Valor: `${d.gratis.cantidad}` },
+  ])
 
   const hojaGastos = XLSX.utils.json_to_sheet(
     gastos.map((g) => ({
@@ -294,8 +437,17 @@ export async function exportarFinanzasExcel(
     })),
   )
 
-  const hojaIngresos = XLSX.utils.json_to_sheet(
-    ingresos.map((i) => ({
+  const hojaIngresos = XLSX.utils.json_to_sheet([
+    // Las inscripciones primero: son la mayor parte de la plata del evento.
+    ...filasInscripciones(resumen, precioBase).map((i) => ({
+      Descripción: i.descripcion,
+      Categoría: i.categoria,
+      Monto: i.monto,
+      Estado: i.estado === "cobrado" ? "Cobrado" : "Por cobrar",
+      Fecha: i.fecha,
+      Notas: "",
+    })),
+    ...ingresos.map((i) => ({
       Descripción: i.descripcion,
       Categoría: i.categoria,
       Monto: i.monto,
@@ -303,12 +455,25 @@ export async function exportarFinanzasExcel(
       Fecha: fechaLegible(i.fecha),
       Notas: i.notas || "",
     })),
-  )
+  ])
 
   const libro = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(libro, hojaResumen, "Resumen")
   XLSX.utils.book_append_sheet(libro, hojaGastos, "Gastos")
   XLSX.utils.book_append_sheet(libro, hojaIngresos, "Ingresos")
+
+  const notasVisibles = notas.filter((n) => n.texto.trim())
+  if (notasVisibles.length > 0) {
+    const hojaNotas = XLSX.utils.json_to_sheet(
+      notasVisibles.map((n) => ({
+        Nota: n.texto,
+        Estado: n.resuelta ? "Resuelta" : "Pendiente",
+        Fecha: fechaLegible(n.creadaEn),
+        "Cargada por": n.creadaPor || "",
+      })),
+    )
+    XLSX.utils.book_append_sheet(libro, hojaNotas, "Notas de caja")
+  }
 
   XLSX.writeFile(libro, `${NOMBRE_ARCHIVO_BASE}-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }

@@ -112,6 +112,11 @@ public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url,
 public.emails_enviados       -> destinatarios TEXT[], asunto, plantilla, enviado_por, exito, detalle, creado_en
   Log de cada envio por Gmail API. Lo escribe lib/email/registro.ts (service_role, best-effort)
   RLS: SELECT solo admin/grandteam
+public.notas_caja            -> texto, resuelta, creada_por, creada_en
+  Observaciones de plata que no son gasto ni ingreso ("pagaron $700 uruguayos",
+  "falta la transferencia de Lore"). Se cargan en /admin/registro-inscripciones y se
+  leen en /admin/gastos y en el PDF/Excel de finanzas. Helpers en lib/notasCaja.ts.
+  RLS: solo admin/grandteam (sin lectura publica: dice quien no pago)
 public.alojamientos          -> nombre, descripcion, logo_url, website, telefono, whatsapp,
                                 direccion, instagram, imagenes TEXT[], activo, orden
   imagenes = galeria de fotos extra (URLs del bucket `sponsors`, carpeta alojamientos/)
@@ -259,11 +264,30 @@ El mensaje incluye **cuanta plata deberia haber en el BNA** contando esa transfe
 
 Se activa por dispositivo desde el boton del panel. En iPhone requiere instalar el sitio como app (iOS 16.4+). Las claves VAPID **no se regeneran**: si cambian, hay que reactivar en cada dispositivo.
 
+### Plata de las inscripciones (regla importante)
+
+**Nunca calcular los ingresos como `confirmados * precio`.** Confirmar no es cobrar:
+hay confirmados marcados "falta pagar" y otros que pagaron un monto distinto. La plata
+sale siempre de `participantes.pago_estado` + `participantes.monto_pagado`:
+
+- `pago_estado = 'pagado'` -> suma `monto_pagado` (o el precio de lista si es NULL, que es
+  como quedaron las inscripciones viejas).
+- `pago_estado = 'pendiente'` -> suma 0 (y se cuenta aparte como "falta cobrar").
+- `pago_estado = 'gratis'` -> suma 0 y no se espera que pague.
+
+Helpers: `montoCobrado()` (lo que entro) y `montoEsperado()` (lo que deberia entrar) en
+`app/admin/gastos/tipos.ts`. El desglose (`DesglosePagos`: precio de lista / otro monto /
+sin pagar / gratis) lo calcula `useFinanzas` y lo muestran la tarjeta de Ingresos, la
+calculadora de caja, la vista de Movimientos y el PDF/Excel. En
+`/admin/registro-inscripciones` el mismo desglose son las 4 tarjetas de pagos, y en el
+push de inscripcion nueva lo usa `lib/finanzas/saldoEsperado.ts`.
+
 ### Dashboard Admin
 
 - Stats en tiempo real: total inscriptos, confirmados, pendientes, rechazados
 - Precio de entrada editable inline (se guarda en `event_settings.precio`)
-- Ingresos calculados dinamicamente: confirmados * precio entrada
+- Ingresos: suma de `monto_pagado` de las confirmadas pagadas (ver la regla de arriba).
+  Los confirmados sin pagar se muestran aparte y van a "potenciales"
 - Graficos con recharts (cargados via dynamic import)
 
 ### Acceso a Supabase Management API (SQL directo)

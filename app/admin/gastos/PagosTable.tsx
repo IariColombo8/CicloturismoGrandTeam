@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Check, Pencil, RotateCcw, X } from "lucide-react"
 import { Paginacion } from "./Paginacion"
-import { formatARS, montoEfectivo, parseMonto, type InscripcionPago } from "./tipos"
+import { formatARS, montoCobrado, parseMonto, type InscripcionPago } from "./tipos"
 
 const PAGE_SIZE = 15
 
@@ -40,7 +40,7 @@ export function PagosTable({
 
   const iniciarEdicion = (inscripcion: InscripcionPago) => {
     setEditandoId(inscripcion.id)
-    setValorEdicion(String(montoEfectivo(inscripcion, precioBase)))
+    setValorEdicion(String(montoCobrado(inscripcion, precioBase)))
   }
 
   const guardar = async (id: string, monto: number | null) => {
@@ -68,7 +68,7 @@ export function PagosTable({
           </TableHeader>
           <TableBody>
             {pageItems.map((insc) => {
-              const pagado = montoEfectivo(insc, precioBase)
+              const pagado = montoCobrado(insc, precioBase)
               const diferencia = pagado - precioBase
               const enEdicion = editandoId === insc.id
 
@@ -97,7 +97,13 @@ export function PagosTable({
                     )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {diferencia === 0 ? (
+                    {/* Confirmado sin pagar y "gratis" no son un pago distinto:
+                        son otra situacion y conviene que se lea asi. */}
+                    {insc.pagoEstado === "pendiente" ? (
+                      <Badge className="bg-orange-500/20 text-orange-400">Sin pagar</Badge>
+                    ) : insc.pagoEstado === "gratis" ? (
+                      <Badge className="bg-blue-500/20 text-blue-400">Gratis</Badge>
+                    ) : diferencia === 0 ? (
                       <Badge className="bg-green-500/20 text-green-500">Completo</Badge>
                     ) : (
                       <Badge className={diferencia < 0 ? "bg-red-500/20 text-red-400" : "bg-blue-500/20 text-blue-400"}>

@@ -33,6 +33,9 @@ export interface Ingreso {
   notas: string | null
 }
 
+/** Como esta el pago de una inscripcion (columna pago_estado de participantes). */
+export type EstadoPago = "pagado" | "pendiente" | "gratis"
+
 export interface InscripcionPago {
   id: string
   nombre: string
@@ -40,6 +43,28 @@ export interface InscripcionPago {
   dni: string | null
   estado: string
   montoPagado: number | null
+  pagoEstado: EstadoPago
+}
+
+// Nota suelta sobre la caja ("pagaron en pesos uruguayos", "falta la
+// transferencia de X"). Vive en lib/notasCaja.ts porque la comparten dos
+// pantallas: se carga en inscripciones y se lee en finanzas.
+export type { NotaCaja } from "@/lib/notasCaja"
+
+/**
+ * Desglose de las inscripciones confirmadas segun lo que pago cada una.
+ * Existe porque "confirmados x precio" miente: hay confirmados que todavia no
+ * transfirieron, otros que pagaron un monto distinto y algunos que no pagan.
+ */
+export interface DesglosePagos {
+  /** Pagaron exactamente el precio de lista. */
+  precioLista: { cantidad: number; total: number }
+  /** Pagaron un monto distinto al de lista (mas o menos). */
+  otroMonto: { cantidad: number; total: number; items: InscripcionPago[] }
+  /** Confirmados que todavia no pagaron: `total` es lo que falta que entre. */
+  sinPagar: { cantidad: number; total: number; items: InscripcionPago[] }
+  /** Inscripciones sin cargo. */
+  gratis: { cantidad: number; items: InscripcionPago[] }
 }
 
 /**
@@ -80,10 +105,28 @@ export function formatARS(monto: number): string {
   return `$${monto.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
-/** Monto real abonado por un inscripto: su excepcion o el precio base. */
-export function montoEfectivo(inscripcion: InscripcionPago, precioBase: number): number {
+/**
+ * Plata que YA entro por esa inscripcion.
+ * Si esta marcada como pendiente de pago o gratis es 0, aunque la inscripcion
+ * este confirmada: confirmar no es cobrar.
+ */
+export function montoCobrado(inscripcion: InscripcionPago, precioBase: number): number {
+  if (inscripcion.pagoEstado !== "pagado") return 0
   return inscripcion.montoPagado ?? precioBase
 }
+
+/**
+ * Plata que DEBERIA entrar por esa inscripcion (para las proyecciones).
+ * Las gratis no suman; las demas, el monto registrado o el precio de lista.
+ */
+export function montoEsperado(inscripcion: InscripcionPago, precioBase: number): number {
+  if (inscripcion.pagoEstado === "gratis") return 0
+  if (inscripcion.pagoEstado === "pagado") return inscripcion.montoPagado ?? precioBase
+  // Pendiente de pago: se espera el precio de lista (el 0 guardado al confirmar
+  // significa "todavia no pago", no "paga cero").
+  return precioBase
+}
+
 
 /**
  * Total de un gasto segun la cantidad de participantes.

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Landmark, Filter, FileText, FileSpreadsheet } from "lucide-react"
 
+import NotasCaja from "@/components/admin/NotasCaja"
 import { EstimadorInscriptos } from "./EstimadorInscriptos"
 import { CalculadoraCaja } from "./CalculadoraCaja"
 import { MovimientosTable, type FiltroEstado, type FiltroTipo } from "./MovimientosTable"
@@ -34,7 +35,7 @@ export default function GastosPage() {
   const precioBase = eventSettings?.precio ?? 0
   const esAdmin = userRole === "admin"
 
-  const { gastos, ingresos, inscripciones, cargando, error, recargar, resumen, movimientos } =
+  const { gastos, ingresos, inscripciones, notas, cargando, error, recargar, resumen, movimientos } =
     useFinanzas(precioBase, Boolean(user))
 
   const [isGastoModalOpen, setIsGastoModalOpen] = useState(false)
@@ -116,15 +117,23 @@ export default function GastosPage() {
 
   const handleGuardarPago = async (id: string, montoPagado: number | null) => {
     try {
+      // El estado de pago acompaña al monto: si se carga una plata entrada, la
+      // inscripción queda pagada; si se pone en 0, vuelve a "falta pagar".
+      // Sin esto, editar el monto acá no movía los totales.
+      const pagoEstado = montoPagado === null || montoPagado > 0 ? "pagado" : "pendiente"
       const { error: errorUpdate } = await supabase
         .from("participantes")
-        .update({ monto_pagado: montoPagado })
+        .update({ monto_pagado: montoPagado, pago_estado: pagoEstado })
         .eq("id", id)
       if (errorUpdate) throw errorUpdate
       toast({
-        title: "Pago actualizado",
+        title: pagoEstado === "pagado" ? "Pago actualizado" : "Marcado como pendiente de pago",
         description:
-          montoPagado === null ? "Se restableció al precio base del evento" : `Registrado ${formatARS(montoPagado)}`,
+          montoPagado === null
+            ? "Se restableció al precio base del evento"
+            : montoPagado > 0
+              ? `Registrado ${formatARS(montoPagado)}`
+              : "Queda confirmado pero sin pagar",
       })
       await recargar()
     } catch (err) {
@@ -136,7 +145,7 @@ export default function GastosPage() {
   const handleDescargarPDF = async () => {
     setExportando("pdf")
     try {
-      await exportarFinanzasPDF(gastos, ingresos, resumen, resumen.confirmados)
+      await exportarFinanzasPDF(gastos, ingresos, resumen, resumen.confirmados, precioBase, notas)
     } catch (err) {
       console.error("Error generando PDF:", mensajeError(err), err)
       toast({ title: "Error al generar el PDF", description: mensajeError(err), variant: "destructive" })
@@ -148,7 +157,7 @@ export default function GastosPage() {
   const handleDescargarExcel = async () => {
     setExportando("excel")
     try {
-      await exportarFinanzasExcel(gastos, ingresos, resumen, resumen.confirmados)
+      await exportarFinanzasExcel(gastos, ingresos, resumen, resumen.confirmados, precioBase, notas)
     } catch (err) {
       console.error("Error generando Excel:", mensajeError(err), err)
       toast({ title: "Error al generar el Excel", description: mensajeError(err), variant: "destructive" })
@@ -239,6 +248,23 @@ export default function GastosPage() {
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
                   Inscripciones {formatARS(resumen.ingresoInscripciones)} · Otros {formatARS(resumen.ingresosCobrados)}
                 </p>
+                {/* Aclaracion del "confirmados x precio": no todos los
+                    confirmados pagaron, ni todos pagaron lo mismo. */}
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 hidden sm:block">
+                  {resumen.desglosePagos.precioLista.cantidad} pagaron {formatARS(precioBase)}
+                  {resumen.desglosePagos.otroMonto.cantidad > 0 &&
+                    ` · ${resumen.desglosePagos.otroMonto.cantidad} otro monto (${formatARS(
+                      resumen.desglosePagos.otroMonto.total,
+                    )})`}
+                  {resumen.desglosePagos.gratis.cantidad > 0 &&
+                    ` · ${resumen.desglosePagos.gratis.cantidad} gratis`}
+                </p>
+                {resumen.desglosePagos.sinPagar.cantidad > 0 && (
+                  <p className="text-[10px] sm:text-xs text-orange-400 mt-1">
+                    {resumen.desglosePagos.sinPagar.cantidad} confirmados sin pagar ·{" "}
+                    {formatARS(resumen.desglosePagos.sinPagar.total)} por cobrar
+                  </p>
+                )}
                 <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
                   Proyectado: {formatARS(resumen.totalIngresosProyectado)}
                 </p>
@@ -476,14 +502,21 @@ export default function GastosPage() {
           </CardContent>
         </Card>
 
+        {/* Notas de caja: se cargan en el registro de inscripciones y se leen aca */}
+        <div className="mt-6 sm:mt-8">
+          <NotasCaja notas={notas} onCambio={recargar} puedeEditar={esAdmin} />
+        </div>
+
         {/* Calculadora de caja y estimador: al final, colapsados */}
-        <div className="mt-6 sm:mt-8 space-y-4">
+        <div className="mt-4 space-y-4">
           <CalculadoraCaja
             gastos={gastos}
             ingresos={ingresos}
             confirmados={resumen.confirmados}
             ingresoInscripciones={resumen.ingresoInscripciones}
             ingresoInscripcionesProyectado={resumen.ingresoInscripcionesProyectado}
+            desglosePagos={resumen.desglosePagos}
+            precioBase={precioBase}
           />
           <EstimadorInscriptos
             gastos={gastos}

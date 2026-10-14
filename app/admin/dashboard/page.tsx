@@ -27,6 +27,9 @@ export default function AdminDashboard() {
   const { user, userRole, loading: authLoading, eventSettings } = useSupabaseContext()
   // Stats ligeros (solo conteos, no descarga filas)
   const [stats, setStats] = useState({ total: 0, pendientes: 0, confirmadas: 0, rechazadas: 0 })
+  // Plata real de las inscripciones. No se calcula como confirmadas x precio:
+  // hay confirmados que todavia no transfirieron y otros que pagaron distinto.
+  const [pagos, setPagos] = useState({ cobrado: 0, sinPagarCant: 0, sinPagarMonto: 0 })
   const [precioEntrada, setPrecioEntrada] = useState(0)
   const [editandoPrecio, setEditandoPrecio] = useState(false)
   const [precioTemp, setPrecioTemp] = useState("")
@@ -53,7 +56,7 @@ export default function AdminDashboard() {
       const base = () =>
         supabase.from("participantes").select("*", { count: "exact", head: true }).contains("anios", [EDICION_ACTUAL])
 
-      const [totalRes, pendRes, confRes, rechRes, ultimasRes] = await Promise.all([
+      const [totalRes, pendRes, confRes, rechRes, ultimasRes, pagosRes] = await Promise.all([
         base(),
         base().eq("estado", "pendiente"),
         base().eq("estado", "confirmada"),
@@ -64,6 +67,12 @@ export default function AdminDashboard() {
           .contains("anios", [EDICION_ACTUAL])
           .order("fecha_inscripcion", { ascending: false })
           .limit(5),
+        // Pagos de las confirmadas: pocas columnas, para sumar plata real.
+        supabase
+          .from("participantes")
+          .select("pago_estado, monto_pagado")
+          .contains("anios", [EDICION_ACTUAL])
+          .eq("estado", "confirmada"),
       ])
 
       setStats({
@@ -72,6 +81,21 @@ export default function AdminDashboard() {
         confirmadas: confRes.count ?? 0,
         rechazadas: rechRes.count ?? 0,
       })
+
+      // Plata de inscripciones: lo cobrado de verdad y lo que falta cobrar de
+      // los confirmados que todavia no pagaron.
+      const precio = Number(eventSettings?.precio) || 0
+      let cobrado = 0
+      let sinPagarCant = 0
+      for (const p of (pagosRes.data || []) as any[]) {
+        if (p.pago_estado === "gratis") continue
+        if (p.pago_estado === "pendiente") {
+          sinPagarCant += 1
+          continue
+        }
+        cobrado += p.monto_pagado != null ? Number(p.monto_pagado) : precio
+      }
+      setPagos({ cobrado, sinPagarCant, sinPagarMonto: sinPagarCant * precio })
 
       setUltimas(
         (ultimasRes.data || []).map((d: any) => ({
@@ -96,7 +120,8 @@ export default function AdminDashboard() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [isAuthorized, user])
+    // El precio entra en el calculo de la plata, asi que al cargar se recalcula.
+  }, [isAuthorized, user, eventSettings?.precio])
 
   // Cargar precio desde eventSettings
   useEffect(() => {
@@ -122,8 +147,11 @@ export default function AdminDashboard() {
     } catch {}
   }
 
-  const ingresosConfirmados = stats.confirmadas * precioEntrada
-  const ingresosPotenciales = stats.pendientes * precioEntrada
+  // Plata que entró de verdad (suma de lo pagado), no confirmadas x precio: con
+  // confirmados que todavía no transfirieron ese cálculo inflaba los ingresos.
+  const ingresosConfirmados = pagos.cobrado
+  // Lo que falta: las inscripciones pendientes + los confirmados impagos.
+  const ingresosPotenciales = stats.pendientes * precioEntrada + pagos.sinPagarMonto
 
   if (authLoading || (!userRole && loading)) {
     return (
@@ -210,6 +238,11 @@ export default function AdminDashboard() {
                   ? `+${formatCurrencyShort(ingresosPotenciales)} potenciales`
                   : ""}
               </p>
+              {!loading && pagos.sinPagarCant > 0 && (
+                <p className="text-xs text-orange-400 mt-1">
+                  {pagos.sinPagarCant} confirmados sin pagar
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

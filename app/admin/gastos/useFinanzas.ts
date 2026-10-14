@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import type { Gasto, Ingreso, InscripcionPago, Movimiento } from "./tipos"
-import { formatARS, montoEfectivo, totalGasto } from "./tipos"
+import type { DesglosePagos, EstadoPago, Gasto, Ingreso, InscripcionPago, Movimiento } from "./tipos"
+import { formatARS, montoCobrado, montoEsperado, totalGasto } from "./tipos"
+import { mapNotaCaja, type NotaCaja } from "@/lib/notasCaja"
 
 const ESTADO_CONFIRMADA = "confirmada"
 const ESTADO_PENDIENTE = "pendiente"
@@ -16,6 +17,8 @@ interface UseFinanzasResult {
   gastos: Gasto[]
   ingresos: Ingreso[]
   inscripciones: InscripcionPago[]
+  /** Observaciones de caja cargadas desde el registro de inscripciones. */
+  notas: NotaCaja[]
   cargando: boolean
   error: string | null
   recargar: () => Promise<void>
@@ -31,8 +34,10 @@ export interface ResumenFinanciero {
   inscriptosTotales: number
   /** Ingresos por inscripciones confirmadas. */
   ingresoInscripciones: number
-  /** Ingresos por inscripciones si tambien confirmaran las pendientes. */
+  /** Ingresos por inscripciones si tambien pagaran las pendientes. */
   ingresoInscripcionesProyectado: number
+  /** Como se compone ese total: quien pago el precio, quien otro monto, quien no pago. */
+  desglosePagos: DesglosePagos
   /** Ingresos manuales ya cobrados (sponsors, donaciones, etc). */
   ingresosCobrados: number
   /** Ingresos manuales comprometidos pero aun no cobrados. */
@@ -97,6 +102,8 @@ function mapIngreso(i: any): Ingreso {
 }
 
 function mapInscripcion(i: any): InscripcionPago {
+  const pagoEstado: EstadoPago =
+    i.pago_estado === "pagado" || i.pago_estado === "gratis" ? i.pago_estado : ESTADO_PENDIENTE
   return {
     id: i.id,
     nombre: i.nombre || "",
@@ -104,8 +111,10 @@ function mapInscripcion(i: any): InscripcionPago {
     dni: i.dni,
     estado: i.estado || ESTADO_PENDIENTE,
     montoPagado: i.monto_pagado === null || i.monto_pagado === undefined ? null : Number(i.monto_pagado),
+    pagoEstado,
   }
 }
+
 
 /**
  * Carga gastos, ingresos e inscripciones y calcula el resumen financiero.
@@ -115,19 +124,25 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [ingresos, setIngresos] = useState<Ingreso[]>([])
   const [inscripciones, setInscripciones] = useState<InscripcionPago[]>([])
+  const [notas, setNotas] = useState<NotaCaja[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const recargar = useCallback(async () => {
     try {
-      const [resGastos, resIngresos, resInscripciones] = await Promise.all([
+      const [resGastos, resIngresos, resInscripciones, resNotas] = await Promise.all([
         supabase.from("gastos").select("*").order("fecha", { ascending: false }),
         supabase.from("ingresos").select("*").order("fecha", { ascending: false }),
         supabase
           .from("participantes")
-          .select("id, nombre, apellido, dni, estado, monto_pagado")
+          .select("id, nombre, apellido, dni, estado, monto_pagado, pago_estado")
           .contains("anios", [EDICION_ACTUAL])
           .in("estado", [ESTADO_CONFIRMADA, ESTADO_PENDIENTE]),
+        supabase
+          .from("notas_caja")
+          .select("*")
+          .order("resuelta", { ascending: true })
+          .order("creada_en", { ascending: false }),
       ])
 
       if (resGastos.error) throw resGastos.error
@@ -137,6 +152,8 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       // La tabla ingresos puede no existir todavia si falta correr la migracion.
       setIngresos(resIngresos.error ? [] : (resIngresos.data || []).map(mapIngreso))
       setInscripciones((resInscripciones.data || []).map(mapInscripcion))
+      // La tabla puede no existir si falta correr la migracion: no es critica.
+      setNotas(resNotas.error ? [] : (resNotas.data || []).map(mapNotaCaja))
       setError(null)
     } catch (err: unknown) {
       console.error("Error cargando finanzas:", err)
@@ -166,11 +183,45 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
     const confirmados = confirmadas.length
     const inscriptosTotales = inscripciones.length
 
-    const ingresoInscripciones = confirmadas.reduce((sum, i) => sum + montoEfectivo(i, precioBase), 0)
+    // Lo cobrado de verdad: las confirmadas que ademas estan marcadas pagadas.
+    const ingresoInscripciones = confirmadas.reduce((sum, i) => sum + montoCobrado(i, precioBase), 0)
+    // Proyeccion: lo que entraria si pagaran todos (confirmados impagos incluidos).
     const ingresoInscripcionesProyectado = inscripciones.reduce(
-      (sum, i) => sum + montoEfectivo(i, precioBase),
+      (sum, i) => sum + montoEsperado(i, precioBase),
       0,
     )
+
+    // Desglose de los confirmados, para que ningun total parezca "confirmados x precio".
+    const desglosePagos: DesglosePagos = {
+      precioLista: { cantidad: 0, total: 0 },
+      otroMonto: { cantidad: 0, total: 0, items: [] },
+      sinPagar: { cantidad: 0, total: 0, items: [] },
+      gratis: { cantidad: 0, items: [] },
+    }
+
+    for (const insc of confirmadas) {
+      if (insc.pagoEstado === "gratis") {
+        desglosePagos.gratis.cantidad += 1
+        desglosePagos.gratis.items.push(insc)
+        continue
+      }
+      if (insc.pagoEstado === "pendiente") {
+        desglosePagos.sinPagar.cantidad += 1
+        desglosePagos.sinPagar.total += precioBase
+        desglosePagos.sinPagar.items.push(insc)
+        continue
+      }
+
+      const pagado = montoCobrado(insc, precioBase)
+      if (pagado === precioBase) {
+        desglosePagos.precioLista.cantidad += 1
+        desglosePagos.precioLista.total += pagado
+      } else {
+        desglosePagos.otroMonto.cantidad += 1
+        desglosePagos.otroMonto.total += pagado
+        desglosePagos.otroMonto.items.push(insc)
+      }
+    }
 
     const ingresosCobrados = ingresos
       .filter((i) => i.estado === "cobrado")
@@ -196,9 +247,9 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
     const totalIngresos = ingresoInscripciones + ingresosCobrados
     const totalIngresosProyectado = ingresoInscripcionesProyectado + ingresosCobrados + ingresosPorCobrar
 
-    const pagosDiferentes = confirmadas.filter(
-      (i) => i.montoPagado !== null && i.montoPagado !== precioBase,
-    )
+    // Pagaron distinto al precio base (los sin pagar y los gratis van aparte,
+    // en el desglose: no son "un pago distinto" sino otra situacion).
+    const pagosDiferentes = desglosePagos.otroMonto.items
     const diferenciaPagos = pagosDiferentes.reduce((sum, i) => sum + ((i.montoPagado ?? 0) - precioBase), 0)
 
     return {
@@ -206,6 +257,7 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       inscriptosTotales,
       ingresoInscripciones,
       ingresoInscripcionesProyectado,
+      desglosePagos,
       ingresosCobrados,
       ingresosPorCobrar,
       totalIngresos,
@@ -250,23 +302,71 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       origen: null,
     }))
 
-    // Fila calculada: las inscripciones confirmadas agrupadas como un ingreso.
-    const deInscripciones: Movimiento[] =
-      resumen.confirmados > 0
-        ? [
-            {
-              id: "inscripciones-confirmadas",
-              tipo: "ingreso",
-              descripcion: "Inscripciones confirmadas",
-              detalle: `${resumen.confirmados} inscriptos a ${formatARS(precioBase)} base`,
-              categoria: "inscripciones",
-              monto: resumen.ingresoInscripciones,
-              estado: "cobrado",
-              fecha: null,
-              origen: null,
-            },
-          ]
-        : []
+    // Filas calculadas de inscripciones, separadas por situacion de pago. Antes
+    // era una sola fila "confirmados x precio", que daba a entender que habian
+    // pagado todos los confirmados.
+    const d = resumen.desglosePagos
+    const deInscripciones: Movimiento[] = []
+
+    if (d.precioLista.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-precio-lista",
+        tipo: "ingreso",
+        descripcion: `Inscripciones que pagaron ${formatARS(precioBase)}`,
+        detalle: `${d.precioLista.cantidad} inscriptos × ${formatARS(precioBase)}`,
+        categoria: "inscripciones",
+        monto: d.precioLista.total,
+        estado: "cobrado",
+        fecha: null,
+        origen: null,
+      })
+    }
+
+    if (d.otroMonto.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-otro-monto",
+        tipo: "ingreso",
+        descripcion: "Inscripciones que pagaron otro monto",
+        detalle: d.otroMonto.items
+          .map((i) => `${i.nombre} ${i.apellido}: ${formatARS(i.montoPagado ?? 0)}`)
+          .join(" · "),
+        categoria: "inscripciones",
+        monto: d.otroMonto.total,
+        estado: "cobrado",
+        fecha: null,
+        origen: null,
+      })
+    }
+
+    if (d.sinPagar.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-sin-pagar",
+        tipo: "ingreso",
+        descripcion: "Confirmados que todavía no pagaron",
+        detalle: `${d.sinPagar.cantidad} inscriptos · ${d.sinPagar.items
+          .map((i) => `${i.nombre} ${i.apellido}`)
+          .join(", ")}`,
+        categoria: "inscripciones",
+        monto: d.sinPagar.total,
+        estado: "por_cobrar",
+        fecha: null,
+        origen: null,
+      })
+    }
+
+    if (d.gratis.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-gratis",
+        tipo: "ingreso",
+        descripcion: "Inscripciones sin cargo",
+        detalle: d.gratis.items.map((i) => `${i.nombre} ${i.apellido}`).join(", "),
+        categoria: "inscripciones",
+        monto: 0,
+        estado: "cobrado",
+        fecha: null,
+        origen: null,
+      })
+    }
 
     return [...deInscripciones, ...deIngresos, ...deGastos].sort((a, b) => {
       // La fila calculada no tiene fecha: va primero.
@@ -274,7 +374,7 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       if (!b.fecha) return 1
       return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
     })
-  }, [gastos, ingresos, resumen.confirmados, resumen.ingresoInscripciones, precioBase])
+  }, [gastos, ingresos, resumen.confirmados, resumen.desglosePagos, precioBase])
 
-  return { gastos, ingresos, inscripciones, cargando, error, recargar, resumen, movimientos }
+  return { gastos, ingresos, inscripciones, notas, cargando, error, recargar, resumen, movimientos }
 }

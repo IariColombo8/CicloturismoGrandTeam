@@ -6,7 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Wallet, ChevronDown } from "lucide-react"
-import { formatARS, totalGasto, type Gasto, type Ingreso } from "./tipos"
+import { formatARS, totalGasto, type DesglosePagos, type Gasto, type Ingreso } from "./tipos"
 
 interface Item {
   id: string
@@ -24,6 +24,9 @@ interface CalculadoraCajaProps {
   confirmados: number
   ingresoInscripciones: number
   ingresoInscripcionesProyectado: number
+  /** Como se componen las inscripciones: quien pago el precio, quien otro monto, quien no pago. */
+  desglosePagos: DesglosePagos
+  precioBase: number
 }
 
 /**
@@ -36,6 +39,8 @@ export function CalculadoraCaja({
   confirmados,
   ingresoInscripciones,
   ingresoInscripcionesProyectado,
+  desglosePagos,
+  precioBase,
 }: CalculadoraCajaProps) {
   const [abierto, setAbierto] = useState(false)
 
@@ -49,17 +54,46 @@ export function CalculadoraCaja({
       etiqueta: i.estado === "cobrado" ? undefined : "Por cobrar",
     }))
 
+    // Las inscripciones van desglosadas por situacion de pago: una sola linea
+    // con "confirmados x precio" haria parecer que pagaron todos los
+    // confirmados, y hay varios confirmados que todavia no transfirieron.
     const deInscripciones: Item[] = []
-    if (ingresoInscripciones > 0) {
+
+    if (desglosePagos.precioLista.cantidad > 0) {
       deInscripciones.push({
-        id: "inscripciones-confirmadas",
-        label: "Inscripciones confirmadas",
-        detalle: `${confirmados} inscriptos`,
-        monto: ingresoInscripciones,
+        id: "inscripciones-precio-lista",
+        label: `Pagaron ${formatARS(precioBase)}`,
+        detalle: `${desglosePagos.precioLista.cantidad} inscriptos × ${formatARS(precioBase)}`,
+        monto: desglosePagos.precioLista.total,
         defaultChecked: true,
       })
     }
-    const pendienteProyectado = ingresoInscripcionesProyectado - ingresoInscripciones
+
+    if (desglosePagos.otroMonto.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-otro-monto",
+        label: "Pagaron otro monto",
+        detalle: desglosePagos.otroMonto.items
+          .map((i) => `${i.nombre}: ${formatARS(i.montoPagado ?? 0)}`)
+          .join(" · "),
+        monto: desglosePagos.otroMonto.total,
+        defaultChecked: true,
+      })
+    }
+
+    if (desglosePagos.sinPagar.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-sin-pagar",
+        label: "Confirmados que no pagaron",
+        detalle: desglosePagos.sinPagar.items.map((i) => `${i.nombre} ${i.apellido}`).join(" · "),
+        monto: desglosePagos.sinPagar.total,
+        defaultChecked: false,
+        etiqueta: "Falta que transfieran",
+      })
+    }
+
+    const pendienteProyectado =
+      ingresoInscripcionesProyectado - ingresoInscripciones - desglosePagos.sinPagar.total
     if (pendienteProyectado > 0) {
       deInscripciones.push({
         id: "inscripciones-pendientes",
@@ -72,7 +106,13 @@ export function CalculadoraCaja({
     }
 
     return [...deInscripciones, ...deIngresos]
-  }, [ingresos, confirmados, ingresoInscripciones, ingresoInscripcionesProyectado])
+  }, [
+    ingresos,
+    ingresoInscripciones,
+    ingresoInscripcionesProyectado,
+    desglosePagos,
+    precioBase,
+  ])
 
   const itemsSale = useMemo<Item[]>(() => {
     return gastos
