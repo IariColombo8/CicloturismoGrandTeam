@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Upload, FileCheck, DollarSign, Copy, Check, MessageCircle } from "lucide-react"
+import DatosTransferenciaCard from "@/components/DatosTransferenciaCard"
+import type { DatosTransferencia } from "@/lib/transferencia"
 
 // WhatsApp de Iara, para los que no pueden transferir a la cuenta uruguaya.
 const WHATSAPP_IARA = "https://wa.me/5493794929464"
@@ -26,6 +28,8 @@ interface PaymentStepProps {
     costoInscripcion: number
     aliasTransferencia: string
     datosTransferencia: string
+    /** Datos de la cuenta ya separados (banco, alias, CBU, titular). */
+    transferencia: DatosTransferencia
   }
 }
 
@@ -115,80 +119,8 @@ export default function PaymentStep({ formData, updateFormData, eventConfig }: P
           </div>
         </div>
 
-        {/* Bank Details */}
-        <Card className="bg-zinc-900 border-yellow-400/20">
-          <CardContent className="p-4">
-            <h4 className="text-white font-semibold mb-3">Datos para Transferencia</h4>
-            
-            {eventConfig.aliasTransferencia && (
-              <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-3 mb-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-gray-400 text-sm">Alias</p>
-                  <p className="text-yellow-400 text-lg font-bold break-all">
-                    {eventConfig.aliasTransferencia}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    copyToClipboard(eventConfig.aliasTransferencia, "alias")
-                  }
-                  aria-label="Copiar alias"
-                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-yellow-400/40 text-yellow-400 hover:bg-yellow-400 hover:text-black transition-colors"
-                >
-                  {copiedKey === "alias" ? (
-                    <>
-                      <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                      Copiado
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" aria-hidden="true" />
-                      Copiar
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {eventConfig.datosTransferencia && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-gray-400 text-sm">Datos completos</p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyToClipboard(eventConfig.datosTransferencia, "datos")
-                    }
-                    aria-label="Copiar datos de transferencia"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold border border-zinc-700 text-gray-300 hover:text-yellow-400 hover:border-yellow-400/40 transition-colors"
-                  >
-                    {copiedKey === "datos" ? (
-                      <>
-                        <Check className="w-3 h-3" aria-hidden="true" />
-                        Copiado
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" aria-hidden="true" />
-                        Copiar
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div className="text-sm text-gray-300 whitespace-pre-line">
-                  {eventConfig.datosTransferencia}
-                </div>
-              </div>
-            )}
-
-            {!eventConfig.aliasTransferencia && !eventConfig.datosTransferencia && (
-              <p className="text-gray-400 text-sm">
-                Cargando datos de transferencia...
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        {/* Datos de la cuenta: cada dato con su propio boton de copiar */}
+        <DatosTransferenciaCard datos={eventConfig.transferencia} />
 
         {/* Cuenta uruguaya: SOLO si el pais elegido es Uruguay */}
         {formData.pais === "Uruguay" && (

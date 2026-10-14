@@ -12,6 +12,8 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Settings, Save, AlertTriangle, Plus, Calendar, Loader2 } from "lucide-react"
+import DatosTransferenciaCard from "@/components/DatosTransferenciaCard"
+import { datosDesdeEvento, textoCompleto } from "@/lib/transferencia"
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -39,7 +41,13 @@ export default function ConfiguracionesPage() {
   const [facebook, setFacebook] = useState("")
   const [telefonoContacto, setTelefonoContacto] = useState("")
   const [emailContacto, setEmailContacto] = useState("")
+  // Texto completo de la transferencia: ya no se edita a mano, se arma con los
+  // campos de abajo al guardar (lo usa el boton "copiar todo").
   const [datosTransferencia, setDatosTransferencia] = useState("")
+  const [banco, setBanco] = useState("")
+  const [cbu, setCbu] = useState("")
+  const [titularCuenta, setTitularCuenta] = useState("")
+  const [notaTransferencia, setNotaTransferencia] = useState("")
   const [inscripcionesAbiertas, setInscripcionesAbiertas] = useState(true)
 
   // Cargar años disponibles y config cuando el usuario está autorizado
@@ -101,6 +109,12 @@ export default function ConfiguracionesPage() {
         setTelefonoContacto(data.telefono_contacto || "")
         setEmailContacto(data.email_contacto || "")
         setDatosTransferencia(data.datos_transferencia || "")
+        // Si la edicion es vieja y solo tiene el texto libre, se parsea.
+        const transferencia = datosDesdeEvento(data)
+        setBanco(transferencia.banco)
+        setCbu(transferencia.cbu)
+        setTitularCuenta(transferencia.titular)
+        setNotaTransferencia(transferencia.nota || "")
         setInscripcionesAbiertas(data.inscripciones_abiertas === true)
       } else {
         setNombreEvento("")
@@ -119,6 +133,10 @@ export default function ConfiguracionesPage() {
         setTelefonoContacto("")
         setEmailContacto("")
         setDatosTransferencia("")
+        setBanco("")
+        setCbu("")
+        setTitularCuenta("")
+        setNotaTransferencia("")
         setInscripcionesAbiertas(false)
       }
     } catch (error) {
@@ -185,7 +203,18 @@ export default function ConfiguracionesPage() {
         alias_transferencia: aliasTransferencia,
         telefono_contacto: telefonoContacto,
         email_contacto: emailContacto,
-        datos_transferencia: datosTransferencia,
+        banco,
+        cbu,
+        titular_cuenta: titularCuenta,
+        nota_transferencia: notaTransferencia,
+        // El texto completo se regenera a partir de los campos: si se editara
+        // a mano quedarian dos versiones distintas de lo mismo.
+        datos_transferencia: textoCompleto({
+          banco,
+          alias: aliasTransferencia,
+          cbu,
+          titular: titularCuenta,
+        }),
         redes_sociales: {
           instagram,
           facebook,
@@ -409,15 +438,6 @@ export default function ConfiguracionesPage() {
                   />
                 </div>
 
-                <div>
-                  <Label className="text-gray-300">Alias para Transferencias</Label>
-                  <Input
-                    value={aliasTransferencia}
-                    onChange={(e) => setAliasTransferencia(e.target.value)}
-                    placeholder="grandteam.bike"
-                    className="bg-gray-700 border-gray-600 text-white"
-                  />
-                </div>
               </div>
 
               <div className="space-y-4">
@@ -445,17 +465,78 @@ export default function ConfiguracionesPage() {
                 </div>
               </div>
 
+              {/* Datos de transferencia: campos separados, porque en la pagina
+                  cada uno tiene su propio boton de copiar. El texto completo se
+                  arma solo con estos valores. */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white">Datos de Transferencia</h3>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-gray-300">Alias</Label>
+                    <Input
+                      value={aliasTransferencia}
+                      onChange={(e) => setAliasTransferencia(e.target.value)}
+                      placeholder="grand.team.ciclo"
+                      className="bg-gray-700 border-gray-600 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-300">Banco</Label>
+                    <Input
+                      value={banco}
+                      onChange={(e) => setBanco(e.target.value)}
+                      placeholder="Banco de la Nación Argentina"
+                      className="bg-gray-700 border-gray-600 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-300">CBU / CVU</Label>
+                    <Input
+                      value={cbu}
+                      onChange={(e) => setCbu(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="0110211830021120285215"
+                      className="bg-gray-700 border-gray-600 text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-300">Titular de la cuenta</Label>
+                    <Input
+                      value={titularCuenta}
+                      onChange={(e) => setTitularCuenta(e.target.value)}
+                      placeholder="Iara Colombo"
+                      className="bg-gray-700 border-gray-600 text-white"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <Label className="text-gray-300">Información Completa de Transferencia</Label>
-                  <Textarea
-                    value={datosTransferencia}
-                    onChange={(e) => setDatosTransferencia(e.target.value)}
-                    placeholder="Banco, titular, CBU, alias, etc."
+                  <Label className="text-gray-300">
+                    Aclaración opcional (se muestra abajo de los datos)
+                  </Label>
+                  <Input
+                    value={notaTransferencia}
+                    onChange={(e) => setNotaTransferencia(e.target.value)}
+                    placeholder="Mandanos el comprobante por WhatsApp si tenés alguna duda"
                     className="bg-gray-700 border-gray-600 text-white"
-                    rows={4}
+                  />
+                </div>
+
+                {/* Vista previa: exactamente lo que va a ver el inscripto */}
+                <div>
+                  <Label className="text-gray-300 mb-2 block">
+                    Así lo va a ver la persona que se inscribe
+                  </Label>
+                  <DatosTransferenciaCard
+                    datos={{
+                      banco,
+                      alias: aliasTransferencia,
+                      cbu,
+                      titular: titularCuenta,
+                      nota: notaTransferencia,
+                    }}
+                    mensajeVacio="Completá los datos de arriba para ver la vista previa."
                   />
                 </div>
               </div>

@@ -18,6 +18,8 @@ interface ReviewStepProps {
     costoInscripcion: number
     aliasTransferencia: string
     datosTransferencia: string
+    /** No se usa en este paso, pero viaja con el resto de la config. */
+    transferencia?: unknown
   }
   aceptaTerminos: boolean
   onAceptaTerminosChange: (value: boolean) => void

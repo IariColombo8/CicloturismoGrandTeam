@@ -14,6 +14,7 @@ import PaymentStep from "@/components/inscripcion/PaymentStep"
 import ReviewStep from "@/components/inscripcion/ReviewStep"
 import MedallasBanner from "@/components/inscripcion/MedallasBanner"
 import Navbar from "@/components/layout/Navbar"
+import { DATOS_TRANSFERENCIA_VACIOS, datosDesdeEvento } from "@/lib/transferencia"
 
 // ──────────────────────────────────────────────────────────────
 // Persistencia del draft en localStorage
@@ -108,7 +109,8 @@ export default function InscripcionPage() {
   const [eventConfig, setEventConfig] = useState({
     costoInscripcion: 0,
     aliasTransferencia: "",
-    datosTransferencia: ""
+    datosTransferencia: "",
+    transferencia: DATOS_TRANSFERENCIA_VACIOS
   })
   
   const [formData, setFormData] = useState(defaultFormData)
@@ -242,7 +244,10 @@ export default function InscripcionPage() {
           setEventConfig({
             costoInscripcion: data.costo_inscripcion || 0,
             aliasTransferencia: data.alias_transferencia || "",
-            datosTransferencia: data.datos_transferencia || ""
+            datosTransferencia: data.datos_transferencia || "",
+            // Banco / alias / CBU / titular por separado, para la tarjeta con
+            // un boton de copiar en cada dato.
+            transferencia: datosDesdeEvento(data)
           })
         }
       } catch (error) {
