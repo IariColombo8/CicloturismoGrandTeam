@@ -162,10 +162,22 @@ export default function NotificacionesPush() {
       })
       const data = await res.json().catch(() => ({}))
 
+      if (!res.ok || !data.enviadas) {
+        setAviso(data.motivo || data.error || "No se pudo enviar la prueba.")
+        return
+      }
+
+      // Desglose por equipo: si dice "pc: aceptada" y en la pantalla no aparece
+      // nada, el push salio bien y el que no la muestra es Windows.
+      const detalle = Array.isArray(data.detalle)
+        ? (data.detalle as { equipo: string; ok: boolean; status?: number }[])
+            .map((d) => `${d.equipo}: ${d.ok ? "aceptada" : `error ${d.status ?? "?"}`}`)
+            .join(" · ")
+        : ""
+
       setAviso(
-        res.ok && data.enviadas > 0
-          ? `Enviada a ${data.enviadas} dispositivo${data.enviadas !== 1 ? "s" : ""}.`
-          : data.motivo || data.error || "No se pudo enviar la prueba."
+        `Enviada a ${data.enviadas} dispositivo${data.enviadas !== 1 ? "s" : ""}.` +
+          (detalle ? ` (${detalle})` : "")
       )
     } catch {
       setAviso("Error de red al enviar la prueba.")
@@ -173,6 +185,47 @@ export default function NotificacionesPush() {
       setTrabajando(false)
     }
   }, [session?.access_token, trabajando])
+
+  /**
+   * Prueba local: muestra una notificacion desde el service worker sin pasar
+   * por el servidor ni por el push service.
+   *
+   * Es el diagnostico que separa los dos problemas posibles: si esta tampoco
+   * aparece, el push esta bien y quien no la muestra es el sistema (en Windows,
+   * notificaciones de Chrome apagadas o "No molestar"). Si esta aparece y la
+   * del boton "Probar" no, el problema es la entrega push.
+   */
+  const probarLocal = useCallback(async () => {
+    if (trabajando) return
+
+    setTrabajando(true)
+    setAviso(null)
+
+    try {
+      const registro = await navigator.serviceWorker.getRegistration()
+      if (!registro) {
+        setAviso("Este equipo no tiene el service worker registrado. Volvé a activar los avisos.")
+        return
+      }
+
+      await registro.showNotification("Prueba local de aviso", {
+        body: "Si ves esto, el equipo muestra las notificaciones.",
+        icon: "/email/logo.png",
+        badge: "/email/logo.png",
+        tag: "prueba-local",
+      })
+
+      setAviso(
+        "Si no apareció ninguna notificación en pantalla, el problema es del sistema: revisá que " +
+          "las notificaciones del navegador estén permitidas en Windows y que no esté activado " +
+          "«No molestar»."
+      )
+    } catch (error) {
+      setAviso(error instanceof Error ? error.message : "No se pudo mostrar la notificación local.")
+    } finally {
+      setTrabajando(false)
+    }
+  }, [trabajando])
 
   if (estado === "cargando") return null
 
@@ -197,9 +250,19 @@ export default function NotificacionesPush() {
               type="button"
               onClick={probar}
               disabled={trabajando}
+              title="Manda un push real a todos los dispositivos suscriptos"
               className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 text-xs hover:bg-zinc-700 transition-all disabled:opacity-50"
             >
               Probar
+            </button>
+            <button
+              type="button"
+              onClick={probarLocal}
+              disabled={trabajando}
+              title="Muestra una notificacion en este equipo sin pasar por el servidor"
+              className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-gray-300 text-xs hover:bg-zinc-700 hover:text-white transition-all disabled:opacity-50"
+            >
+              Probar en este equipo
             </button>
             <button
               type="button"

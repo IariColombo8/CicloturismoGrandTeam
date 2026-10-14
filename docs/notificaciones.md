@@ -92,6 +92,38 @@ Las suscripciones se guardan en `public.push_subscriptions` y solo se tocan con
 `service_role`: un endpoint push es una credencial de envio y no tiene por que
 viajar al navegador de nadie.
 
+## En la compu no llegan y en el celular si
+
+Es el caso mas comun y casi nunca es el push: el servidor manda igual a todos
+los dispositivos suscriptos. Para separar las dos causas posibles hay dos
+botones en el panel:
+
+| Boton | Que prueba | Como leer el resultado |
+|---|---|---|
+| **Probar** | Push real: servidor -> FCM -> navegador | El aviso muestra el desglose por equipo (`pc: aceptada`, `celular: aceptada`). "Aceptada" significa que el push service lo tomo. |
+| **Probar en este equipo** | Notificacion local, sin servidor ni push | Si **tampoco** aparece, el problema es del sistema operativo, no del sitio. |
+
+Si "Probar" dice `pc: aceptada` pero en pantalla no aparece nada, revisar en
+Windows, en este orden:
+
+1. **Configuracion > Sistema > Notificaciones**: que este activado para el
+   navegador (Chrome/Edge) y que **No molestar** / Asistente de concentracion
+   este apagado.
+2. **Notificaciones en el Centro de actividades**: puede estar llegando sin
+   banner. Si aparece ahi, es solo cuestion de permitir los banners.
+3. **Chrome cerrado del todo**: en Windows, Chrome entrega el push solo si tiene
+   un proceso corriendo. Con `chrome://settings/system` activado en "Continuar
+   ejecutando apps en segundo plano al cerrar Google Chrome" sigue llegando con
+   las ventanas cerradas.
+4. **Perfil de Chrome**: la suscripcion es por perfil. Si se entra con otro
+   perfil, hay que activar los avisos tambien ahi.
+5. Si nada de eso alcanza, desactivar y volver a activar los avisos en esa
+   compu: regenera la suscripcion.
+
+> Las suscripciones guardan el user agent, asi que en `push_subscriptions` se
+> puede ver cuales son de celular y cuales de compu, y cuando fue el ultimo
+> envio aceptado (`ultimo_ok`).
+
 ## Problemas frecuentes
 
 | Sintoma | Causa / solucion |
