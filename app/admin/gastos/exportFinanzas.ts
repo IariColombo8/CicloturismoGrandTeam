@@ -52,6 +52,8 @@ interface FilaIngreso {
   /** "cobrado" | "por_cobrar", para pintar el estado. */
   estado: string
   fecha: string
+  /** Observacion del ingreso (solo la usa el Excel). */
+  notas?: string
 }
 
 /** "13 inscriptos" / "1 inscripto". */
@@ -149,6 +151,27 @@ function filasInscripciones(
   return filas
 }
 
+/**
+ * Orden de lectura de los gastos: primero lo que ya se pago, despues lo que
+ * falta pagar, y al final lo que todavia no esta aprobado o se rechazo.
+ */
+function ordenarGastos(gastos: Gasto[]): Gasto[] {
+  const rango = (g: Gasto): number => {
+    if (g.estado === "aprobado") return g.pagado ? 0 : 1
+    if (g.estado === "pendiente") return 2
+    return 3 // rechazado
+  }
+  // Sort estable: dentro de cada grupo se mantiene el orden por fecha que ya traen.
+  return [...gastos].sort((a, b) => rango(a) - rango(b))
+}
+
+/** Lo cobrado arriba, lo que falta cobrar abajo. */
+function ordenarIngresos(filas: FilaIngreso[]): FilaIngreso[] {
+  return [...filas].sort(
+    (a, b) => (a.estado === "cobrado" ? 0 : 1) - (b.estado === "cobrado" ? 0 : 1),
+  )
+}
+
 /** Ingresos cargados a mano, en el mismo formato que las filas de inscripciones. */
 function filasIngresosManuales(ingresos: Ingreso[]): FilaIngreso[] {
   return ingresos.map((i) => ({
@@ -157,6 +180,7 @@ function filasIngresosManuales(ingresos: Ingreso[]): FilaIngreso[] {
     monto: i.monto,
     estado: i.estado,
     fecha: fechaLegible(i.fecha),
+    notas: i.notas || "",
   }))
 }
 
@@ -318,8 +342,9 @@ export async function exportarFinanzasPDF(
     },
   }
 
-  // Detalle de gastos.
-  const filasGastos = gastos.map((g) => [
+  // Detalle de gastos: pagados arriba, sin pagar abajo.
+  const gastosOrdenados = ordenarGastos(gastos)
+  const filasGastos = gastosOrdenados.map((g) => [
     g.descripcion,
     g.categoria,
     formatARS(totalGasto(g, confirmados)),
@@ -344,7 +369,9 @@ export async function exportarFinanzasPDF(
         data.cell.styles.textColor = ROJO
         data.cell.styles.fontStyle = "bold"
       } else if (data.column.index === 3) {
-        data.cell.styles.textColor = colorEstadoGasto(gastos[data.row.index]?.estado || "pendiente")
+        data.cell.styles.textColor = colorEstadoGasto(
+          gastosOrdenados[data.row.index]?.estado || "pendiente",
+        )
       } else if (data.column.index === 4) {
         data.cell.styles.textColor = colorPago(String(data.cell.raw))
       }
@@ -355,11 +382,12 @@ export async function exportarFinanzasPDF(
 
   // Detalle de ingresos: primero las inscripciones (que son la mayor parte de
   // la plata) y despues los ingresos cargados a mano.
-  const ingresosTodos = [
-    // Sin nombres: la tabla del PDF se lee como la pantalla ("13 inscriptos").
+  // Sin nombres: la tabla del PDF se lee como la pantalla ("13 inscriptos").
+  // Y ordenado: lo cobrado arriba, lo que falta cobrar abajo.
+  const ingresosTodos = ordenarIngresos([
     ...filasInscripciones(resumen, precioBase, false),
     ...filasIngresosManuales(ingresos),
-  ]
+  ])
   const filasIngresos = ingresosTodos.map((i) => [
     i.descripcion,
     i.categoria,
@@ -470,8 +498,9 @@ export async function exportarFinanzasExcel(
     { Indicador: "Inscripciones sin cargo", Valor: `${d.gratis.cantidad}` },
   ])
 
+  // Mismo orden que el PDF: pagados arriba, sin pagar abajo.
   const hojaGastos = XLSX.utils.json_to_sheet(
-    gastos.map((g) => ({
+    ordenarGastos(gastos).map((g) => ({
       Descripción: g.descripcion,
       Categoría: g.categoria,
       Monto: totalGasto(g, confirmados),
@@ -482,26 +511,22 @@ export async function exportarFinanzasExcel(
     })),
   )
 
-  const hojaIngresos = XLSX.utils.json_to_sheet([
-    // Las inscripciones primero: son la mayor parte de la plata del evento.
-    // Aca si van los nombres: es una planilla para trabajar, no un informe.
-    ...filasInscripciones(resumen, precioBase, true).map((i) => ({
+  // Cobrado arriba, por cobrar abajo. Las inscripciones van primero dentro de
+  // cada grupo (son la mayor parte de la plata) y aca si llevan los nombres:
+  // es una planilla para trabajar, no un informe.
+  const hojaIngresos = XLSX.utils.json_to_sheet(
+    ordenarIngresos([
+      ...filasInscripciones(resumen, precioBase, true),
+      ...filasIngresosManuales(ingresos),
+    ]).map((i) => ({
       Descripción: i.descripcion,
       Categoría: i.categoria,
       Monto: i.monto,
       Estado: i.estado === "cobrado" ? "Cobrado" : "Por cobrar",
       Fecha: i.fecha,
-      Notas: "",
-    })),
-    ...ingresos.map((i) => ({
-      Descripción: i.descripcion,
-      Categoría: i.categoria,
-      Monto: i.monto,
-      Estado: i.estado === "cobrado" ? "Cobrado" : "Por cobrar",
-      Fecha: fechaLegible(i.fecha),
       Notas: i.notas || "",
     })),
-  ])
+  )
 
   const libro = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(libro, hojaResumen, "Resumen")
