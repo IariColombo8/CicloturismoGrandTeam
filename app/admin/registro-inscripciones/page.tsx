@@ -107,6 +107,45 @@ interface Stats {
   rechazadas: number
 }
 
+/** Una inscripcion confirmada que pago un monto distinto al precio de lista. */
+interface PagoDistinto {
+  id: string
+  nombre: string
+  dni: string
+  pagado: number
+  /** Positivo si pago de menos, negativo si pago de mas. */
+  diferencia: number
+}
+
+/**
+ * Resumen de la plata de las inscripciones confirmadas. Se calcula sobre las
+ * columnas `pago_estado` / `monto_pagado`, no sobre `confirmadas * precio`:
+ * una confirmada impaga o gratis no aporta nada.
+ */
+interface ResumenPagos {
+  /** Confirmadas que efectivamente pagaron algo. */
+  pagaron: number
+  /** Suma real de lo cobrado por esas inscripciones. */
+  cobrado: number
+  /** Confirmadas marcadas como pendientes de pago. */
+  noPagaron: number
+  /** Lo que falta entrar por esas inscripciones (al precio de lista). */
+  faltaCobrar: number
+  /** Confirmadas marcadas como gratis. */
+  gratis: number
+  /** Quienes pagaron un monto distinto al de lista, para que quede registrado. */
+  distintos: PagoDistinto[]
+}
+
+const RESUMEN_PAGOS_VACIO: ResumenPagos = {
+  pagaron: 0,
+  cobrado: 0,
+  noPagaron: 0,
+  faltaCobrar: 0,
+  gratis: 0,
+  distintos: [],
+}
+
 export default function RegistroInscripciones() {
   const router = useRouter()
   const { user, session, userRole, loading: authLoading, eventSettings } = useSupabaseContext()
@@ -158,6 +197,9 @@ export default function RegistroInscripciones() {
 
   // Stats (consulta separada, ligera)
   const [stats, setStats] = useState<Stats>({ total: 0, confirmadas: 0, pendientes: 0, rechazadas: 0 })
+  // Resumen de pagos de las confirmadas (quien pago, quien no, quien pago otro monto).
+  const [resumenPagos, setResumenPagos] = useState<ResumenPagos>(RESUMEN_PAGOS_VACIO)
+  const [verPagosDistintos, setVerPagosDistintos] = useState(false)
 
   // Modal
   const [selectedInscripcion, setSelectedInscripcion] = useState<any>(null)
@@ -403,7 +445,62 @@ export default function RegistroInscripciones() {
       pendientes: pendRes.count ?? 0,
       rechazadas: rechRes.count ?? 0,
     })
-  }, [])
+
+    // Resumen de pagos: hace falta traer las filas confirmadas porque los montos
+    // son por inscripcion (no alcanza con contar). Son pocas columnas y solo las
+    // confirmadas, asi que la consulta sigue siendo liviana.
+    const { data: pagosData, error: pagosError } = await supabase
+      .from("participantes")
+      .select("id, nombre, apellido, dni, pago_estado, monto_pagado")
+      .contains("anios", [EDICION_ACTUAL])
+      .eq("estado", "confirmada")
+
+    if (pagosError || !pagosData) {
+      if (pagosError) console.error("Error cargando resumen de pagos:", pagosError)
+      return
+    }
+
+    const resumen: ResumenPagos = {
+      pagaron: 0,
+      cobrado: 0,
+      noPagaron: 0,
+      faltaCobrar: 0,
+      gratis: 0,
+      distintos: [],
+    }
+
+    for (const p of pagosData as any[]) {
+      if (p.pago_estado === "gratis") {
+        resumen.gratis += 1
+        continue
+      }
+      if (p.pago_estado === "pendiente") {
+        resumen.noPagaron += 1
+        resumen.faltaCobrar += precioInscripcion
+        continue
+      }
+
+      // Pagado: si no hay monto registrado se asume el precio de lista (asi
+      // quedaron las inscripciones viejas, de antes de la columna monto_pagado).
+      const pagado = p.monto_pagado != null ? Number(p.monto_pagado) : precioInscripcion
+      resumen.pagaron += 1
+      resumen.cobrado += pagado
+
+      if (pagado !== precioInscripcion) {
+        resumen.distintos.push({
+          id: p.id,
+          nombre: `${p.nombre ?? ""} ${p.apellido ?? ""}`.trim(),
+          dni: p.dni ?? "",
+          pagado,
+          diferencia: precioInscripcion - pagado,
+        })
+      }
+    }
+
+    // Primero los que mas plata deben.
+    resumen.distintos.sort((a, b) => b.diferencia - a.diferencia)
+    setResumenPagos(resumen)
+  }, [precioInscripcion])
 
   // Objeto estable con los filtros avanzados: alimenta la query y es la
   // dependencia de los efectos que recargan el listado.
@@ -1203,6 +1300,79 @@ export default function RegistroInscripciones() {
           })}
         </div>
 
+        {/* Resumen de pagos de las confirmadas. Se calcula con monto_pagado real,
+            no con confirmadas * precio: una confirmada impaga no es plata. */}
+        <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-4 mb-6 animate-fadeIn">
+          <button
+            type="button"
+            onClick={() => {
+              setFiltroPago("pagado")
+              setCurrentPage(1)
+            }}
+            title="Ver solo las que pagaron"
+            className="text-left bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-green-400/50 transition-all"
+          >
+            <div className="flex justify-between items-start gap-1 mb-2">
+              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Pagaron</div>
+              <DollarSign className="w-4 h-4 flex-shrink-0 text-green-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.pagaron}</div>
+            <div className="text-[11px] sm:text-xs text-green-400 mt-1 truncate">
+              {formatearMonto(resumenPagos.cobrado)} cobrado
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFiltroPago("sin-pagar")
+              setCurrentPage(1)
+            }}
+            title="Ver las confirmadas que todavia no pagaron"
+            className="text-left bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4 hover:border-orange-400/50 transition-all"
+          >
+            <div className="flex justify-between items-start gap-1 mb-2">
+              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">No pagaron</div>
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 text-orange-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.noPagaron}</div>
+            <div className="text-[11px] sm:text-xs text-orange-400 mt-1 truncate">
+              faltan {formatearMonto(resumenPagos.faltaCobrar)}
+            </div>
+          </button>
+
+          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+            <div className="flex justify-between items-start gap-1 mb-2">
+              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Pagaron otro monto</div>
+              <ClipboardList className="w-4 h-4 flex-shrink-0 text-blue-400" />
+            </div>
+            <div className="flex items-end justify-between gap-2">
+              <div className="text-xl sm:text-2xl font-bold text-white">
+                {resumenPagos.distintos.length}
+              </div>
+              {resumenPagos.distintos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setVerPagosDistintos(true)}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800 border border-blue-400/30 text-blue-300 text-[11px] sm:text-xs hover:bg-zinc-700 transition-all"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Ver
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg p-3 sm:p-4">
+            <div className="flex justify-between items-start gap-1 mb-2">
+              <div className="text-[11px] sm:text-xs text-gray-400 leading-tight">Gratis</div>
+              <Gift className="w-4 h-4 flex-shrink-0 text-blue-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">{resumenPagos.gratis}</div>
+            <div className="text-[11px] sm:text-xs text-gray-500 mt-1 truncate">sin cargo</div>
+          </div>
+        </div>
+
         {/* Main Content */}
         <div className="bg-black/60 border border-yellow-400/20 rounded-lg backdrop-blur-sm animate-fadeIn">
           <div className="p-4 border-b border-yellow-400/20">
@@ -1929,6 +2099,85 @@ export default function RegistroInscripciones() {
                     )}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detalle de los que pagaron un monto distinto al de lista. Queda
+            registrado quien pago de menos (o de mas) y cuanto. */}
+        {verPagosDistintos && (
+          <div
+            className="fixed inset-0 z-[65] flex items-center justify-center bg-black/80 p-2 sm:p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setVerPagosDistintos(false)
+            }}
+          >
+            <div className="bg-zinc-900 border border-yellow-400/20 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between gap-2 p-3 sm:p-4 border-b border-yellow-400/20">
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5 text-blue-400" />
+                    Pagaron otro monto
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Precio de lista: {formatearMonto(precioInscripcion)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setVerPagosDistintos(false)}
+                  className="p-2 rounded-lg hover:bg-zinc-800 text-gray-400 hover:text-white transition-all"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto p-3 sm:p-4 space-y-2">
+                {resumenPagos.distintos.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 bg-zinc-800/50 border border-yellow-400/10 rounded-lg px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm text-white font-medium truncate">{p.nombre}</p>
+                      <p className="text-xs text-gray-500">DNI {p.dni}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm text-white font-semibold">{formatearMonto(p.pagado)}</p>
+                      <p
+                        className={`text-xs ${p.diferencia > 0 ? "text-orange-400" : "text-green-400"}`}
+                      >
+                        {p.diferencia > 0
+                          ? `faltan ${formatearMonto(p.diferencia)}`
+                          : `pagó ${formatearMonto(-p.diferencia)} de más`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-yellow-400/20 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-gray-400">
+                  Falta cobrar de este grupo:{" "}
+                  <span className="text-orange-400 font-semibold">
+                    {formatearMonto(
+                      resumenPagos.distintos.reduce((s, p) => s + Math.max(p.diferencia, 0), 0)
+                    )}
+                  </span>
+                </p>
+                <button
+                  onClick={() => {
+                    setFiltroPago("otro-precio")
+                    setCurrentPage(1)
+                    setVerPagosDistintos(false)
+                  }}
+                  className="px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/30 text-yellow-400 text-sm hover:bg-zinc-700 transition-all"
+                >
+                  Filtrar el listado
+                </button>
               </div>
             </div>
           </div>
