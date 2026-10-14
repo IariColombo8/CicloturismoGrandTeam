@@ -264,6 +264,16 @@ El mensaje incluye **cuanta plata deberia haber en el BNA** contando esa transfe
 
 Se activa por dispositivo desde el boton del panel. En iPhone requiere instalar el sitio como app (iOS 16.4+). Las claves VAPID **no se regeneran**: si cambian, hay que reactivar en cada dispositivo.
 
+### Errores del cliente
+
+Detalle en **`docs/errores-cliente.md`**. Hay error boundaries propios
+(`app/error.tsx`, `app/global-error.tsx`, UI en `components/ErrorPantalla.tsx`): muestran
+el mensaje real del error en pantalla (se puede leer desde un celular) en vez del cartel
+generico de Vercel. Ante un `ChunkLoadError` se recuperan solos: vuelven a bajar los
+archivos JS que fallaron con `fetch(url, { cache: "reload" })` — unica forma de
+sobrescribir la cache HTTP, que para `/_next/static` es `immutable` — y recargan una vez
+por pestaña.
+
 ### Plata de las inscripciones (regla importante)
 
 **Nunca calcular los ingresos como `confirmados * precio`.** Confirmar no es cobrar:
