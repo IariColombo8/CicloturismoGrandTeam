@@ -39,10 +39,14 @@ export default function NotificacionesPush() {
     let cancelado = false
 
     const revisar = async () => {
+      // `Notification` no existe en el Safari de iPhone si el sitio no esta
+      // instalado como app: sin este chequeo, leer Notification.permission
+      // tiraba la pantalla entera con un ReferenceError.
       if (
         typeof window === "undefined" ||
         !("serviceWorker" in navigator) ||
         !("PushManager" in window) ||
+        typeof Notification === "undefined" ||
         !clavePublica
       ) {
         if (!cancelado) setEstado("no-soportado")
@@ -76,6 +80,11 @@ export default function NotificacionesPush() {
     setAviso(null)
 
     try {
+      if (typeof Notification === "undefined") {
+        setEstado("no-soportado")
+        return
+      }
+
       const permiso = await Notification.requestPermission()
       if (permiso !== "granted") {
         setEstado(permiso === "denied" ? "bloqueado" : "inactivo")
