@@ -1388,14 +1388,40 @@ export default function RegistroInscripciones() {
                   </p>
                 )}
               </div>
-              <button
-                onClick={exportarCSV}
-                className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
-                title={`Exportar inscripciones a CSV`}
-              >
-                <Download className="w-4 h-4" />
-                Exportar CSV
-              </button>
+              {/* Filtros y CSV juntos: en cualquier pantalla los filtros viven
+                  detras del boton, para no comerse media pantalla con selects. */}
+              <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <button
+                  onClick={() => setShowFilters((v) => !v)}
+                  className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-all text-sm ${
+                    filtrosActivos > 0
+                      ? "bg-yellow-400/15 border-yellow-400/50 text-yellow-400"
+                      : "bg-zinc-800 border-yellow-400/20 text-yellow-400 hover:bg-zinc-700"
+                  }`}
+                  title={showFilters ? "Ocultar los filtros" : "Mostrar los filtros"}
+                >
+                  <Filter className="w-4 h-4" />
+                  Filtros
+                  {filtrosActivos > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-yellow-400 text-black text-[10px] font-bold">
+                      {filtrosActivos}
+                    </span>
+                  )}
+                  {showFilters ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  onClick={exportarCSV}
+                  className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
+                  title={`Exportar inscripciones a CSV`}
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar CSV
+                </button>
+              </div>
             </div>
 
             {/* Search */}
@@ -1410,27 +1436,8 @@ export default function RegistroInscripciones() {
               />
             </div>
 
-            {/* Mobile Filters Toggle */}
-            <div className="md:hidden mb-3">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="w-full flex items-center justify-between px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-white text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
-                  Filtros
-                  {filtrosActivos > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-yellow-400 text-black text-[10px] font-bold">
-                      {filtrosActivos}
-                    </span>
-                  )}
-                </div>
-                {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {/* Filters */}
-            <div className={`${showFilters ? "block" : "hidden"} md:block`}>
+            {/* Filters: se abren con el boton "Filtros" del encabezado */}
+            <div className={showFilters ? "block" : "hidden"}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 {[
                   {
@@ -1543,26 +1550,28 @@ export default function RegistroInscripciones() {
                   Solo con nota
                 </button>
               </div>
-
-              {(searchTerm || filtrosActivos > 0) && (
-                <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
-                  <button
-                    onClick={limpiarFiltros}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-yellow-400 hover:bg-zinc-700 transition-all text-sm whitespace-nowrap"
-                  >
-                    <FilterX className="w-4 h-4" />
-                    Limpiar filtros
-                  </button>
-                  <span className="text-xs text-gray-400 text-center sm:text-left">
-                    {filtrosActivos > 0
-                      ? `${filtrosActivos} filtro${filtrosActivos !== 1 ? "s" : ""} activo${
-                          filtrosActivos !== 1 ? "s" : ""
-                        } · ${totalCount} resultado${totalCount !== 1 ? "s" : ""}`
-                      : `${totalCount} resultado${totalCount !== 1 ? "s" : ""}`}
-                  </span>
-                </div>
-              )}
             </div>
+
+            {/* Queda afuera del panel colapsable: con los filtros cerrados hay
+                que poder ver que estan aplicados y limpiarlos de una. */}
+            {(searchTerm || filtrosActivos > 0) && (
+              <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                <button
+                  onClick={limpiarFiltros}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 border border-yellow-400/20 rounded-lg text-yellow-400 hover:bg-zinc-700 transition-all text-sm whitespace-nowrap"
+                >
+                  <FilterX className="w-4 h-4" />
+                  Limpiar filtros
+                </button>
+                <span className="text-xs text-gray-400 text-center sm:text-left">
+                  {filtrosActivos > 0
+                    ? `${filtrosActivos} filtro${filtrosActivos !== 1 ? "s" : ""} activo${
+                        filtrosActivos !== 1 ? "s" : ""
+                      } · ${totalCount} resultado${totalCount !== 1 ? "s" : ""}`
+                    : `${totalCount} resultado${totalCount !== 1 ? "s" : ""}`}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Table */}
