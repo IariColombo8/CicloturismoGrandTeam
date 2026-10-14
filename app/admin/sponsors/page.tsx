@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,8 +10,15 @@ import { Badge } from "@/components/ui/badge"
 import {
   Trophy, Medal, Award, Plus, Pencil, Trash2, X, Save,
   Loader2, Search, Eye, EyeOff, GripVertical, ImageIcon,
-  Phone, Mail, Instagram, Facebook, Globe, MapPin, Clock,
+  Phone, Mail, Instagram, Facebook, Globe, MapPin, Clock, RotateCcw,
 } from "lucide-react"
+import {
+  claveBorrador,
+  listarBorradores,
+  useBorradorFormulario,
+} from "@/hooks/useBorradorFormulario"
+import BannerBorrador, { fechaBorrador } from "@/components/admin/BannerBorrador"
+import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
 
 interface Sponsor {
   id: string
@@ -97,7 +104,40 @@ export default function AdminSponsorsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Borradores: lo que se esta cargando no se pierde si se cierra la pestaña.
+  const [confirmarSalida, setConfirmarSalida] = useState(false)
+  const [borradoresPendientes, setBorradoresPendientes] = useState<Record<string, number>>({})
+  // Como estaba el sponsor al abrir el modal, para saber si hubo cambios.
+  const referenciaRef = useRef("")
+
   const isAuthorized = userRole === "admin" || userRole === "grandteam"
+
+  const claveActual =
+    modalOpen && editingSponsor
+      ? claveBorrador("sponsor", isNew ? "nuevo" : editingSponsor.id || "nuevo")
+      : null
+
+  const hayCambios = useMemo(() => {
+    if (!modalOpen || !editingSponsor) return false
+    return JSON.stringify(editingSponsor) !== referenciaRef.current
+  }, [modalOpen, editingSponsor])
+
+  const { borrador, guardarAhora, descartarBorrador, ocultarAviso } =
+    useBorradorFormulario<Partial<Sponsor>>({
+      clave: claveActual,
+      datos: modalOpen ? editingSponsor : null,
+      hayCambios,
+    })
+
+  const refrescarBorradores = useCallback(() => {
+    setBorradoresPendientes(listarBorradores("sponsor:"))
+  }, [])
+
+  useEffect(() => {
+    refrescarBorradores()
+  }, [refrescarBorradores])
+
+  const borradorNuevo = borradoresPendientes[claveBorrador("sponsor", "nuevo")]
 
   const fetchSponsors = useCallback(async () => {
     try {
@@ -157,7 +197,9 @@ export default function AdminSponsorsPage() {
   // Abrir modal para nuevo sponsor
   const openNew = (tier: "oro" | "plata" | "bronce" = "bronce") => {
     const maxOrden = sponsors.filter((s) => s.tier === tier).reduce((max, s) => Math.max(max, s.orden), 0)
-    setEditingSponsor({ ...EMPTY_SPONSOR, tier, orden: maxOrden + 1 })
+    const inicial = { ...EMPTY_SPONSOR, tier, orden: maxOrden + 1 }
+    referenciaRef.current = JSON.stringify(inicial)
+    setEditingSponsor(inicial)
     setIsNew(true)
     setServicioInput("")
     setModalOpen(true)
@@ -165,7 +207,9 @@ export default function AdminSponsorsPage() {
 
   // Abrir modal para editar
   const openEdit = (sponsor: Sponsor) => {
-    setEditingSponsor({ ...sponsor })
+    const inicial = { ...sponsor }
+    referenciaRef.current = JSON.stringify(inicial)
+    setEditingSponsor(inicial)
     setIsNew(false)
     setServicioInput("")
     setModalOpen(true)
@@ -174,7 +218,50 @@ export default function AdminSponsorsPage() {
   const closeModal = () => {
     setModalOpen(false)
     setEditingSponsor(null)
+    setConfirmarSalida(false)
+    referenciaRef.current = ""
+    refrescarBorradores()
   }
+
+  // Cerrar con cambios sin guardar pregunta antes: guardar borrador, seguir o descartar.
+  const intentarCerrar = () => {
+    if (hayCambios) {
+      setConfirmarSalida(true)
+      return
+    }
+    closeModal()
+  }
+
+  const retomarBorrador = () => {
+    if (!borrador) return
+    setEditingSponsor(borrador.datos)
+    ocultarAviso()
+  }
+
+  const guardarBorradorYSalir = () => {
+    guardarAhora()
+    closeModal()
+  }
+
+  const descartarYSalir = () => {
+    descartarBorrador()
+    closeModal()
+  }
+
+  // Escape cierra el modal, pero pasando por el aviso si hay cambios.
+  useEffect(() => {
+    if (!modalOpen) return
+    const alPresionar = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      if (confirmarSalida) {
+        setConfirmarSalida(false)
+        return
+      }
+      intentarCerrar()
+    }
+    window.addEventListener("keydown", alPresionar)
+    return () => window.removeEventListener("keydown", alPresionar)
+  })
 
   // Guardar sponsor
   const handleSave = async () => {
@@ -212,6 +299,8 @@ export default function AdminSponsorsPage() {
           .eq("id", editingSponsor.id)
         if (error) throw error
       }
+      // Ya esta en la base: el borrador no tiene mas sentido.
+      descartarBorrador()
       closeModal()
       fetchSponsors()
     } catch (err: any) {
@@ -331,6 +420,26 @@ export default function AdminSponsorsPage() {
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Sponsor nuevo que quedo a medio cargar */}
+        {borradorNuevo && !modalOpen && (
+          <div className="mb-6 rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <p className="flex-1 text-sm text-yellow-400 font-semibold flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              Tenes un sponsor nuevo a medio cargar
+              <span className="font-normal text-gray-400 text-xs">
+                ({fechaBorrador(borradorNuevo)})
+              </span>
+            </p>
+            <Button
+              size="sm"
+              onClick={() => openNew()}
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
+            >
+              Retomar carga
+            </Button>
+          </div>
+        )}
+
         {/* Filtros */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
@@ -448,6 +557,14 @@ export default function AdminSponsorsPage() {
                                   Inactivo
                                 </Badge>
                               )}
+                              {borradoresPendientes[claveBorrador("sponsor", sponsor.id)] && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-yellow-400 border-yellow-400/30 text-[10px]"
+                                >
+                                  Cambios sin guardar
+                                </Badge>
+                              )}
                             </div>
                             {sponsor.descripcion && (
                               <p className="text-zinc-400 text-xs sm:text-sm line-clamp-1 mt-0.5">
@@ -515,23 +632,43 @@ export default function AdminSponsorsPage() {
       {/* Modal Edicion/Creacion */}
       {modalOpen && editingSponsor && (
         <>
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50" onClick={closeModal} />
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={closeModal}>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50" onClick={intentarCerrar} />
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={intentarCerrar}>
             <div
               className="relative bg-zinc-900 rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl sm:mx-4 max-h-[90vh] overflow-y-auto border-t sm:border border-zinc-700"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header modal */}
               <div className="sticky top-0 bg-zinc-900 border-b border-zinc-800 p-4 flex items-center justify-between z-10">
-                <h2 className="text-lg font-bold text-white">
-                  {isNew ? "Nuevo Sponsor" : "Editar Sponsor"}
-                </h2>
-                <button onClick={closeModal} className="text-zinc-400 hover:text-white">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h2 className="text-lg font-bold text-white truncate">
+                    {isNew ? "Nuevo Sponsor" : "Editar Sponsor"}
+                  </h2>
+                  {hayCambios && (
+                    <span className="text-[10px] text-yellow-400/80 border border-yellow-400/30 rounded-full px-2 py-0.5 whitespace-nowrap">
+                      Sin guardar
+                    </span>
+                  )}
+                </div>
+                <button onClick={intentarCerrar} className="text-zinc-400 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="p-4 space-y-4">
+                {borrador && (
+                  <BannerBorrador
+                    guardadoEn={borrador.guardadoEn}
+                    onRetomar={retomarBorrador}
+                    onDescartar={descartarBorrador}
+                    titulo={
+                      isNew
+                        ? "Tenias un sponsor a medio cargar"
+                        : "Tenias cambios sin guardar en este sponsor"
+                    }
+                  />
+                )}
+
                 {/* Tier */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Clasificacion *</label>
@@ -797,7 +934,7 @@ export default function AdminSponsorsPage() {
 
               {/* Footer modal */}
               <div className="sticky bottom-0 bg-zinc-900 border-t border-zinc-800 p-4 flex gap-3 justify-end">
-                <Button variant="outline" onClick={closeModal} className="border-zinc-700 text-zinc-400">
+                <Button variant="outline" onClick={intentarCerrar} className="border-zinc-700 text-zinc-400">
                   Cancelar
                 </Button>
                 <Button
@@ -811,6 +948,18 @@ export default function AdminSponsorsPage() {
               </div>
             </div>
           </div>
+
+          <DialogoSalirSinGuardar
+            abierto={confirmarSalida}
+            onSeguirEditando={() => setConfirmarSalida(false)}
+            onGuardarYSalir={guardarBorradorYSalir}
+            onDescartar={descartarYSalir}
+            descripcion={
+              isNew
+                ? "Tenes un sponsor a medio cargar. Podes guardarlo como borrador y completarlo despues."
+                : "Tenes cambios sin guardar en este sponsor. Podes guardarlos como borrador y completarlos despues."
+            }
+          />
         </>
       )}
 

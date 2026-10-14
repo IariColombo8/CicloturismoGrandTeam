@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,7 +17,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { claveBorrador, useBorradorFormulario } from "@/hooks/useBorradorFormulario"
+import BannerBorrador from "@/components/admin/BannerBorrador"
+import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
 import { mensajeError, parseMonto } from "./tipos"
+
+interface BorradorIngreso {
+  descripcion: string
+  monto: string
+  categoria: string
+  yaCobrado: boolean
+  notas: string
+}
 
 interface IngresoFormModalProps {
   open: boolean
@@ -43,6 +54,7 @@ export function IngresoFormModal({
   const [notas, setNotas] = useState("")
   const [comprobante, setComprobante] = useState<File | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [confirmarSalida, setConfirmarSalida] = useState(false)
 
   const limpiar = () => {
     setDescripcion("")
@@ -51,6 +63,46 @@ export function IngresoFormModal({
     setYaCobrado(true)
     setNotas("")
     setComprobante(null)
+  }
+
+  // Borrador: cerrar el modal (o la pestaña) no borra lo que se estaba cargando.
+  // El comprobante no se guarda: un archivo no entra en el localStorage.
+  const datosBorrador = useMemo<BorradorIngreso>(
+    () => ({ descripcion, monto, categoria, yaCobrado, notas }),
+    [descripcion, monto, categoria, yaCobrado, notas],
+  )
+  const hayCambios =
+    open &&
+    (descripcion.trim() !== "" ||
+      monto.trim() !== "" ||
+      notas.trim() !== "" ||
+      categoria !== "sponsor" ||
+      !yaCobrado)
+
+  const { borrador, guardarAhora, descartarBorrador, ocultarAviso } =
+    useBorradorFormulario<BorradorIngreso>({
+      clave: open ? claveBorrador("ingreso", "nuevo") : null,
+      datos: open ? datosBorrador : null,
+      hayCambios,
+    })
+
+  const retomarBorrador = () => {
+    if (!borrador) return
+    setDescripcion(borrador.datos.descripcion)
+    setMonto(borrador.datos.monto)
+    setCategoria(borrador.datos.categoria)
+    setYaCobrado(borrador.datos.yaCobrado)
+    setNotas(borrador.datos.notas)
+    ocultarAviso()
+  }
+
+  const intentarCerrar = () => {
+    if (guardando) return
+    if (hayCambios) {
+      setConfirmarSalida(true)
+      return
+    }
+    onOpenChange(false)
   }
 
   const handleGuardar = async () => {
@@ -97,6 +149,7 @@ export function IngresoFormModal({
         description: yaCobrado ? "Se sumó al total de ingresos" : "Quedó marcado como por cobrar",
       })
 
+      descartarBorrador()
       limpiar()
       onOpenChange(false)
       await onGuardado()
@@ -109,8 +162,14 @@ export function IngresoFormModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gray-800 border-green-500/30 max-w-[calc(100vw-2rem)] sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : intentarCerrar())}>
+      <DialogContent
+        className="bg-gray-800 border-green-500/30 max-w-[calc(100vw-2rem)] sm:max-w-lg"
+        onEscapeKeyDown={(e) => {
+          e.preventDefault()
+          intentarCerrar()
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-green-400">Registrar Ingreso</DialogTitle>
           <DialogDescription className="text-gray-400">
@@ -118,6 +177,15 @@ export function IngresoFormModal({
             suman automáticamente.
           </DialogDescription>
         </DialogHeader>
+
+        {borrador && (
+          <BannerBorrador
+            guardadoEn={borrador.guardadoEn}
+            onRetomar={retomarBorrador}
+            onDescartar={descartarBorrador}
+            titulo="Tenias un ingreso a medio cargar"
+          />
+        )}
 
         <div className="space-y-4">
           <div>
@@ -190,13 +258,31 @@ export function IngresoFormModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={intentarCerrar}>
             Cancelar
           </Button>
           <Button onClick={handleGuardar} disabled={guardando} className="bg-green-600 text-white hover:bg-green-700">
             Registrar Ingreso
           </Button>
         </DialogFooter>
+
+        <DialogoSalirSinGuardar
+          abierto={confirmarSalida}
+          onSeguirEditando={() => setConfirmarSalida(false)}
+          onGuardarYSalir={() => {
+            guardarAhora()
+            limpiar()
+            setConfirmarSalida(false)
+            onOpenChange(false)
+          }}
+          onDescartar={() => {
+            descartarBorrador()
+            limpiar()
+            setConfirmarSalida(false)
+            onOpenChange(false)
+          }}
+          descripcion="Tenes un ingreso a medio cargar. Podes guardarlo como borrador y completarlo despues."
+        />
       </DialogContent>
     </Dialog>
   )

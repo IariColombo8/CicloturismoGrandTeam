@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,10 +19,18 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RotateCcw,
   Save,
   Trash2,
   X,
 } from "lucide-react"
+import {
+  claveBorrador,
+  listarBorradores,
+  useBorradorFormulario,
+} from "@/hooks/useBorradorFormulario"
+import BannerBorrador, { fechaBorrador } from "@/components/admin/BannerBorrador"
+import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
 
 interface Alojamiento {
   id: string
@@ -67,7 +75,39 @@ export default function AdminAlojamientosPage() {
   const [subiendoImagenes, setSubiendoImagenes] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Borradores: una ficha con fotos lleva su tiempo, no se pierde al cerrar.
+  const [confirmarSalida, setConfirmarSalida] = useState(false)
+  const [borradoresPendientes, setBorradoresPendientes] = useState<Record<string, number>>({})
+  // Como estaba el alojamiento al abrir el modal, para saber si hubo cambios.
+  const referenciaRef = useRef("")
+
   const autorizado = userRole === "admin" || userRole === "grandteam"
+
+  const claveActual = editando
+    ? claveBorrador("alojamiento", esNuevo ? "nuevo" : editando.id || "nuevo")
+    : null
+
+  const hayCambios = useMemo(() => {
+    if (!editando) return false
+    return JSON.stringify(editando) !== referenciaRef.current
+  }, [editando])
+
+  const { borrador, guardarAhora, descartarBorrador, ocultarAviso } =
+    useBorradorFormulario<Partial<Alojamiento>>({
+      clave: claveActual,
+      datos: editando,
+      hayCambios,
+    })
+
+  const refrescarBorradores = useCallback(() => {
+    setBorradoresPendientes(listarBorradores("alojamiento:"))
+  }, [])
+
+  useEffect(() => {
+    refrescarBorradores()
+  }, [refrescarBorradores])
+
+  const borradorNuevo = borradoresPendientes[claveBorrador("alojamiento", "nuevo")]
 
   const cargar = useCallback(async () => {
     const { data, error: dbError } = await supabase
@@ -96,13 +136,17 @@ export default function AdminAlojamientosPage() {
 
   const abrirNuevo = () => {
     const maxOrden = alojamientos.reduce((max, a) => Math.max(max, a.orden ?? 0), -1)
-    setEditando({ ...ALOJAMIENTO_VACIO, orden: maxOrden + 1 })
+    const inicial = { ...ALOJAMIENTO_VACIO, orden: maxOrden + 1 }
+    referenciaRef.current = JSON.stringify(inicial)
+    setEditando(inicial)
     setEsNuevo(true)
     setError(null)
   }
 
   const abrirEdicion = (alojamiento: Alojamiento) => {
-    setEditando({ ...alojamiento, imagenes: alojamiento.imagenes ?? [] })
+    const inicial = { ...alojamiento, imagenes: alojamiento.imagenes ?? [] }
+    referenciaRef.current = JSON.stringify(inicial)
+    setEditando(inicial)
     setEsNuevo(false)
     setError(null)
   }
@@ -110,7 +154,50 @@ export default function AdminAlojamientosPage() {
   const cerrarModal = () => {
     setEditando(null)
     setError(null)
+    setConfirmarSalida(false)
+    referenciaRef.current = ""
+    refrescarBorradores()
   }
+
+  // Cerrar con cambios sin guardar pregunta antes: guardar borrador, seguir o descartar.
+  const intentarCerrar = () => {
+    if (hayCambios) {
+      setConfirmarSalida(true)
+      return
+    }
+    cerrarModal()
+  }
+
+  const retomarBorrador = () => {
+    if (!borrador) return
+    setEditando(borrador.datos)
+    ocultarAviso()
+  }
+
+  const guardarBorradorYSalir = () => {
+    guardarAhora()
+    cerrarModal()
+  }
+
+  const descartarYSalir = () => {
+    descartarBorrador()
+    cerrarModal()
+  }
+
+  // Escape cierra el modal, pero pasando por el aviso si hay cambios.
+  useEffect(() => {
+    if (!editando) return
+    const alPresionar = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      if (confirmarSalida) {
+        setConfirmarSalida(false)
+        return
+      }
+      intentarCerrar()
+    }
+    window.addEventListener("keydown", alPresionar)
+    return () => window.removeEventListener("keydown", alPresionar)
+  })
 
   const subirLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -252,6 +339,8 @@ export default function AdminAlojamientosPage() {
       return
     }
 
+    // Ya esta en la base: el borrador no tiene mas sentido.
+    descartarBorrador()
     cerrarModal()
     cargar()
   }
@@ -316,6 +405,24 @@ export default function AdminAlojamientosPage() {
         </p>
       )}
 
+      {/* Alojamiento nuevo que quedo a medio cargar */}
+      {borradorNuevo && !editando && (
+        <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <p className="flex-1 text-sm text-yellow-400 font-semibold flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+            Tenés un alojamiento nuevo a medio cargar
+            <span className="font-normal text-gray-400 text-xs">({fechaBorrador(borradorNuevo)})</span>
+          </p>
+          <Button
+            size="sm"
+            onClick={abrirNuevo}
+            className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold"
+          >
+            Retomar carga
+          </Button>
+        </div>
+      )}
+
       {alojamientos.length === 0 ? (
         <Card className="bg-zinc-900/60 border-zinc-800">
           <CardContent className="py-12 text-center text-zinc-400">
@@ -329,14 +436,21 @@ export default function AdminAlojamientosPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white flex items-center justify-between gap-2">
                   <span className="truncate">{alojamiento.nombre}</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                      alojamiento.activo
-                        ? "bg-green-500/10 border-green-500/40 text-green-300"
-                        : "bg-zinc-700/40 border-zinc-600 text-zinc-400"
-                    }`}
-                  >
-                    {alojamiento.activo ? "Visible" : "Oculto"}
+                  <span className="flex items-center gap-1.5">
+                    {borradoresPendientes[claveBorrador("alojamiento", alojamiento.id)] && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300">
+                        Sin guardar
+                      </span>
+                    )}
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                        alojamiento.activo
+                          ? "bg-green-500/10 border-green-500/40 text-green-300"
+                          : "bg-zinc-700/40 border-zinc-600 text-zinc-400"
+                      }`}
+                    >
+                      {alojamiento.activo ? "Visible" : "Oculto"}
+                    </span>
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -405,18 +519,38 @@ export default function AdminAlojamientosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-yellow-400/20 bg-zinc-900 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-yellow-400">
-                {esNuevo ? "Nuevo alojamiento" : "Editar alojamiento"}
-              </h2>
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="text-lg font-bold text-yellow-400 truncate">
+                  {esNuevo ? "Nuevo alojamiento" : "Editar alojamiento"}
+                </h2>
+                {hayCambios && (
+                  <span className="text-[10px] text-yellow-400/80 border border-yellow-400/30 rounded-full px-2 py-0.5 whitespace-nowrap">
+                    Sin guardar
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
-                onClick={cerrarModal}
+                onClick={intentarCerrar}
                 aria-label="Cerrar"
                 className="text-zinc-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {borrador && (
+              <BannerBorrador
+                guardadoEn={borrador.guardadoEn}
+                onRetomar={retomarBorrador}
+                onDescartar={descartarBorrador}
+                titulo={
+                  esNuevo
+                    ? "Tenias un alojamiento a medio cargar"
+                    : "Tenias cambios sin guardar en este alojamiento"
+                }
+              />
+            )}
 
             <div className="space-y-4">
               <div>
@@ -601,7 +735,7 @@ export default function AdminAlojamientosPage() {
               )}
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={cerrarModal} disabled={guardando}>
+                <Button variant="outline" onClick={intentarCerrar} disabled={guardando}>
                   Cancelar
                 </Button>
                 <Button
@@ -619,6 +753,18 @@ export default function AdminAlojamientosPage() {
               </div>
             </div>
           </div>
+
+          <DialogoSalirSinGuardar
+            abierto={confirmarSalida}
+            onSeguirEditando={() => setConfirmarSalida(false)}
+            onGuardarYSalir={guardarBorradorYSalir}
+            onDescartar={descartarYSalir}
+            descripcion={
+              esNuevo
+                ? "Tenes un alojamiento a medio cargar. Podes guardarlo como borrador y completarlo despues."
+                : "Tenes cambios sin guardar en este alojamiento. Podes guardarlos como borrador y completarlos despues."
+            }
+          />
         </div>
       )}
     </div>

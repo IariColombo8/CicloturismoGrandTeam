@@ -264,6 +264,26 @@ El mensaje incluye **cuanta plata deberia haber en el BNA** contando esa transfe
 
 Se activa por dispositivo desde el boton del panel. En iPhone requiere instalar el sitio como app (iOS 16.4+). Las claves VAPID **no se regeneran**: si cambian, hay que reactivar en cada dispositivo.
 
+### Borradores de formularios (no perder lo cargado)
+
+Cerrar una pestaña o un modal sin querer no borra lo que se estaba cargando. El hook
+`hooks/useBorradorFormulario.ts` autoguarda el formulario en localStorage (claves
+`gtb-borrador:<entidad>:<id|nuevo>`, vencen a los 7 dias), avisa con `beforeunload` si
+hay cambios sin guardar y expone el borrador encontrado al abrir. La UI compartida son
+`components/admin/BannerBorrador.tsx` (Retomar / Empezar de cero, igual que la
+inscripcion publica) y `components/admin/DialogoSalirSinGuardar.tsx` (Guardar borrador y
+salir / Seguir editando / Descartar).
+
+Lo usan: `/admin/sponsors` (los tres tiers comparten el mismo modal),
+`/admin/alojamientos`, el modal de redactar de `/admin/emails` y los modales de gasto e
+ingreso de `/admin/gastos`. Las listas de sponsors y alojamientos marcan con un badge las
+fichas que tienen borrador pendiente, y ofrecen "Retomar carga" si quedo uno nuevo a
+medio cargar. `/inscripcion` y `/pedir-remera` ya tenian su propio borrador (anterior al
+hook) y siguen con el suyo.
+
+No se guardan los `File` (comprobantes, imagenes sin subir): no son serializables. Las
+imagenes ya subidas si vuelven, porque en el borrador viaja la URL.
+
 ### Errores del cliente
 
 Detalle en **`docs/errores-cliente.md`**. Hay error boundaries propios

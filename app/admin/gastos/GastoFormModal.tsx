@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,7 +16,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { claveBorrador, useBorradorFormulario } from "@/hooks/useBorradorFormulario"
+import BannerBorrador from "@/components/admin/BannerBorrador"
+import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
 import { formatARS, mensajeError, parseMonto } from "./tipos"
+
+interface BorradorGasto {
+  descripcion: string
+  monto: string
+  porParticipante: boolean
+  categoria: string
+}
 
 interface GastoFormModalProps {
   open: boolean
@@ -45,6 +55,7 @@ export function GastoFormModal({
   const [categoria, setCategoria] = useState("equipamiento")
   const [comprobante, setComprobante] = useState<File | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [confirmarSalida, setConfirmarSalida] = useState(false)
 
   const montoNumero = parseMonto(monto)
   const previewTotal = Number.isFinite(montoNumero) ? montoNumero * confirmados : 0
@@ -55,6 +66,40 @@ export function GastoFormModal({
     setPorParticipante(false)
     setCategoria("equipamiento")
     setComprobante(null)
+  }
+
+  // Borrador: cerrar el modal (o la pestaña) no borra lo que se estaba cargando.
+  // El comprobante no se guarda: un archivo no entra en el localStorage.
+  const datosBorrador = useMemo<BorradorGasto>(
+    () => ({ descripcion, monto, porParticipante, categoria }),
+    [descripcion, monto, porParticipante, categoria],
+  )
+  const hayCambios =
+    open && (descripcion.trim() !== "" || monto.trim() !== "" || porParticipante || categoria !== "equipamiento")
+
+  const { borrador, guardarAhora, descartarBorrador, ocultarAviso } =
+    useBorradorFormulario<BorradorGasto>({
+      clave: open ? claveBorrador("gasto", "nuevo") : null,
+      datos: open ? datosBorrador : null,
+      hayCambios,
+    })
+
+  const retomarBorrador = () => {
+    if (!borrador) return
+    setDescripcion(borrador.datos.descripcion)
+    setMonto(borrador.datos.monto)
+    setPorParticipante(borrador.datos.porParticipante)
+    setCategoria(borrador.datos.categoria)
+    ocultarAviso()
+  }
+
+  const intentarCerrar = () => {
+    if (guardando) return
+    if (hayCambios) {
+      setConfirmarSalida(true)
+      return
+    }
+    onOpenChange(false)
   }
 
   const handleGuardar = async () => {
@@ -105,6 +150,7 @@ export function GastoFormModal({
           : "Tu propuesta será revisada por un administrador",
       })
 
+      descartarBorrador()
       limpiar()
       onOpenChange(false)
       await onGuardado()
@@ -121,8 +167,14 @@ export function GastoFormModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gray-800 border-yellow-400/20 max-w-[calc(100vw-2rem)] sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : intentarCerrar())}>
+      <DialogContent
+        className="bg-gray-800 border-yellow-400/20 max-w-[calc(100vw-2rem)] sm:max-w-lg"
+        onEscapeKeyDown={(e) => {
+          e.preventDefault()
+          intentarCerrar()
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-yellow-400">
             {esAdmin ? "Agregar Nuevo Gasto" : "Proponer Gasto"}
@@ -133,6 +185,15 @@ export function GastoFormModal({
               : "Tu propuesta será revisada por un administrador"}
           </DialogDescription>
         </DialogHeader>
+
+        {borrador && (
+          <BannerBorrador
+            guardadoEn={borrador.guardadoEn}
+            onRetomar={retomarBorrador}
+            onDescartar={descartarBorrador}
+            titulo="Tenias un gasto a medio cargar"
+          />
+        )}
 
         <div className="space-y-4">
           <div>
@@ -206,7 +267,7 @@ export function GastoFormModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={intentarCerrar}>
             Cancelar
           </Button>
           <Button
@@ -217,6 +278,24 @@ export function GastoFormModal({
             {esAdmin ? "Crear Gasto" : "Enviar Propuesta"}
           </Button>
         </DialogFooter>
+
+        <DialogoSalirSinGuardar
+          abierto={confirmarSalida}
+          onSeguirEditando={() => setConfirmarSalida(false)}
+          onGuardarYSalir={() => {
+            guardarAhora()
+            limpiar()
+            setConfirmarSalida(false)
+            onOpenChange(false)
+          }}
+          onDescartar={() => {
+            descartarBorrador()
+            limpiar()
+            setConfirmarSalida(false)
+            onOpenChange(false)
+          }}
+          descripcion="Tenes un gasto a medio cargar. Podes guardarlo como borrador y completarlo despues."
+        />
       </DialogContent>
     </Dialog>
   )

@@ -1,12 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Send, Users } from "lucide-react"
+import { claveBorrador, useBorradorFormulario } from "@/hooks/useBorradorFormulario"
+import BannerBorrador from "@/components/admin/BannerBorrador"
+import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
+
+interface BorradorCorreo {
+  para: string
+  asunto: string
+  mensaje: string
+  conPlantilla: boolean
+  individual: boolean
+}
 
 export interface DatosRedaccion {
   para: string
@@ -38,6 +49,7 @@ export default function ModalRedactar({
   const [conPlantilla, setConPlantilla] = useState(true)
   const [individual, setIndividual] = useState(true)
   const [enviando, setEnviando] = useState(false)
+  const [confirmarSalida, setConfirmarSalida] = useState(false)
 
   const cantidadDestinatarios = para
     .split(/[,;]/)
@@ -46,15 +58,35 @@ export default function ModalRedactar({
 
   const puedeEnviar = cantidadDestinatarios > 0 && asunto.trim() !== "" && mensaje.trim() !== ""
 
+  // Un correo a medio escribir no se tira: queda guardado hasta enviarlo o descartarlo.
+  const datosBorrador = useMemo<BorradorCorreo>(
+    () => ({ para, asunto, mensaje, conPlantilla, individual }),
+    [para, asunto, mensaje, conPlantilla, individual],
+  )
+  const hayCambios =
+    abierto && (para.trim() !== destinatarioInicial.trim() || asunto.trim() !== "" || mensaje.trim() !== "")
+
+  const { borrador, guardarAhora, descartarBorrador, ocultarAviso } =
+    useBorradorFormulario<BorradorCorreo>({
+      clave: abierto ? claveBorrador("email", "redactar") : null,
+      datos: abierto ? datosBorrador : null,
+      hayCambios,
+    })
+
+  const limpiar = () => {
+    setPara("")
+    setAsunto("")
+    setMensaje("")
+  }
+
   const enviar = async () => {
     if (!puedeEnviar || enviando) return
     setEnviando(true)
     try {
       const ok = await onEnviar({ para, asunto, mensaje, conPlantilla, individual })
       if (ok) {
-        setPara("")
-        setAsunto("")
-        setMensaje("")
+        descartarBorrador()
+        limpiar()
         onCerrar()
       }
     } finally {
@@ -62,12 +94,47 @@ export default function ModalRedactar({
     }
   }
 
+  const intentarCerrar = () => {
+    if (enviando) return
+    if (hayCambios) {
+      setConfirmarSalida(true)
+      return
+    }
+    onCerrar()
+  }
+
+  const retomarBorrador = () => {
+    if (!borrador) return
+    setPara(borrador.datos.para)
+    setAsunto(borrador.datos.asunto)
+    setMensaje(borrador.datos.mensaje)
+    setConPlantilla(borrador.datos.conPlantilla)
+    setIndividual(borrador.datos.individual)
+    ocultarAviso()
+  }
+
   return (
-    <Dialog open={abierto} onOpenChange={(v) => !v && !enviando && onCerrar()}>
-      <DialogContent className="max-w-2xl border-zinc-800 bg-zinc-950 text-white">
+    <Dialog open={abierto} onOpenChange={(v) => !v && intentarCerrar()}>
+      <DialogContent
+        className="max-w-2xl border-zinc-800 bg-zinc-950 text-white"
+        onEscapeKeyDown={(e) => {
+          // El cierre pasa siempre por el aviso de cambios sin guardar.
+          e.preventDefault()
+          intentarCerrar()
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-white">Redactar correo</DialogTitle>
         </DialogHeader>
+
+        {borrador && (
+          <BannerBorrador
+            guardadoEn={borrador.guardadoEn}
+            onRetomar={retomarBorrador}
+            onDescartar={descartarBorrador}
+            titulo="Tenias un correo a medio escribir"
+          />
+        )}
 
         <div className="space-y-4">
           <div>
@@ -154,7 +221,7 @@ export default function ModalRedactar({
         <div className="flex justify-end gap-2 pt-2">
           <Button
             variant="outline"
-            onClick={onCerrar}
+            onClick={intentarCerrar}
             disabled={enviando}
             className="border-zinc-700 text-zinc-300 hover:text-white"
           >
@@ -178,6 +245,25 @@ export default function ModalRedactar({
             )}
           </Button>
         </div>
+
+        <DialogoSalirSinGuardar
+          abierto={confirmarSalida}
+          onSeguirEditando={() => setConfirmarSalida(false)}
+          onGuardarYSalir={() => {
+            guardarAhora()
+            limpiar()
+            setConfirmarSalida(false)
+            onCerrar()
+          }}
+          onDescartar={() => {
+            descartarBorrador()
+            limpiar()
+            setConfirmarSalida(false)
+            onCerrar()
+          }}
+          titulo="¿Cerrar el correo?"
+          descripcion="Tenes un correo a medio escribir. Podes guardarlo como borrador y terminarlo despues."
+        />
       </DialogContent>
     </Dialog>
   )
