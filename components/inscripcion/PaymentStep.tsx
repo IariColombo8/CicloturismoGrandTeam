@@ -139,6 +139,16 @@ export default function PaymentStep({
                 Estos son los datos de una cuenta uruguaya para transferir
               </p>
 
+              {/* El monto en pesos uruguayos, bien grande: es la duda numero uno
+                  de los que transfieren desde Uruguay. */}
+              <div className="mb-4 rounded-lg border border-sky-400/40 bg-sky-400/10 p-4 text-center">
+                <p className="text-sky-200 text-xs uppercase tracking-wide">Monto a transferir</p>
+                <p className="text-4xl sm:text-5xl font-black text-sky-300 leading-tight">
+                  $700
+                </p>
+                <p className="text-sky-200 text-base font-bold">uruguayos</p>
+              </div>
+
               <div className="space-y-2">
                 {CUENTA_URUGUAY.map((dato, i) => (
                   <div
