@@ -30,6 +30,10 @@ npm run gmail:auth  # Genera el GOOGLE_REFRESH_TOKEN de Gmail (ver docs/gmail-se
 # negro de la pantalla de arranque.
 node scripts/generar-iconos-app.mjs
 
+# Imagenes de vista previa (lo que se ve al compartir un link por WhatsApp).
+# Una por pagina, en public/og/. La de /pedir-remera muestra la remera.
+node scripts/generar-og.mjs
+
 npm run test        # Unitarios + E2E
 npm run test:unit   # Unitarios (Playwright sin navegador, ~3 s)
 npm run test:e2e    # E2E: levanta el dev server en el puerto 3100
@@ -138,6 +142,23 @@ public.alojamientos          -> nombre, descripcion, logo_url, website, telefono
   imagenes = galeria de fotos extra (URLs del bucket `sponsors`, carpeta alojamientos/)
   RLS: SELECT publico, ALL solo admin/grandteam
 ```
+
+### Vista previa al compartir un link (Open Graph)
+
+Cada pagina publica tiene **su propia imagen y su propio texto**: estos links se
+comparten por WhatsApp y, cuando todas mostraban la misma pieza del evento, el
+de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual.
+
+- Los metadatos se arman con `metadatosPagina()` (`lib/metadatosPagina.ts`) desde
+  el `layout.tsx` de cada ruta: las paginas son client components y no pueden
+  exportar `metadata`.
+- Las imagenes viven en `public/og/` y se generan con
+  `node scripts/generar-og.mjs` (negro + dorado + logo; la de la remera muestra
+  la remera). **No se editan a mano**: se cambia el texto en el script.
+- La home sigue con `METADATOS.png`, que es la pieza de diseño del evento.
+- `e2e/vista-previa.spec.ts` verifica que cada pagina tenga texto e imagen
+  propios, que la imagen exista (una vista previa rota se ve peor que ninguna) y
+  que no haya dos paginas compartiendo la misma.
 
 ### Rutas Publicas
 
