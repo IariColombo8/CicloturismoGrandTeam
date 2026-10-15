@@ -1,5 +1,5 @@
 import { test, expect, devices, type Page } from "@playwright/test"
-import { cargarFechaNacimiento, comprobanteDePrueba } from "./helpers"
+import { cargarFechaNacimiento, comprobanteDePrueba, silenciarAvisoDeVersion } from "./helpers"
 
 // Los mismos pasos, pero en Safari de iPhone (WebKit). No es por repetir: las
 // cosas que se rompen en el celular casi siempre se rompen primero acá —
@@ -22,6 +22,7 @@ const datos = {
 }
 
 async function stubRed(page: Page) {
+  await silenciarAvisoDeVersion(page)
   await page.route("**/api/lookup-participant**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ found: false }) }),
   )

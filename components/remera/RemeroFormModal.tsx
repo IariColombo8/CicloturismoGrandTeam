@@ -50,6 +50,7 @@ import {
 import { TALLES_DISPONIBLES, type RemeraItem } from "@/types/database"
 import { supabase } from "@/lib/supabase"
 import { prepararComprobante } from "@/lib/inscripcion/comprobante"
+import { enviarPedidoRemera, vigilarPedidosPendientes } from "@/lib/remera/envio"
 
 // Metodo de entrega inicial: con los pedidos reabiertos solo para envio, el
 // retiro en el evento no esta disponible.
@@ -720,7 +721,18 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
   const [buscando, setBuscando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
+  // El pedido quedó guardado en el teléfono esperando internet.
+  const [pedidoEnCola, setPedidoEnCola] = useState(false)
   const [pedidoPrevio, setPedidoPrevio] = useState(false)
+
+  // Si quedó algún pedido sin enviar, se reintenta solo en segundo plano.
+  useEffect(
+    () =>
+      vigilarPedidosPendientes((enviados) => {
+        if (enviados > 0) setPedidoEnCola(false)
+      }),
+    [],
+  )
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lookupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1420,10 +1432,11 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         }
       }
 
-      const response = await fetch("/api/remera/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // El pedido y la dirección viajan juntos por la cola: si no hay
+      // internet o el servidor falla, quedan guardados en el teléfono y se
+      // reintentan solos. Nunca se le muestra un error a la persona.
+      const { resultado } = await enviarPedidoRemera(
+        {
           dni: dni.trim(),
           nombre: nombre.trim(),
           telefono: telefono.trim(),
@@ -1436,16 +1449,7 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
           comprobante_base64,
           comprobante_mime,
           comprobante_extension,
-        }),
-      })
-
-      const result = (await response.json().catch(() => ({}))) as { error?: string }
-      if (!response.ok) {
-        throw new Error(result.error ?? "No se pudo registrar el pedido")
-      }
-
-      const { error: direccionError } = await supabase.rpc(
-        "guardar_entrega_remera_v2",
+        },
         {
           p_dni: dni.trim(),
           p_email: email.trim().toLowerCase(),
@@ -1472,22 +1476,17 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         },
       )
 
-      if (direccionError) {
-        console.error("Error guardando la dirección estructurada:", direccionError)
-        throw new Error(
-          "El pedido se registró, pero faltó guardar la dirección completa. Aplicá la migración SQL y volvé a enviarlo.",
-        )
-      }
-
-      window.localStorage.removeItem(DRAFT_KEY)
+      try {
+        window.localStorage.removeItem(DRAFT_KEY)
+      } catch {}
+      setPedidoEnCola(resultado === "en-cola")
       setExito(true)
     } catch (error) {
-      toast({
-        title: "Error al enviar el pedido",
-        description:
-          error instanceof Error ? error.message : "Intentá de nuevo en unos momentos.",
-        variant: "destructive",
-      })
+      // Red de seguridad: ni siquiera un fallo inesperado del navegador deja a
+      // la persona con un cartel de error. El pedido queda guardado.
+      console.error("Error inesperado al enviar el pedido de remera:", error)
+      setPedidoEnCola(true)
+      setExito(true)
     } finally {
       setEnviando(false)
     }
@@ -1499,11 +1498,21 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
         <DialogContent className="bg-zinc-900 border-yellow-400/20 text-white max-w-md">
           <div className="flex flex-col items-center gap-4 py-8 text-center">
             <CheckCircle className="w-16 h-16 text-yellow-400" />
-            <h2 className="text-2xl font-bold text-yellow-400">¡Pedido registrado!</h2>
-            <p className="text-zinc-300">
-              Tu pedido y tu email quedaron registrados correctamente. El equipo se pondrá en
-              contacto para coordinar la entrega.
-            </p>
+            <h2 className="text-2xl font-bold text-yellow-400">
+              {pedidoEnCola ? "¡Pedido guardado!" : "¡Pedido registrado!"}
+            </h2>
+            {pedidoEnCola ? (
+              <p className="text-zinc-300">
+                <strong className="text-yellow-400">Quedó guardado en este teléfono.</strong> Ahora mismo la conexión
+                no alcanzó para enviarlo, así que lo mandamos nosotros en cuanto vuelva internet. No hace falta
+                cargarlo de nuevo.
+              </p>
+            ) : (
+              <p className="text-zinc-300">
+                Tu pedido y tu email quedaron registrados correctamente. El equipo se pondrá en
+                contacto para coordinar la entrega.
+              </p>
+            )}
             {REMERA_SOLO_ENVIO && (
               <p className="flex items-start gap-2 rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-left text-xs text-yellow-100">
                 <Truck className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400" aria-hidden="true" />

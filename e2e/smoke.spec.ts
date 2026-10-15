@@ -1,8 +1,15 @@
 import { test, expect } from "@playwright/test"
+import { silenciarAvisoDeVersion } from "./helpers"
 
 // Smoke tests: verifican que las páginas públicas clave cargan y renderizan
 // sus elementos principales. No dependen de datos de Supabase ni de auth, así
 // que corren en cualquier entorno con el dev server levantado.
+
+test.beforeEach(async ({ page }) => {
+  // El aviso de "hicimos actualizaciones" tiene su propio spec; acá solo
+  // molestaría.
+  await silenciarAvisoDeVersion(page)
+})
 
 test.describe("Landing pública", () => {
   test("la home carga con el título del evento", async ({ page }) => {

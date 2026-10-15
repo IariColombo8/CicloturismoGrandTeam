@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sin conexión · Grand Team Bike</title>
+    <!--
+      La sirve el Service Worker cuando alguien abre una página que nunca
+      visitó y no tiene internet. Es un archivo suelto a propósito: no puede
+      depender de nada que haya que bajar.
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px 16px;
+        background: linear-gradient(to bottom, #000, #18181b 55%, #000);
+        color: #fff;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        text-align: center;
+      }
+      .caja {
+        width: 100%;
+        max-width: 420px;
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 28px 20px;
+      }
+      .icono {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 18px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: rgba(255, 215, 0, 0.12);
+        font-size: 30px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 22px;
+        color: #ffd700;
+      }
+      p {
+        margin: 0 0 18px;
+        line-height: 1.55;
+        color: #d4d4d8;
+        font-size: 15px;
+      }
+      button {
+        width: 100%;
+        padding: 13px 18px;
+        border: 0;
+        border-radius: 10px;
+        background: linear-gradient(to right, #ffd700, #d97706);
+        color: #000;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .nota {
+        margin: 16px 0 0;
+        font-size: 13px;
+        color: #a1a1aa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="caja">
+      <div class="icono" aria-hidden="true">📴</div>
+      <h1>Te quedaste sin internet</h1>
+      <p>
+        No pudimos cargar esta página porque el teléfono no tiene conexión en este momento. Probá de nuevo cuando
+        vuelva la señal.
+      </p>
+      <button type="button" onclick="window.location.reload()">Reintentar</button>
+      <p class="nota">
+        Si estabas inscribiéndote y ya habías enviado el formulario, no te preocupes: quedó guardado y se envía solo
+        cuando vuelva internet.
+      </p>
+    </div>
+  </body>
+</html>

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { silenciarAvisoDeVersion } from "./helpers"
 
 // Barrido de pantallas: ninguna página pública puede desbordarse para los
 // costados ni esconder contenido fuera de la pantalla, desde un celular chico
@@ -82,6 +83,7 @@ for (const { nombre, ancho, alto } of ANCHOS) {
 
     for (const ruta of RUTAS) {
       test(`${ruta} entra en la pantalla`, async ({ page }) => {
+        await silenciarAvisoDeVersion(page)
         await page.goto(ruta, { waitUntil: "domcontentloaded" })
         // Un rato para que carguen fuentes, imágenes y lo que se dibuja en el cliente.
         await page.waitForTimeout(1_500)

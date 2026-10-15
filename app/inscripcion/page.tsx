@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { prepararComprobante, type ComprobantePreparado } from "@/lib/inscripcion/comprobante"
-import { enviarInscripcion, guardarPendiente, vigilarPendientes } from "@/lib/inscripcion/envio"
+import { enviarInscripcion, guardarInscripcionPendiente, vigilarPendientes } from "@/lib/inscripcion/envio"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -493,13 +493,14 @@ export default function InscripcionPage() {
       console.error("Error inesperado al enviar la inscripción:", error)
       try {
         const { comprobanteFile: _archivo, metodoPago: _metodo, ...datos } = formData
-        await guardarPendiente({
-          id: `${formData.dni || "sin-dni"}-${Date.now()}`,
-          payload: { ...datos, comprobanteBase64: "", comprobanteNota: "Se guardó sin comprobante por un fallo del navegador." },
-          creadaEn: Date.now(),
-          intentos: 0,
-          ultimoError: error instanceof Error ? error.message : "error desconocido",
-        })
+        await guardarInscripcionPendiente(
+          {
+            ...datos,
+            comprobanteBase64: "",
+            comprobanteNota: "Se guardó sin comprobante por un fallo del navegador.",
+          },
+          error instanceof Error ? error.message : "error desconocido",
+        )
       } catch {}
       // Se confirma en esta misma pantalla: no sabemos si hay red para
       // cargar otra página.

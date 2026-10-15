@@ -8,7 +8,19 @@ import { expect, type Page } from "@playwright/test"
  * de nada. La señal es que el campo de DNI descarta lo que no sea número, algo
  * que solo pasa cuando el JavaScript ya está andando.
  */
+/**
+ * Calla el aviso de "hicimos actualizaciones" en los tests que no lo prueban.
+ *
+ * Es un cartel legítimo, pero si aparece a mitad de un test tapa media
+ * pantalla. Sin respuesta de /api/version, el aviso no se muestra (es lo que
+ * pasa cuando no hay internet). Tiene su propio spec en offline.spec.ts.
+ */
+export async function silenciarAvisoDeVersion(page: Page) {
+  await page.route("**/api/version", (route) => route.fulfill({ status: 503, body: "" }))
+}
+
 export async function abrirInscripcion(page: Page) {
+  await silenciarAvisoDeVersion(page)
   await page.goto("/inscripcion")
   await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
 

@@ -1,9 +1,14 @@
 import { test, expect, type Page } from "@playwright/test"
+import { silenciarAvisoDeVersion } from "./helpers"
 
 // E2E de /mi-qr. Se interceptan las respuestas de la API para no depender
 // de datos reales en Supabase.
 
 const TOKEN = "f23633d2-13e9-413e-8a26-749e26cf6330"
+
+test.beforeEach(async ({ page }) => {
+  await silenciarAvisoDeVersion(page)
+})
 
 async function stub(page: Page, body: unknown) {
   await page.route("**/api/mi-inscripcion**", (route) =>

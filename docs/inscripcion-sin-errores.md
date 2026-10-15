@@ -76,6 +76,77 @@ Cuando si hay conexion, la pantalla de exito se precarga (`router.prefetch`) al
 llegar al paso 4 y se navega del lado del cliente: asi entra incluso si la red se
 corta justo despues de enviar.
 
+## El sitio abre sin internet
+
+`public/sw.js` es el Service Worker, y hace **dos** trabajos que no se pisan:
+
+1. **Notificaciones push** (eventos `push` y `notificationclick`). Es lo que ya
+   hacia y no cambio.
+2. **Guardar el sitio** (evento `fetch`), para que alguien que entro antes pueda
+   abrir el formulario sin señal, cargarlo, y mandarlo cuando vuelva internet.
+
+| Que se pide | De donde sale |
+|---|---|
+| Paginas (`/`, `/inscripcion`, `/pedir-remera`, ...) | Primero la red; si no hay, la copia guardada; si tampoco, `public/offline.html` |
+| `/_next/static/**` | La cache primero (llevan hash en el nombre, no cambian nunca) |
+| Imagenes, fuentes, CSS | La cache, y se actualizan en segundo plano |
+| `/api/**`, `/admin/**`, `/login`, `/auth` | **Siempre la red, nunca se guardan** (datos frescos y privados) |
+
+Dos decisiones que importan:
+
+- **No se precachean paginas al instalar.** Pedir cuatro paginas durante la
+  instalacion la hacia depender de cuatro descargas y el worker se quedaba
+  "instalando" sin llegar a activarse nunca (en desarrollo, porque cada pagina
+  dispara una compilacion; con mala señal, por lo mismo). Cada pagina se guarda
+  sola cuando la persona la visita, que es justo lo que hace falta.
+- **Un solo registro, con la misma URL.** `lib/serviceWorker.ts` es el unico
+  lugar que registra, como `/sw.js?v=<version>`. Si una parte lo registrara como
+  `/sw.js` y otra con la query, el navegador tomaria el segundo como un worker
+  distinto, reemplazaria al primero y **se perderia la suscripcion al push**.
+  La version en la query hace que cada deploy instale un worker nuevo y estrene
+  su cache.
+
+> Al pasar a este esquema puede que haya que **reactivar las notificaciones una
+> vez por dispositivo** desde el boton del panel. Si dejan de llegar, es eso.
+
+## "Hicimos actualizaciones": avisar al que quedo con una version vieja
+
+`components/AvisoVersion.tsx` (montado para todo el sitio en `AppProviders`)
+registra el Service Worker y avisa cuando la persona esta viendo una version
+anterior del sitio: le muestra un cartel abajo con **"Hicimos actualizaciones ·
+Por favor reinicia la pagina"**, un boton **Reiniciar ahora** (que borra las
+copias guardadas, activa el worker nuevo y recarga) y una **X para cerrarlo**,
+porque nadie tiene que quedar tapado por un cartel.
+
+Como se da cuenta, por dos caminos independientes:
+
+1. El Service Worker avisa que bajo una version nueva y quedo esperando.
+2. Compara `NEXT_PUBLIC_BUILD_ID` (horneado en el bundle que la persona tiene
+   cargado) con lo que devuelve `/api/version` (sin cache). Se revisa al entrar,
+   cada 5 minutos y al volver a la pestaña.
+
+La version es el commit en Vercel (`VERCEL_GIT_COMMIT_SHA`) o la fecha del build
+en local, y la fija `next.config.mjs` (`generateBuildId` + `env`).
+
+Esto ademas **previene el ChunkLoadError**: ese error es, casi siempre, una
+pestaña vieja pidiendo archivos JS que el deploy nuevo ya no tiene. Mejor avisar
+antes que recuperarse despues (la recuperacion sigue estando, en
+`docs/errores-cliente.md`).
+
+Sin internet no se avisa nada: si no se sabe que version hay publicada, no se
+molesta a nadie.
+
+## El pedido de remera, igual
+
+`components/remera/RemeroFormModal.tsx` usa las mismas dos piezas:
+
+- `prepararComprobante` para el comprobante (cualquier formato, cualquier peso).
+- La cola de `lib/remera/envio.ts`, que manda el pedido **y la direccion de
+  entrega juntos** (el alta es un POST y la direccion una funcion de la base: si
+  se guardara solo el pedido, quedaria un envio sin saber a donde). Si no hay
+  internet, el modal dice "Pedido guardado · Quedo guardado en este telefono" y
+  se manda solo despues.
+
 ## El servidor tampoco rechaza
 
 `lib/inscripcion-schema.ts` y `app/api/inscripcion/submit/route.ts`:
@@ -109,8 +180,14 @@ preparador de comprobante, asi que tampoco rechaza archivos grandes.
 | Archivo | Que cubre |
 |---|---|
 | `e2e/inscripcion-celular.spec.ts` | Los 4 pasos en un Pixel 5, con el test fallando si aparece **cualquier** excepcion de JS. Comprobante de 25 MB, PDF de 30 MB, sin internet, servidor caido (500) y conexion que nunca responde |
+| `e2e/inscripcion-iphone.spec.ts` | Lo mismo en Safari de iPhone (WebKit), que es donde se rompen primero los campos de fecha y el almacenamiento |
+| `e2e/offline.spec.ts` | Que el formulario abra sin internet, que aparezca la pantalla de sin conexion, que el push siga listo (un solo registro del worker) y que el aviso de version funcione y se pueda cerrar |
 | `e2e/responsive.spec.ts` | Las 7 paginas publicas en 320, 360, 390, 768 y 1280 px: nada puede salirse de la pantalla. Si algo se desborda, el error dice el elemento y su clase |
+| `e2e/remera-celular.spec.ts` | El pedido de remera abre y responde en celular, sin desbordes |
 | `e2e/unit/comprobante.spec.ts` | `prepararComprobante` nunca lanza, ni con archivos rotos o sin canvas |
+| `e2e/unit/cola-offline.spec.ts` | La cola: encola, reintenta, borra cuando entra, no pierde nada ni con el almacenamiento bloqueado |
+| `e2e/unit/service-worker.spec.ts` | Que el worker siga atendiendo el push **y** el modo sin internet, y que no guarde las API ni el panel |
+| `e2e/unit/remera-envio.spec.ts` | Que el pedido de remera siga usando el compresor y la cola, y que no vuelva el limite de 5 MB |
 | `e2e/unit/inscripcion-schema.spec.ts` | Que el schema normalice en vez de rechazar |
 
 `e2e/helpers.ts` tiene `abrirInscripcion()`, que espera a que React tome el
@@ -118,6 +195,23 @@ control antes de escribir: sin eso los tests escriben antes de la hidratacion,
 el texto aparece en pantalla y el formulario no se entera de nada.
 
 ```bash
-npm run test:unit    # rapido, sin navegador
-npm run test:e2e     # levanta el dev server en 3100
+npm run test:unit      # rapido, sin navegador
+npm run test:e2e       # levanta el dev server en 3100
+npm run test:e2e:prod  # contra el build de produccion (puerto 3101)
+npm run test:todo      # unitarios + build + E2E de produccion ← el que conviene
 ```
+
+**Para correr toda la suite usar `npm run test:todo`.** Contra el dev server,
+Next compila cada ruta en la primera visita y con la suite entera se queda sin
+memoria (`JavaScript heap out of memory`), arrastrando a los tests que vienen
+despues: fallan por lentitud, no por bugs. Contra `next start` corre mas rapido,
+no se cae y prueba exactamente lo que ve la gente.
+
+Dos trampas al escribir tests acá, por si vuelven a aparecer:
+
+- `page.waitForFunction(async () => ...)` **no sirve**: devuelve una promesa, que
+  siempre es "verdadera", asi que la espera pasa de largo sin comprobar nada.
+  Para esperar algo asincronico va `page.evaluate`, que si espera la promesa.
+- Un `page.route` que responde sigue respondiendo con `context.setOffline(true)`.
+  Para simular un corte de verdad hay que abortar la ruta
+  (`route.abort("internetdisconnected")`).

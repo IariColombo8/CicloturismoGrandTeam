@@ -1,8 +1,22 @@
+// Version del sitio. En Vercel es el commit; en local, la fecha del build.
+//
+// Sirve para dos cosas: nombrar la cache del Service Worker (asi cada deploy
+// empieza con una cache limpia) y que el navegador pueda darse cuenta de que
+// esta mostrando una version vieja y avisarle a la persona.
+const VERSION_SITIO =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ||
+  process.env.NEXT_PUBLIC_BUILD_ID ||
+  `local-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}`
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  env: {
+    NEXT_PUBLIC_BUILD_ID: VERSION_SITIO,
+  },
+  generateBuildId: () => VERSION_SITIO,
   // Comprimir respuestas del servidor
   compress: true,
   // Optimizacion de imagenes

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Bell, BellOff, BellRing, Loader2 } from "lucide-react"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
+import { registrarServiceWorker } from "@/lib/serviceWorker"
 
 /**
  * Convierte la clave VAPID base64url al buffer que pide el navegador.
@@ -92,7 +93,10 @@ export default function NotificacionesPush() {
         return
       }
 
-      const registro = await navigator.serviceWorker.register("/sw.js")
+      // El registro va por el helper compartido: tiene que ser la misma URL
+      // que usa el resto del sitio, o el navegador trata este worker como uno
+      // distinto, reemplaza al otro y la suscripcion se pierde.
+      const registro = (await registrarServiceWorker()) ?? (await navigator.serviceWorker.ready)
       await navigator.serviceWorker.ready
 
       // Si ya habia una suscripcion vieja (de otras claves VAPID) se descarta.

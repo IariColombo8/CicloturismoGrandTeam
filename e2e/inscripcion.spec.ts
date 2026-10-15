@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
-import { cargarFechaNacimiento } from "./helpers"
+import { cargarFechaNacimiento, silenciarAvisoDeVersion } from "./helpers"
 
 // E2E del flujo de inscripción. No toca Supabase real: interceptamos las
 // llamadas de red (lookup por DNI y submit) para que los tests sean
@@ -20,6 +20,7 @@ const datosPaso1 = {
 // Devuelve "no encontrado" para el lookup por DNI, así el formulario no
 // depende de datos existentes en la base.
 async function stubLookup(page: Page) {
+  await silenciarAvisoDeVersion(page)
   await page.route("**/api/lookup-participant**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ found: false }) })
   )
