@@ -70,7 +70,23 @@ test.describe("El sitio abre sin internet", () => {
     await esperarServiceWorker(page)
     await page.reload()
     await esperarQueControle(page)
-    await page.waitForTimeout(1_000)
+
+    // Esperar a que la pantalla de sin conexión esté realmente guardada: si se
+    // corta la red antes, el test falla por una carrera y no por un bug.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async () => {
+            const nombres = await caches.keys()
+            for (const nombre of nombres) {
+              const guardada = await (await caches.open(nombre)).match("/offline.html")
+              if (guardada) return true
+            }
+            return false
+          }),
+        { timeout: 30_000 },
+      )
+      .toBe(true)
 
     await context.setOffline(true)
     // Una ruta que no está entre las guardadas.

@@ -77,7 +77,17 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    // El de iOS va con fondo negro propio: iOS no respeta la transparencia y,
+    // con el logo de letras negras, el nombre del evento desaparecia.
+    apple: "/app/apple-touch-icon.png",
+  },
+
+  // Nombre y barra de estado cuando se instala en un iPhone. Sin esto, iOS
+  // usa el <title> entero, que no entra debajo del icono.
+  appleWebApp: {
+    capable: true,
+    title: "Cicloturismo",
+    statusBarStyle: "black-translucent",
   },
 
   openGraph: {

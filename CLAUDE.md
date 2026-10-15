@@ -25,6 +25,11 @@ npm run lint     # Ejecutar ESLint
 npm run start    # Servidor de produccion
 npm run gmail:auth  # Genera el GOOGLE_REFRESH_TOKEN de Gmail (ver docs/gmail-setup.md)
 
+# Iconos de la app instalada (PWA). Salen de public/logo.png, que tiene las
+# letras BLANCAS: los favicon las tienen negras y desaparecian sobre el fondo
+# negro de la pantalla de arranque.
+node scripts/generar-iconos-app.mjs
+
 npm run test        # Unitarios + E2E
 npm run test:unit   # Unitarios (Playwright sin navegador, ~3 s)
 npm run test:e2e    # E2E: levanta el dev server en el puerto 3100
@@ -425,7 +430,9 @@ Reglas del dashboard:
 - Path alias `@/` -> raiz del proyecto
 - shadcn/ui: agregar con `npx shadcn@latest add <componente>`
 - Iconos: lucide-react
-- Dominio configurado: `grandteambike.com.ar` (en layout.tsx metadata)
+- Dominio: **`https://grand-team.vercel.app`** (en layout.tsx metadata). El
+  dominio propio `grandteambike.com.ar` **no existe en el DNS** (`nslookup` da
+  "Non-existent domain"): no usarlo en links, emails ni metadatos.
 - Busqueda por DNI: auto-trigger al detectar 7-8 digitos (sin guiones ni espacios)
 - UPSERT por DNI: pedidos de remera se actualizan si ya existe el DNI
 - Comprobantes: se convierten a base64 en el cliente, luego se suben como archivo en la API route
@@ -444,7 +451,7 @@ VAPID_SUBJECT                          # mailto: de contacto para los push servi
 NEXT_PUBLIC_EMAILJS_SERVICE_ID         # LEGACY: ya no se usa (migrado a Gmail API)
 NEXT_PUBLIC_EMAILJS_TEMPLATE_ID        # LEGACY
 NEXT_PUBLIC_EMAILJS_PUBLIC_KEY         # LEGACY
-NEXT_PUBLIC_SITE_URL                   # opcional, default grandteambike.com.ar
+NEXT_PUBLIC_SITE_URL                   # opcional, default https://grand-team.vercel.app
 NEXT_PUBLIC_SUPABASE_URL               # URL del proyecto Supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY          # Clave publica (anon) de Supabase
 SUPABASE_SERVICE_ROLE_KEY              # Solo en servidor (API routes). NUNCA exponer al cliente

@@ -20,7 +20,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 1,
-  workers: 4,
+  // 3 y no 4: la suite mueve comprobantes de 20-25 MB, y con cuatro navegadores
+  // a la vez los tests empiezan a fallar por lentitud en vez de por bugs.
+  workers: 3,
   timeout: 60_000,
   expect: { timeout: 10_000 },
   reporter: process.env.CI ? "github" : "list",

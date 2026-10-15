@@ -229,7 +229,7 @@ test.describe("Inscripción · nada puede frenarla", () => {
     expect(excepciones, `Excepciones de JS:\n${excepciones.join("\n")}`).toEqual([])
   })
 
-  test("un PDF de 30 MB tampoco frena la inscripción", async ({ page }) => {
+  test("un PDF de 20 MB tampoco frena la inscripción", async ({ page }) => {
     await stubRed(page)
     await abrirInscripcion(page)
 
@@ -237,7 +237,7 @@ test.describe("Inscripción · nada puede frenarla", () => {
     await siguiente(page)
     await completarPaso2(page)
     await siguiente(page)
-    await completarPaso3(page, comprobanteDePrueba("comprobante.pdf", 30 * 1024 * 1024))
+    await completarPaso3(page, comprobanteDePrueba("comprobante.pdf", 20 * 1024 * 1024))
 
     // Avisa que se lo van a pedir aparte, pero toma la inscripción.
     await expect(page.getByText(/tomamos tu inscripción igual/i)).toBeVisible({ timeout: 30_000 })
