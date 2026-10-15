@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-admin"
 
 // GET /api/lookup-participant?dni=XXXXXXXX
-// Busca un participante por DNI y devuelve únicamente datos personales reutilizables.
+//
+// Busca un participante por DNI para precargar el formulario de inscripción.
+//
+// Si la persona YA está inscripta en esta edición (pendiente o confirmada), no
+// se devuelven sus datos: solo el nombre y el estado, para poder saludarla y
+// mandarla a /mi-qr. No hay nada que completar —ya está inscripta— y así sus
+// datos no quedan a la vista de cualquiera que sepa un DNI.
+//
+// Si la inscripción anterior fue rechazada, sí vuelven los datos: la persona
+// tiene que poder cargarla de nuevo sin escribir todo otra vez.
 export async function GET(req: NextRequest) {
   const dni = req.nextUrl.searchParams.get("dni")?.replace(/\D/g, "")
 
@@ -32,6 +41,7 @@ export async function GET(req: NextRequest) {
     tiene_problemas_salud: string | null
     condicion_salud: string | null
     anios: number[] | null
+    estado: string | null
   }
 
   const { data, error } = (await supabase
@@ -40,7 +50,7 @@ export async function GET(req: NextRequest) {
       "nombre, apellido, email, telefono, fecha_nacimiento, pais, localidad, " +
         "nombre_emergencia, telefono_emergencia, relacion_emergencia, " +
         "ha_recorrido_distancia, grupo_ciclistas, grupo_sanguineo, es_celiaco, " +
-        "tiene_alergias, alergias, tiene_problemas_salud, condicion_salud, anios"
+        "tiene_alergias, alergias, tiene_problemas_salud, condicion_salud, anios, estado"
     )
     .eq("dni", dni)
     .maybeSingle()) as { data: ParticipanteRow | null; error: { message: string } | null }
@@ -53,9 +63,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ found: false, data: null })
   }
 
+  const esDeEstaEdicion = (data.anios ?? []).includes(2026)
+  const estado = (data.estado ?? "pendiente").toLowerCase()
+  // "aprobado" es como quedaron algunas inscripciones migradas.
+  const inscripcionVigente =
+    esDeEstaEdicion && ["pendiente", "confirmada", "aprobado", "aprobada"].includes(estado)
+
+  if (inscripcionVigente) {
+    return NextResponse.json({
+      found: true,
+      isEdicion: true,
+      yaInscripto: true,
+      estado,
+      nombre: data.nombre?.trim() ?? "",
+      // Sin datos: no hay nada que completar y no se muestran a quien sepa el DNI.
+      data: null,
+    })
+  }
+
   return NextResponse.json({
     found: true,
-    isEdicion: (data.anios ?? []).includes(2026),
+    isEdicion: esDeEstaEdicion,
+    yaInscripto: false,
+    estado: esDeEstaEdicion ? estado : null,
+    nombre: data.nombre?.trim() ?? "",
     data: {
       nombre: data.nombre?.trim() ?? "",
       apellido: data.apellido?.trim() ?? "",

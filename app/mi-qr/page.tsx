@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { QRCodeSVG } from "qrcode.react"
 import Navbar from "@/components/layout/Navbar"
@@ -81,7 +81,17 @@ const TONOS = {
 
 export default function MiQRPage() {
   const remeraCerrada = useRemeraCerrada()
-  const [dni, setDni] = useState("")
+  // El DNI puede venir en la dirección (/mi-qr?dni=12345678): así, quien ya
+  // está inscripto y entró al formulario por error llega acá con su estado a
+  // la vista, sin escribir el DNI de nuevo.
+  const [dni, setDni] = useState(() => {
+    if (typeof window === "undefined") return ""
+    try {
+      return normalizarDni(new URLSearchParams(window.location.search).get("dni") ?? "")
+    } catch {
+      return ""
+    }
+  })
   const [buscando, setBuscando] = useState(false)
   const [resultado, setResultado] = useState<Respuesta | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -117,6 +127,15 @@ export default function MiQRPage() {
     },
     [dni]
   )
+
+  // Si el DNI llegó en la dirección, se busca solo al abrir la página.
+  const buscoSolaRef = useRef(false)
+  useEffect(() => {
+    if (buscoSolaRef.current) return
+    if (!esDniValido(dni)) return
+    buscoSolaRef.current = true
+    void buscar()
+  }, [dni, buscar])
 
   const inscripcion = resultado?.encontrada ? resultado.inscripcion : undefined
   const remera = resultado?.remera

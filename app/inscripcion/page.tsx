@@ -16,6 +16,7 @@ import PaymentStep from "@/components/inscripcion/PaymentStep"
 import ReviewStep from "@/components/inscripcion/ReviewStep"
 import MedallasBanner from "@/components/inscripcion/MedallasBanner"
 import ModalFaltantes from "@/components/inscripcion/ModalFaltantes"
+import ModalYaInscripto from "@/components/inscripcion/ModalYaInscripto"
 import { irAlCampo, limpiarResaltados, type CampoFaltante } from "@/lib/foco"
 import Navbar from "@/components/layout/Navbar"
 import { DATOS_TRANSFERENCIA_VACIOS, datosDesdeEvento } from "@/lib/transferencia"
@@ -134,6 +135,9 @@ export default function InscripcionPage() {
   // Lo que falta completar para pasar al paso siguiente. Mientras tenga algo,
   // se muestra el modal que lleva a cada campo.
   const [faltantes, setFaltantes] = useState<CampoFaltante[]>([])
+
+  // La persona que escribió el DNI ya está inscripta en esta edición.
+  const [yaInscripto, setYaInscripto] = useState<{ nombre: string; estado: string } | null>(null)
 
   // La inscripción quedó guardada en el teléfono porque no había conexión.
   // No se puede navegar a la pantalla de éxito (sin internet el navegador
@@ -266,12 +270,22 @@ export default function InscripcionPage() {
         if (!res.ok) return
 
         const result = await res.json()
+
+        // Ya tiene su inscripción cargada en esta edición: no se precarga nada
+        // (el servidor ni siquiera manda los datos) y se la lleva a /mi-qr,
+        // donde puede ver el estado y el código. Volver a llenar el formulario
+        // pisaría la inscripción que el equipo ya revisó.
+        if (result.found && result.yaInscripto) {
+          setYaInscripto({ nombre: String(result.nombre || ""), estado: String(result.estado || "pendiente") })
+          return
+        }
+
         if (result.found && result.data) {
           setFormData((prev) => ({ ...prev, ...result.data, dni: prev.dni }))
           toast({
-            title: result.isEdicion ? "Ya estás inscripto este año" : "Datos encontrados",
+            title: result.isEdicion ? "Retomá tu inscripción" : "Datos encontrados",
             description: result.isEdicion
-              ? "Cargamos tus datos para que los revises o actualices."
+              ? "Tu inscripción anterior no fue aprobada. Cargamos tus datos para que la envíes de nuevo."
               : "Precargamos tu información de una inscripción anterior. Revisá que esté correcta.",
           })
         }
@@ -820,6 +834,22 @@ export default function InscripcionPage() {
         abierto={faltantes.length > 0}
         onCerrar={() => setFaltantes([])}
         onIrAlCampo={llevarAlCampo}
+      />
+
+      {/* Ya tiene su inscripción: se le muestra el estado y se la lleva a /mi-qr. */}
+      <ModalYaInscripto
+        abierto={!!yaInscripto}
+        nombre={yaInscripto?.nombre ?? ""}
+        estado={yaInscripto?.estado ?? ""}
+        dni={formData.dni}
+        onInscribirOtro={() => {
+          setYaInscripto(null)
+          // El DNI se limpia: el de la persona que ya está inscripta no sirve,
+          // y si queda escrito la búsqueda lo volvería a encontrar.
+          ultimoDniBuscadoRef.current = ""
+          setFormData((prev) => ({ ...prev, dni: "" }))
+          window.setTimeout(() => irAlCampo("dni"), 150)
+        }}
       />
     </div>
   )

@@ -264,6 +264,29 @@ Setup completo en **`docs/gmail-setup.md`** (Cloud Console, scopes, refresh toke
 
 Limite practico: Gmail gratuito permite ~500 destinatarios por dia; `/api/email/send` corta en 50 por request.
 
+### Quien ya esta inscripto no vuelve a llenar el formulario
+
+Si alguien escribe en `/inscripcion` un DNI que ya tiene inscripcion **vigente**
+de esta edicion (pendiente o confirmada), `GET /api/lookup-participant`
+devuelve `yaInscripto: true` con el estado y el nombre, **y `data: null`**:
+
+- No se precarga nada y se abre `ModalYaInscripto`, que dice como esta la
+  inscripcion y lleva a `/mi-qr?dni=...` (con cuenta regresiva de 6 segundos, o
+  tocando el boton). Ahi se ve el estado y se descarga el QR.
+- Volver a llenar el formulario **pisaria** la inscripcion que el equipo ya
+  reviso: el alta es un UPSERT por DNI.
+- Los datos personales no viajan al navegador: antes, con solo saber un DNI
+  cualquiera veia nombre, email, telefono y datos medicos de esa persona.
+- Queda el boton "Inscribir a otra persona", que limpia el DNI y sigue.
+
+Si la inscripcion de esta edicion esta **rechazada**, o si la persona solo
+existe de ediciones anteriores, los datos **si** vuelven y el formulario se
+autocompleta como siempre.
+
+`/mi-qr` acepta `?dni=` y busca sola al abrir, asi la persona no tiene que
+volver a escribirlo. Sus metadatos propios estan en `app/mi-qr/layout.tsx`
+(la pagina es client component y no puede exportar `metadata`).
+
 **Reenvio de la confirmacion** (dos caminos):
 - **Admin** (`/admin/registro-inscripciones`, modal de detalle): el email es editable y el boton
   "Reenviar confirmacion" pasa a "Corregir y reenviar" cuando se modifica. Guarda el email nuevo en
