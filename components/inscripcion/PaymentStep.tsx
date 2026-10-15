@@ -6,7 +6,7 @@ import { useState } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Upload, FileCheck, DollarSign, Copy, Check, MessageCircle } from "lucide-react"
+import { Upload, FileCheck, DollarSign, Copy, Check, MessageCircle, Loader2 } from "lucide-react"
 import DatosTransferenciaCard from "@/components/DatosTransferenciaCard"
 import type { DatosTransferencia } from "@/lib/transferencia"
 
@@ -31,11 +31,22 @@ interface PaymentStepProps {
     /** Datos de la cuenta ya separados (banco, alias, CBU, titular). */
     transferencia: DatosTransferencia
   }
+  /** El padre se encarga de preparar el archivo (comprimirlo) en segundo plano. */
+  onComprobante?: (file: File | null) => void
+  /** "preparando" mientras se comprime, "aviso" si no se va a poder subir. */
+  estadoComprobante?: "vacio" | "preparando" | "listo" | "aviso"
+  avisoComprobante?: string
 }
 
-export default function PaymentStep({ formData, updateFormData, eventConfig }: PaymentStepProps) {
+export default function PaymentStep({
+  formData,
+  updateFormData,
+  eventConfig,
+  onComprobante,
+  estadoComprobante = "vacio",
+  avisoComprobante = "",
+}: PaymentStepProps) {
   const [fileName, setFileName] = useState<string>("")
-  const [fileError, setFileError] = useState<string>("")
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   // Cualquier dato copiable (alias, CBU, etc.). Tomó un id local para feedback.
@@ -62,28 +73,22 @@ export default function PaymentStep({ formData, updateFormData, eventConfig }: P
     }
   }
 
+  // Se acepta cualquier archivo, de cualquier tamaño. Las fotos se reducen en
+  // el teléfono apenas se eligen (así el envío después es instantáneo) y si
+  // alguna no se puede procesar, la inscripción viaja igual con una nota para
+  // el equipo. Antes se rechazaba todo lo que pasara de 5 MB, y una foto de
+  // celular moderno pasa de 5 MB sin esfuerzo: ahí se trababa la inscripción.
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    setFileError("")
-
+    const file = e.target.files?.[0] ?? null
     if (!file) return
 
-    const allowed = file.type === "application/pdf" || file.type.startsWith("image/")
-    if (!allowed) {
-      setFileError("Solo se permiten imágenes o archivos PDF.")
-      e.target.value = ""
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setFileError("El comprobante no puede superar los 5 MB.")
-      e.target.value = ""
-      return
-    }
-
-    updateFormData({ comprobanteFile: file })
     setFileName(file.name)
+    updateFormData({ comprobanteFile: file })
+    onComprobante?.(file)
   }
+
+  const pesoLegible = (bytes: number) =>
+    bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
 
   return (
     <div className="space-y-6">
@@ -209,26 +214,53 @@ export default function PaymentStep({ formData, updateFormData, eventConfig }: P
           Comprobante de Pago <span className="text-red-500">*</span>
         </Label>
         <div className="relative">
-          <input id="comprobante" type="file" accept="image/*,.pdf" onChange={handleFileChange} className="hidden" />
+          <input
+            id="comprobante"
+            type="file"
+            accept="image/*,.pdf,.heic,.heif,application/pdf"
+            onChange={handleFileChange}
+            className="hidden"
+          />
           <label
             htmlFor="comprobante"
-            className="flex items-center justify-center gap-3 p-6 bg-zinc-900 border-2 border-dashed border-yellow-400/30 rounded-lg cursor-pointer hover:border-yellow-400/50 hover:bg-zinc-800/50 transition-all"
+            className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-yellow-400/30 bg-zinc-900 p-4 text-center transition-all cursor-pointer hover:border-yellow-400/50 hover:bg-zinc-800/50 sm:flex-row sm:gap-3 sm:p-6"
           >
             {fileName ? (
               <>
-                <FileCheck className="w-6 h-6 text-green-500" />
-                <span className="text-white">{fileName}</span>
+                {estadoComprobante === "preparando" ? (
+                  <Loader2 className="h-6 w-6 flex-shrink-0 animate-spin text-yellow-400" aria-hidden="true" />
+                ) : (
+                  <FileCheck className="h-6 w-6 flex-shrink-0 text-green-500" aria-hidden="true" />
+                )}
+                <span className="min-w-0 break-words text-sm text-white sm:text-base">
+                  {fileName}
+                  {formData.comprobanteFile?.size ? (
+                    <span className="text-gray-500"> · {pesoLegible(formData.comprobanteFile.size)}</span>
+                  ) : null}
+                </span>
               </>
             ) : (
               <>
-                <Upload className="w-6 h-6 text-yellow-400" />
-                <span className="text-gray-400">Haz clic para subir tu comprobante</span>
+                <Upload className="h-6 w-6 flex-shrink-0 text-yellow-400" aria-hidden="true" />
+                <span className="text-sm text-gray-400 sm:text-base">Tocá acá para subir tu comprobante</span>
               </>
             )}
           </label>
         </div>
-        <p className="text-sm text-gray-500">Formatos aceptados: JPG, PNG, WEBP o PDF (máx. 5 MB)</p>
-        {fileError && <p className="text-sm text-red-400">{fileError}</p>}
+
+        {estadoComprobante === "preparando" && (
+          <p className="text-sm text-yellow-400">
+            Preparando la imagen para que pese menos… podés seguir, se envía cuando esté lista.
+          </p>
+        )}
+        {estadoComprobante === "aviso" && avisoComprobante && (
+          <p className="text-sm text-gray-300">
+            Tomamos tu inscripción igual. {avisoComprobante}
+          </p>
+        )}
+        <p className="text-sm text-gray-500">
+          Sacale una foto o subí el PDF. No importa cuánto pese: lo achicamos nosotros.
+        </p>
       </div>
 
       {/* Important Notice */}

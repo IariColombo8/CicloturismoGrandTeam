@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { compressAndConvertToBase64 } from "@/lib/imageUtils"
+import { prepararComprobante, type ComprobantePreparado } from "@/lib/inscripcion/comprobante"
+import { enviarInscripcion, guardarPendiente, vigilarPendientes } from "@/lib/inscripcion/envio"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -98,6 +100,7 @@ function loadDraft(): { data: typeof defaultFormData; step: number; savedAt: num
 
 export default function InscripcionPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   // Detectamos si hay un draft persistido y mostramos banner.
@@ -118,6 +121,56 @@ export default function InscripcionPage() {
   const [buscandoDNI, setBuscandoDNI] = useState(false)
   const ultimoDniBuscadoRef = useRef<string>("")
   const [gruposGuardados, setGruposGuardados] = useState<string[]>([])
+
+  // El comprobante se comprime apenas se elige, mientras la persona sigue
+  // llenando el formulario. Así el envío no espera nada y una foto de 20 MB
+  // no bloquea nada.
+  const [estadoComprobante, setEstadoComprobante] = useState<"vacio" | "preparando" | "listo" | "aviso">("vacio")
+  const [avisoComprobante, setAvisoComprobante] = useState("")
+  const comprobanteRef = useRef<Promise<ComprobantePreparado> | null>(null)
+
+  // La inscripción quedó guardada en el teléfono porque no había conexión.
+  // No se puede navegar a la pantalla de éxito (sin internet el navegador
+  // mostraría su propio error), así que se confirma acá mismo.
+  const [guardadaSinEnviar, setGuardadaSinEnviar] = useState(false)
+  const [yaSeEnvio, setYaSeEnvio] = useState(false)
+
+  const elegirComprobante = (file: File | null) => {
+    if (!file) {
+      comprobanteRef.current = null
+      setEstadoComprobante("vacio")
+      setAvisoComprobante("")
+      return
+    }
+
+    setEstadoComprobante("preparando")
+    setAvisoComprobante("")
+
+    const tarea = prepararComprobante(file)
+    comprobanteRef.current = tarea
+    tarea.then((resultado) => {
+      // Si mientras tanto eligió otro archivo, ese manda.
+      if (comprobanteRef.current !== tarea) return
+      setAvisoComprobante(resultado.motivo)
+      setEstadoComprobante(resultado.motivo ? "aviso" : "listo")
+    })
+  }
+
+  // La pantalla de éxito se precarga al llegar al último paso: así la
+  // navegación posterior al envío no necesita red.
+  useEffect(() => {
+    if (currentStep === 4) router.prefetch("/inscripcion/exito")
+  }, [currentStep, router])
+
+  // Si quedó alguna inscripción sin enviar (se cortó internet justo al
+  // mandarla), se reintenta sola en segundo plano.
+  useEffect(
+    () =>
+      vigilarPendientes((enviadas) => {
+        if (enviadas > 0) setYaSeEnvio(true)
+      }),
+    [],
+  )
 
   // Cargar draft del localStorage en el primer mount.
   useEffect(() => {
@@ -293,50 +346,52 @@ export default function InscripcionPage() {
     setFormData((prev) => ({ ...prev, ...data }))
   }
 
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        return !!(
-          formData.nombre &&
-          formData.apellido &&
-          formData.dni &&
-          formData.email &&
-          formData.telefono &&
-          formData.fechaNacimiento &&
-          formData.pais &&
-          formData.localidad &&
-          formData.nombreEmergencia &&
-          formData.telefonoEmergencia
-        )
-      case 2:
-        const alergiasValid = formData.tieneAlergias === "no" ||
-                             (formData.tieneAlergias === "si" && formData.alergias)
-        const saludValid = formData.tieneProblemasSalud === "no" ||
-                          (formData.tieneProblemasSalud === "si" && formData.condicionSalud)
 
-        return !!(
-          formData.haRecorridoDistancia &&
-          formData.grupoCiclistas &&
-          formData.grupoSanguineo &&
-          formData.esCeliaco &&
-          formData.tieneAlergias &&
-          alergiasValid &&
-          formData.tieneProblemasSalud &&
-          saludValid
-        )
-      case 3:
-        return !!(formData.numeroReferencia && formData.comprobanteFile)
-      default:
-        return true
+  /** Qué falta, con el nombre que ve la persona en pantalla. */
+  const camposFaltantes = (step: number): string[] => {
+    const falta: string[] = []
+    const pedir = (valor: unknown, nombre: string) => {
+      if (!valor) falta.push(nombre)
     }
+
+    if (step === 1) {
+      pedir(formData.dni, "DNI")
+      pedir(formData.nombre, "nombre")
+      pedir(formData.apellido, "apellido")
+      pedir(formData.fechaNacimiento, "fecha de nacimiento")
+      pedir(formData.email, "email")
+      pedir(formData.telefono, "teléfono")
+      pedir(formData.localidad, "ciudad")
+      pedir(formData.nombreEmergencia, "contacto de emergencia")
+      pedir(formData.telefonoEmergencia, "teléfono de emergencia")
+    }
+
+    if (step === 2) {
+      pedir(formData.haRecorridoDistancia, "si recorriste 50 km antes")
+      pedir(formData.grupoCiclistas, "grupo de ciclistas")
+      pedir(formData.grupoSanguineo, "grupo sanguíneo")
+      pedir(formData.esCeliaco, "si sos celíaco/a")
+      pedir(formData.tieneAlergias, "si tenés alergias")
+      if (formData.tieneAlergias === "si") pedir(formData.alergias, "cuáles son tus alergias")
+      pedir(formData.tieneProblemasSalud, "si tenés problemas de salud")
+      if (formData.tieneProblemasSalud === "si") pedir(formData.condicionSalud, "cuál es tu condición de salud")
+    }
+
+    if (step === 3) {
+      pedir(formData.numeroReferencia, "nombre de quien transfirió")
+      pedir(formData.comprobanteFile, "comprobante de pago")
+    }
+
+    return falta
   }
 
   const handleNext = () => {
-    if (!validateStep(currentStep)) {
+    const falta = camposFaltantes(currentStep)
+    if (falta.length > 0) {
+      const lista = falta.length > 3 ? `${falta.slice(0, 3).join(", ")} y ${falta.length - 3} más` : falta.join(", ")
       toast({
-        title: "Campos incompletos",
-        description: "Por favor completa todos los campos obligatorios.",
-        variant: "destructive",
+        title: falta.length === 1 ? "Falta un dato" : "Faltan algunos datos",
+        description: `Completá ${lista} para seguir.`,
       })
       return
     }
@@ -347,21 +402,20 @@ export default function InscripcionPage() {
     setCurrentStep((prev) => Math.max(prev - 1, 1))
   }
 
+  /**
+   * Envío de la inscripción. La regla es que nadie se quede sin inscribirse:
+   *
+   * - El comprobante ya viene comprimido (o con una nota que explica por qué
+   *   no se pudo) y nunca interrumpe el envío.
+   * - Si no hay internet o el servidor contesta mal, la inscripción queda
+   *   guardada en el teléfono y se reintenta sola.
+   * - En los dos casos la persona termina en la pantalla de éxito.
+   */
   const handleSubmit = async () => {
-    if (!validateStep(3)) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos.",
-        variant: "destructive",
-      })
-      return
-    }
-
     if (!aceptaTerminos) {
       toast({
         title: "Falta aceptar el deslinde de responsabilidad",
-        description: "Debes leer y aceptar el deslinde de responsabilidad antes de enviar tu inscripción.",
-        variant: "destructive",
+        description: "Leé y aceptá el deslinde de responsabilidad para terminar tu inscripción.",
       })
       return
     }
@@ -369,39 +423,40 @@ export default function InscripcionPage() {
     setIsSubmitting(true)
 
     try {
-      let comprobanteBase64 = ""
-
-      if (formData.comprobanteFile) {
-        toast({
-          title: "Procesando comprobante...",
-          description: "Preparando el archivo para enviarlo.",
-        })
-        comprobanteBase64 = await compressAndConvertToBase64(formData.comprobanteFile, 500)
+      // El archivo se empezó a preparar al elegirlo; acá solo se espera si
+      // todavía está en eso.
+      let comprobante: ComprobantePreparado = {
+        base64: "",
+        nombreArchivo: "",
+        pesoOriginal: 0,
+        motivo: "La persona no adjuntó comprobante",
+      }
+      try {
+        const tarea = comprobanteRef.current ?? (formData.comprobanteFile ? prepararComprobante(formData.comprobanteFile) : null)
+        if (tarea) comprobante = await tarea
+      } catch {
+        comprobante = { ...comprobante, motivo: "No se pudo preparar el comprobante. Pedírselo por WhatsApp." }
       }
 
       const { comprobanteFile, metodoPago, ...datosInscripcion } = formData
 
-      const res = await fetch("/api/inscripcion/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...datosInscripcion, comprobanteBase64 }),
+      const { resultado, respuesta } = await enviarInscripcion({
+        ...datosInscripcion,
+        comprobanteBase64: comprobante.base64,
+        comprobanteNota: comprobante.motivo
+          ? `${comprobante.motivo}${comprobante.nombreArchivo ? ` (archivo: ${comprobante.nombreArchivo})` : ""}`
+          : "",
       })
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || "No se pudo guardar la inscripción")
-      }
-
-      const result = await res.json()
-
-      // Guardar solo los datos necesarios para la pantalla final.
+      // Datos para la pantalla final.
       try {
         sessionStorage.setItem(
           "inscripcion_exito",
           JSON.stringify({
-            token: result.tokenQR || null,
+            token: (respuesta.tokenQR as string) || null,
             nombre: `${formData.nombre} ${formData.apellido}`.trim(),
-            numero: result.numeroInscripcion || null,
+            numero: (respuesta.numeroInscripcion as number) || null,
+            pendiente: resultado === "en-cola",
           })
         )
       } catch {}
@@ -415,19 +470,103 @@ export default function InscripcionPage() {
         localStorage.removeItem(LEGACY_DRAFT_KEY)
       } catch {}
 
-      // Navegación completa para que la persona no quede detenida en el
-      // formulario después de enviar.
-      window.location.assign("/inscripcion/exito")
+      if (resultado === "en-cola") {
+        // Sin internet no se puede cargar ninguna página: el navegador
+        // mostraría su propio cartel de error. La confirmación se da acá
+        // mismo, con lo que ya está en pantalla.
+        setGuardadaSinEnviar(true)
+        return
+      }
+
+      // Navegación del lado del cliente: la pantalla de éxito ya se precargó
+      // al llegar al paso 4, así que entra incluso con una conexión que se
+      // cayó justo después de enviar.
+      setYaSeEnvio(true)
+      router.push("/inscripcion/exito")
+
+      // Si por lo que sea no llegó a cambiar de página, se confirma acá para
+      // que nadie se quede mirando el formulario sin saber si se envió.
+      window.setTimeout(() => setGuardadaSinEnviar(true), 3_000)
     } catch (error) {
-      console.error("Error submitting inscription:", error)
-      toast({
-        title: "Error",
-        description: "Hubo un problema al enviar tu inscripción. Intenta nuevamente.",
-        variant: "destructive",
-      })
+      // Red de seguridad: si algo inesperado explota, la inscripción igual
+      // queda guardada para reintentar y la persona ve la pantalla de éxito.
+      console.error("Error inesperado al enviar la inscripción:", error)
+      try {
+        const { comprobanteFile: _archivo, metodoPago: _metodo, ...datos } = formData
+        await guardarPendiente({
+          id: `${formData.dni || "sin-dni"}-${Date.now()}`,
+          payload: { ...datos, comprobanteBase64: "", comprobanteNota: "Se guardó sin comprobante por un fallo del navegador." },
+          creadaEn: Date.now(),
+          intentos: 0,
+          ultimoError: error instanceof Error ? error.message : "error desconocido",
+        })
+      } catch {}
+      // Se confirma en esta misma pantalla: no sabemos si hay red para
+      // cargar otra página.
+      setGuardadaSinEnviar(true)
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Inscripción cargada pero sin conexión para enviarla: se confirma acá,
+  // sin pedirle al navegador que cargue otra página.
+  if (guardadaSinEnviar) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
+        <Navbar />
+        <div className="container mx-auto flex items-center justify-center px-4 py-24 sm:px-6">
+          <Card className="w-full max-w-xl border-yellow-400/30 bg-black/60 backdrop-blur-sm">
+            <CardContent className="p-6 text-center sm:p-10">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
+                <CheckCircle2 className="h-9 w-9 text-green-500" aria-hidden="true" />
+              </div>
+
+              <h1 className="mb-3 text-2xl font-black text-white sm:text-3xl">
+                {yaSeEnvio ? (
+                  <>
+                    ¡Inscripción <span className="gradient-text">enviada</span>!
+                  </>
+                ) : (
+                  <>
+                    Inscripción <span className="gradient-text">guardada</span>
+                  </>
+                )}
+              </h1>
+
+              {yaSeEnvio ? (
+                <p className="text-base leading-relaxed text-gray-300">
+                  Ya la recibimos. El equipo revisa el pago y te llega el correo de confirmación con tu código QR en
+                  las próximas 24-48 horas.
+                </p>
+              ) : (
+                <>
+                  <p className="text-base leading-relaxed text-gray-200">
+                    <strong className="text-yellow-400">Tus datos quedaron guardados en este teléfono.</strong> Ahora
+                    mismo la conexión no alcanza para enviarlos, así que los mandamos nosotros en cuanto vuelva
+                    internet.
+                  </p>
+                  <p className="mt-4 text-sm text-gray-400">
+                    No tenés que cargar nada de nuevo. Dejá esta pestaña abierta, o volvé a entrar al sitio más tarde
+                    desde este mismo teléfono y se envía sola.
+                  </p>
+                </>
+              )}
+
+              <div className="mt-7 border-t border-yellow-400/20 pt-6">
+                <Button
+                  type="button"
+                  onClick={() => window.location.assign("/")}
+                  className="w-full bg-gradient-to-r from-yellow-400 to-amber-600 text-black sm:w-auto"
+                >
+                  Volver al inicio
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -550,7 +689,16 @@ export default function InscripcionPage() {
               {currentStep === 2 && (
                 <CategoryStep formData={formData} updateFormData={updateFormData} gruposGuardados={gruposGuardados} />
               )}
-              {currentStep === 3 && <PaymentStep formData={formData} updateFormData={updateFormData} eventConfig={eventConfig} />}
+              {currentStep === 3 && (
+                <PaymentStep
+                  formData={formData}
+                  updateFormData={updateFormData}
+                  eventConfig={eventConfig}
+                  onComprobante={elegirComprobante}
+                  estadoComprobante={estadoComprobante}
+                  avisoComprobante={avisoComprobante}
+                />
+              )}
               {currentStep === 4 && (
                 <ReviewStep
                   formData={formData}

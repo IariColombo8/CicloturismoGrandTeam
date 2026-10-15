@@ -49,6 +49,7 @@ import {
 } from "@/lib/remeraDeadline"
 import { TALLES_DISPONIBLES, type RemeraItem } from "@/types/database"
 import { supabase } from "@/lib/supabase"
+import { prepararComprobante } from "@/lib/inscripcion/comprobante"
 
 // Metodo de entrega inicial: con los pedidos reabiertos solo para envio, el
 // retiro en el evento no esta disponible.
@@ -1279,14 +1280,6 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
     setItems((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
   }
 
-  const archivoABase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-
   const validateStep = (step: number) => {
     if (step === 1) {
       if (!/^\d{7,8}$/.test(dni)) {
@@ -1411,10 +1404,20 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
       let comprobante_extension: string | undefined
 
       if (comprobante) {
-        comprobante_base64 = await archivoABase64(comprobante)
-        comprobante_mime = comprobante.type
-        const partes = comprobante.name.split(".")
-        comprobante_extension = partes[partes.length - 1].toLowerCase()
+        // Las fotos se achican acá, así que no importa cuánto pesen. Si el
+        // archivo no se puede procesar, el pedido se manda igual sin él: tener
+        // el pedido y pedir el comprobante después es mejor que perder los dos.
+        const preparado = await prepararComprobante(comprobante)
+        if (preparado.base64) {
+          comprobante_base64 = preparado.base64
+          comprobante_mime = "image/jpeg"
+          comprobante_extension = "jpg"
+          // Un PDF viaja tal cual, con su tipo real.
+          if (preparado.base64.startsWith("data:application/pdf")) {
+            comprobante_mime = "application/pdf"
+            comprobante_extension = "pdf"
+          }
+        }
       }
 
       const response = await fetch("/api/remera/submit", {
@@ -2292,24 +2295,18 @@ export default function RemeroFormModal({ open, onOpenChange }: RemeroFormModalP
                       <Upload className="w-4 h-4 text-yellow-400" />
                       Comprobante de pago{" "}
                       <span className="text-zinc-500 text-xs">
-                        (JPG, PNG o PDF, máx. 5 MB)
+                        (foto o PDF, no importa cuánto pese)
                       </span>
                     </Label>
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      accept="image/*,.pdf,.heic,.heif,application/pdf"
                       className="hidden"
                       onChange={(event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 5 * 1024 * 1024) {
-                          toast({
-                            title: "El archivo es demasiado grande (máx. 5 MB)",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
+                        // Cualquier tamaño: la foto se achica al enviarla.
                         setComprobante(file);
                       }}
                     />

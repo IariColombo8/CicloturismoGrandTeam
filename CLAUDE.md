@@ -24,9 +24,18 @@ npm run build    # Build de produccion
 npm run lint     # Ejecutar ESLint
 npm run start    # Servidor de produccion
 npm run gmail:auth  # Genera el GOOGLE_REFRESH_TOKEN de Gmail (ver docs/gmail-setup.md)
+
+npm run test        # Unitarios + E2E
+npm run test:unit   # Unitarios (Playwright sin navegador, ~3 s)
+npm run test:e2e    # E2E: levanta el dev server en el puerto 3100
+npm run test:e2e:ui # E2E en modo interactivo
 ```
 
-No hay tests configurados en este proyecto.
+Hay tests con Playwright: 70 unitarios (`e2e/unit/**`, logica pura) y 147 E2E
+(`e2e/**`), que incluyen el recorrido completo de la inscripcion en un Pixel 5 y
+en un iPhone 13 (WebKit), y un barrido de 7 paginas publicas en 5 anchos de
+pantalla. **Correr `npm run test` antes de tocar la inscripcion o el formulario
+de remera.** Detalle en `docs/inscripcion-sin-errores.md`.
 
 ## Reglas del Proyecto
 
@@ -95,6 +104,8 @@ No hay tests configurados en este proyecto.
 public.administradores       -> id, auth_user_id, email, role, login_method
 public.inscripciones         -> datos personales, pago, estado (tabla nueva)
 public.participantes         -> nombre, apellido, dni, email, categoria, checked_in
+  comprobante_nota: por que la inscripcion llego sin comprobante (vacio = todo bien).
+    Lo escribe /api/inscripcion/submit y se ve en /admin/registro-inscripciones.
 public.remera                -> dni, nombre, telefono, items (JSONB), estado, envio_tipo
   items = [{talle: "M", cantidad: 1}, ...]
   estado: "pendiente" | "entregado"
@@ -198,9 +209,14 @@ Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam
 
 ### Flujo de Inscripcion (4 pasos)
 
-1. **PersonalInfoStep** -> datos personales, DNI, contacto emergencia
+1. **PersonalInfoStep** -> datos personales, DNI, contacto emergencia. La fecha
+   de nacimiento es `CampoFecha.tsx` (dia / mes / año), **no** un
+   `<input type="date">`: el selector nativo no abre en el navegador de
+   Instagram ni en varios Android y dejaba la inscripcion trabada en este paso.
 2. **CategoryStep** -> experiencia, talla remera, datos medicos
-3. **PaymentStep** -> metodo pago, referencia, comprobante (comprimido a base64 via `lib/imageUtils.ts`)
+3. **PaymentStep** -> metodo pago, referencia, comprobante. Se acepta cualquier
+   archivo de cualquier tamaño y se comprime **al elegirlo** con
+   `lib/inscripcion/comprobante.ts` (no al enviar, que era donde fallaba).
 4. **ReviewStep** -> resumen y envio
 5. -> Supabase insert + Crea registro en `participantes` con `token_qr` (UUID) + Email confirmacion con QR (EmailJS + api.qrserver.com) -> `/inscripcion/exito`
 
@@ -283,6 +299,29 @@ hook) y siguen con el suyo.
 
 No se guardan los `File` (comprobantes, imagenes sin subir): no son serializables. Las
 imagenes ya subidas si vuelven, porque en el borrador viaja la URL.
+
+### La inscripcion no puede fallar (regla importante)
+
+Detalle completo en **`docs/inscripcion-sin-errores.md`**. Nadie puede quedarse
+sin inscribirse por un problema tecnico, despues de haber cargado cuatro pasos
+de datos:
+
+- **Comprobante**: cualquier formato y cualquier peso. Las fotos se reducen en el
+  telefono (`lib/inscripcion/comprobante.ts`, que **nunca lanza**). Lo que no se
+  puede subir (un PDF enorme, un HEIC que no decodifica) no frena nada: la
+  inscripcion entra y el motivo queda en `participantes.comprobante_nota`, que el
+  panel muestra como "Falta comprobante".
+- **Sin internet / servidor caido**: `lib/inscripcion/envio.ts` guarda la
+  inscripcion en IndexedDB y la reintenta sola (al volver la conexion, al abrir
+  el sitio y cada 30 s). El alta es un UPSERT por DNI: reintentar no duplica. La
+  confirmacion se muestra **en la misma pantalla**, porque sin red no se puede
+  cargar otra pagina.
+- **Servidor tolerante**: solo el DNI y el nombre son obligatorios. Un email con
+  typo, un pais fuera de la lista o un grupo sanguineo raro se normalizan en vez
+  de devolver "Datos invalidos".
+- **Prohibido** agregar validaciones que rechacen el envio (limites de tamaño,
+  formatos, campos "obligatorios" nuevos) sin dejar un camino por el que la
+  inscripcion igual se guarde.
 
 ### Errores del cliente
 

@@ -9,31 +9,72 @@ export const GRUPOS_SANGUINEOS = [
   "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "DESCONOCIDO",
 ] as const
 
+// Política de validación: la inscripción NUNCA se rechaza por un dato
+// secundario. Lo único imprescindible es el DNI (es la clave de la fila) y el
+// nombre. Todo lo demás se normaliza a algo guardable y, si viene raro, queda
+// como está para que el equipo lo corrija desde el panel. Un formulario que
+// contesta "datos inválidos" deja a la persona sin inscripción y sin saber qué
+// hacer, y eso es peor que una fila con un dato para revisar.
+
+/** Texto que, venga como venga (null, número, espacios), termina en string. */
+const texto = (porDefecto = "") =>
+  z
+    .any()
+    .transform((v) => (v === null || v === undefined ? porDefecto : String(v).trim()))
+    .transform((v) => (v === "" ? porDefecto : v))
+
+/** "si" / "no" tolerante: sí, SI, true, 1 → "si". Cualquier otra cosa → "no". */
+const siNo = () =>
+  z
+    .any()
+    .transform((v) => {
+      const s = String(v ?? "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+      return s === "si" || s === "true" || s === "1" || s === "yes" ? "si" : "no"
+    })
+
 export const submitSchema = z.object({
+  // Imprescindibles: sin esto no hay fila que guardar.
   nombre: z.string().trim().min(1),
-  apellido: z.string().trim().min(1),
-  dni: z.string().regex(/^\d{7,8}$/),
-  email: z.string().trim().email(),
-  telefono: z.string().trim().min(1),
-  fechaNacimiento: z.string().min(1),
-  pais: z.enum(["Argentina", "Uruguay"]),
-  localidad: z.string().trim().min(1),
+  apellido: texto(),
+  dni: z
+    .any()
+    .transform((v) => String(v ?? "").replace(/\D/g, ""))
+    .refine((v) => v.length >= 6 && v.length <= 10, "DNI inválido"),
 
-  nombreEmergencia: z.string().trim().min(1),
-  telefonoEmergencia: z.string().trim().min(1),
-  relacionEmergencia: z.string().trim().optional().default(""),
+  // El resto entra como venga.
+  email: texto(),
+  telefono: texto(),
+  fechaNacimiento: texto(),
+  pais: texto("Argentina"),
+  localidad: texto(),
 
-  haRecorridoDistancia: z.enum(["si", "no"]),
-  grupoCiclistas: z.string().trim().min(1),
-  grupoSanguineo: z.enum(GRUPOS_SANGUINEOS),
-  esCeliaco: z.enum(["si", "no"]),
-  tieneAlergias: z.enum(["si", "no"]),
-  alergias: z.string().trim().optional().default(""),
-  tieneProblemasSalud: z.enum(["si", "no"]),
-  condicionSalud: z.string().trim().optional().default(""),
+  nombreEmergencia: texto(),
+  telefonoEmergencia: texto(),
+  relacionEmergencia: texto(),
 
-  numeroReferencia: z.string().trim().min(1),
-  comprobanteBase64: z.string().min(1),
+  haRecorridoDistancia: siNo(),
+  grupoCiclistas: texto("Sin grupo"),
+  grupoSanguineo: z
+    .any()
+    .transform((v) => {
+      const s = String(v ?? "").trim().toUpperCase()
+      return (GRUPOS_SANGUINEOS as readonly string[]).includes(s) ? s : "DESCONOCIDO"
+    }),
+  esCeliaco: siNo(),
+  tieneAlergias: siNo(),
+  alergias: texto(),
+  tieneProblemasSalud: siNo(),
+  condicionSalud: texto(),
+
+  numeroReferencia: texto(),
+  /** Puede venir vacío: hay comprobantes que no se pueden subir (ver comprobanteNota). */
+  comprobanteBase64: texto(),
+  /** Por qué la inscripción llegó sin comprobante, para que el equipo lo pida. */
+  comprobanteNota: texto(),
 })
 
 export type InscripcionSubmit = z.infer<typeof submitSchema>
@@ -75,17 +116,31 @@ export const MIME_EXTENSIONS: Record<string, string> = {
   "application/pdf": "pdf",
 }
 
-export const MAX_COMPROBANTE_BYTES = 5 * 1024 * 1024
+/**
+ * Tope del archivo ya procesado. El navegador comprime las fotos antes de
+ * enviarlas (lib/inscripcion/comprobante.ts), así que una captura de 20 MB
+ * llega bastante abajo de esto; el margen es para los PDF.
+ */
+export const MAX_COMPROBANTE_BYTES = 4 * 1024 * 1024
 
-export function parseDataUrl(dataUrl: string) {
+/**
+ * Lee el data URL del comprobante. Nunca lanza: si el formato no se reconoce
+ * devuelve null y la inscripción se guarda sin archivo, con su nota.
+ */
+export function parseDataUrl(
+  dataUrl: string,
+): { mimeType: string; base64Data: string; extension: string } | null {
+  if (!dataUrl) return null
+
   const match = dataUrl.match(/^data:([^;]+);base64,([\s\S]+)$/)
   if (!match) {
+    // Base64 pelado: asumimos JPEG, que es lo que manda el compresor.
     return { mimeType: "image/jpeg", base64Data: dataUrl, extension: "jpg" }
   }
 
   const mimeType = match[1].toLowerCase()
   const extension = MIME_EXTENSIONS[mimeType]
-  if (!extension) throw new Error("Formato de comprobante no permitido")
+  if (!extension) return null
 
   return { mimeType, base64Data: match[2], extension }
 }

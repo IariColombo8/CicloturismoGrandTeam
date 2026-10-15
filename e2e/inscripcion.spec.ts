@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { cargarFechaNacimiento } from "./helpers"
 
 // E2E del flujo de inscripción. No toca Supabase real: interceptamos las
 // llamadas de red (lookup por DNI y submit) para que los tests sean
@@ -30,7 +31,7 @@ async function completarPaso1(page: Page) {
   await page.fill("#apellido", datosPaso1.apellido)
   await page.fill("#email", datosPaso1.email)
   await page.fill("#telefono", datosPaso1.telefono)
-  await page.fill("#fechaNacimiento", datosPaso1.fechaNacimiento)
+  await cargarFechaNacimiento(page, datosPaso1.fechaNacimiento)
   await page.fill("#localidad", datosPaso1.localidad)
   await page.fill("#nombreEmergencia", datosPaso1.nombreEmergencia)
   await page.fill("#telefonoEmergencia", datosPaso1.telefonoEmergencia)
@@ -52,10 +53,12 @@ test.describe("Inscripción · paso 1", () => {
     await expect(page.locator("#dni")).toHaveValue("12345678")
   })
 
-  test("no avanza con campos vacíos y avisa al usuario", async ({ page }) => {
+  test("no avanza con campos vacíos y dice qué falta", async ({ page }) => {
     await page.getByRole("button", { name: /siguiente/i }).click()
-    // El toast se duplica en el live region de accesibilidad: tomamos el primero.
-    await expect(page.getByText(/campos incompletos/i).first()).toBeVisible()
+    // El aviso nombra los campos en vez de decir "campos incompletos": así la
+    // persona sabe qué completar sin tener que buscar.
+    await expect(page.getByText(/faltan algunos datos/i).first()).toBeVisible()
+    await expect(page.getByText(/completá dni, nombre, apellido y 6 más/i).first()).toBeVisible()
     // Sigue en el paso 1.
     await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
   })

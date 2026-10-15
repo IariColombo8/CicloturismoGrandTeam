@@ -228,6 +228,14 @@ export default function InscripcionDetailModal({
                       />
                     </div>
                   )
+                ) : inscripcion.comprobanteNota ? (
+                  // La inscripción se guardó igual aunque el archivo no se
+                  // pudiera subir (un PDF enorme, una foto que no se pudo
+                  // procesar). Acá queda el motivo para poder pedírselo.
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+                    <p className="text-sm font-semibold text-amber-900">Llegó sin comprobante</p>
+                    <p className="mt-1 text-sm text-amber-800">{inscripcion.comprobanteNota}</p>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500">No hay comprobante cargado.</p>
                 )}

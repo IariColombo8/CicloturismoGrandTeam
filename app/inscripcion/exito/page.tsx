@@ -6,12 +6,15 @@ import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { descargarQRDesdeSVG, nombreArchivoQR } from "@/lib/descargarQR"
+import { vigilarPendientes } from "@/lib/inscripcion/envio"
 import { CheckCircle2, Mail, Home, FileText, Download, QrCode, UserPlus } from "lucide-react"
 
 export default function ExitoPage() {
   const [token, setToken] = useState<string | null>(null)
   const [nombre, setNombre] = useState<string | null>(null)
   const [numero, setNumero] = useState<string | null>(null)
+  // La inscripción quedó guardada en el teléfono esperando internet.
+  const [pendiente, setPendiente] = useState(false)
   const qrRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -22,11 +25,23 @@ export default function ExitoPage() {
         setToken(parsed.token || null)
         setNombre(parsed.nombre || null)
         setNumero(parsed.numero ? String(parsed.numero) : null)
+        setPendiente(!!parsed.pendiente)
       }
     } catch {
-      sessionStorage.removeItem("inscripcion_exito")
+      try {
+        sessionStorage.removeItem("inscripcion_exito")
+      } catch {}
     }
   }, [])
+
+  // Si quedó pendiente, se sigue reintentando acá: cuando entra, el cartel
+  // cambia solo y sin recargar.
+  useEffect(() => {
+    if (!pendiente) return
+    return vigilarPendientes((enviadas) => {
+      if (enviadas > 0) setPendiente(false)
+    })
+  }, [pendiente])
 
   const iniciarOtraInscripcion = () => {
     try {
@@ -49,15 +64,33 @@ export default function ExitoPage() {
           </div>
 
           {/* Título */}
-          <h1 className="text-3xl md:text-4xl font-black text-white mb-4">
-            ¡Inscripción <span className="gradient-text">Exitosa!</span>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-4">
+            {pendiente ? (
+              <>
+                Inscripción <span className="gradient-text">guardada</span>
+              </>
+            ) : (
+              <>
+                ¡Inscripción <span className="gradient-text">Exitosa!</span>
+              </>
+            )}
           </h1>
 
           {/* Descripción */}
-          <p className="text-lg text-gray-300 mb-8 leading-relaxed">
-            Tu solicitud de inscripción ha sido recibida correctamente. Nuestro equipo revisará tu pago y recibirás un
-            correo de confirmación en las próximas 24-48 horas.
-          </p>
+          {pendiente ? (
+            <div className="mb-8 rounded-lg border border-yellow-400/40 bg-yellow-400/10 p-4 text-left">
+              <p className="text-base text-gray-200 leading-relaxed">
+                <strong className="text-yellow-400">Quedó guardada en tu teléfono.</strong> En este momento la conexión
+                no alcanzó para enviarla, así que la mandamos nosotros en cuanto vuelva internet. No hace falta que
+                cargues nada de nuevo: dejá esta página abierta un ratito o volvé a entrar al sitio más tarde.
+              </p>
+            </div>
+          ) : (
+            <p className="text-base sm:text-lg text-gray-300 mb-8 leading-relaxed">
+              Tu solicitud de inscripción ha sido recibida correctamente. Nuestro equipo revisará tu pago y recibirás un
+              correo de confirmación en las próximas 24-48 horas.
+            </p>
+          )}
 
           {/* QR Code */}
           {token && (

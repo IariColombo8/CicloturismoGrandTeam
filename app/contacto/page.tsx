@@ -76,9 +76,12 @@ export default function ContactoPage() {
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8 mb-12">
+          {/* min-w-0 en la grilla y en sus hijos: en una sola columna, el
+              ancho lo fija el contenido más ancho, y los campos del formulario
+              no dejaban bajar de ~340 px. */}
+          <div className="grid min-w-0 lg:grid-cols-2 gap-8 mb-12">
             {/* Contact Form */}
-            <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
+            <Card className="min-w-0 bg-black/50 border-yellow-400/20 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-white text-2xl">Envíanos un mensaje</CardTitle>
                 <CardDescription className="text-gray-400">
@@ -158,17 +161,18 @@ export default function ContactoPage() {
             </Card>
 
             {/* Contact Info */}
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Mail className="w-6 h-6 text-black" />
                     </div>
-                    <div>
+                    {/* min-w-0 + break-words: sin esto, en pantallas de 320 px
+                        el email no puede partirse y estira toda la columna. */}
+                    <div className="min-w-0">
                       <h3 className="text-white font-bold text-lg mb-2">Email</h3>
-                      <p className="text-gray-400">grandteamcdelu@gmail.com</p>
-                      <p className="text-gray-400">grandteamcdelu@gmail.com</p>
+                      <p className="text-gray-400 break-words">grandteamcdelu@gmail.com</p>
                     </div>
                   </div>
                 </CardContent>
@@ -180,9 +184,9 @@ export default function ContactoPage() {
                     <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Phone className="w-6 h-6 text-black" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h3 className="text-white font-bold text-lg mb-2">Teléfono</h3>
-                      <p className="text-gray-400">+54 9 3442 65-4257</p>
+                      <p className="text-gray-400 break-words">+54 9 3442 65-4257</p>
                       <p className="text-gray-400">WhatsApp disponible</p>
                     </div>
                   </div>
@@ -195,9 +199,9 @@ export default function ContactoPage() {
                     <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       <MapPin className="w-6 h-6 text-black" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h3 className="text-white font-bold text-lg mb-2">Ubicación</h3>
-                      <p className="text-gray-400">Concepción del Uruguay</p>
+                      <p className="text-gray-400 break-words">Concepción del Uruguay</p>
                       <p className="text-gray-400">Entre Ríos, Argentina</p>
                     </div>
                   </div>

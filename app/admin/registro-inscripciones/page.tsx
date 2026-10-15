@@ -39,6 +39,7 @@ import {
   Gift,
   MailX,
   StickyNote,
+  FileText,
   type LucideIcon,
 } from "lucide-react"
 
@@ -49,6 +50,7 @@ const INSCRIPCIONES_COLUMNS =
   "id, estado, nombre, apellido, email, dni, pais, localidad, grupo_ciclistas, es_celiaco, " +
   "metodo_pago, numero_referencia, fecha_nacimiento, grupo_sanguineo, telefono, " +
   "tiene_alergias, alergias, tiene_problemas_salud, condicion_salud, comprobante_pago_url, " +
+  "comprobante_nota, " +
   "nota_estado, numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado, pago_nota"
 
 // Respaldo temporal para bases que todavía tengan una vista, función o política
@@ -466,6 +468,7 @@ export default function RegistroInscripciones() {
           tieneProblemasSalud: d.tiene_problemas_salud,
           condicionSalud: d.condicion_salud,
           comprobantePagoUrl: d.comprobante_pago_url,
+          comprobanteNota: d.comprobante_nota ?? "",
           nota: d.nota_estado,
           numeroInscripcion: d.numero_inscripcion,
           fechaInscripcion: d.fecha_inscripcion,
@@ -1871,6 +1874,15 @@ export default function RegistroInscripciones() {
                               </span>
                             </button>
                           )}
+                          {!insc.comprobantePagoUrl && insc.comprobanteNota && (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-300"
+                              title={insc.comprobanteNota}
+                            >
+                              <FileText className="h-3 w-3" aria-hidden="true" />
+                              <span className="hidden lg:inline">Falta comprobante</span>
+                            </span>
+                          )}
                           <button
                             onClick={() => openDetailsModal(insc)}
                             className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-xs"
@@ -2168,6 +2180,14 @@ export default function RegistroInscripciones() {
                           ? "Abriendo comprobante..."
                           : "Ver comprobante"}
                       </button>
+                    ) : selectedInscripcion.comprobanteNota ? (
+                      // La inscripcion entro igual aunque el archivo no se
+                      // pudiera subir (PDF enorme, foto que no se pudo
+                      // procesar, Storage caido). Acá queda el motivo.
+                      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                        <p className="text-sm font-semibold text-amber-300">Llegó sin comprobante</p>
+                        <p className="mt-1 text-sm text-amber-200/90">{selectedInscripcion.comprobanteNota}</p>
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-500">No hay comprobante cargado.</p>
                     )}

@@ -36,7 +36,8 @@ async function guardarGrupoNuevoSiCorresponde(
 }
 
 export async function POST(req: NextRequest) {
-  const parsed = submitSchema.safeParse(await req.json())
+  const cuerpo = await req.json().catch(() => null)
+  const parsed = submitSchema.safeParse(cuerpo)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Datos inválidos", details: parsed.error.flatten() },
@@ -46,6 +47,10 @@ export async function POST(req: NextRequest) {
 
   const formData = parsed.data
   const supabase = createAdminClient()
+
+  // Avisos para el equipo: nada de esto corta la inscripción.
+  const notas: string[] = []
+  if (formData.comprobanteNota) notas.push(formData.comprobanteNota)
 
   type Existente = {
     numero_inscripcion: number | null
@@ -69,32 +74,46 @@ export async function POST(req: NextRequest) {
   // pendientes no ocupan un numero.
   const numeroInscripcion = existente?.numero_inscripcion ?? null
 
-  let comprobantePagoUrl: string
+  // El comprobante no puede voltear una inscripción: si no se puede subir, la
+  // fila se guarda igual y la nota le dice al equipo que lo pida aparte.
+  // Antes, cualquier problema acá devolvia 500 y la persona veía un error
+  // despues de haber llenado los cuatro pasos.
+  let comprobantePagoUrl = ""
   try {
-    const { mimeType, base64Data, extension } = parseDataUrl(formData.comprobanteBase64)
-    const buffer = Buffer.from(base64Data, "base64")
+    const archivo = parseDataUrl(formData.comprobanteBase64)
 
-    if (!buffer.length || buffer.length > MAX_COMPROBANTE_BYTES) {
-      return NextResponse.json(
-        { error: "El comprobante está vacío o supera los 5 MB" },
-        { status: 400 }
-      )
+    if (!archivo) {
+      if (formData.comprobanteBase64) {
+        notas.push("El comprobante llegó en un formato que no se pudo guardar.")
+      }
+    } else {
+      const buffer = Buffer.from(archivo.base64Data, "base64")
+
+      if (!buffer.length) {
+        notas.push("El comprobante llegó vacío.")
+      } else if (buffer.length > MAX_COMPROBANTE_BYTES) {
+        notas.push(
+          `El comprobante pesaba ${(buffer.length / (1024 * 1024)).toFixed(1)} MB y no se pudo guardar. Pedírselo por WhatsApp.`
+        )
+      } else {
+        const path = `inscripciones/${formData.dni}/${Date.now()}.${archivo.extension}`
+        const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, buffer, {
+          contentType: archivo.mimeType,
+          upsert: false,
+        })
+
+        if (uploadError) {
+          notas.push(`No se pudo guardar el comprobante (${uploadError.message}). Pedírselo por WhatsApp.`)
+        } else {
+          // El bucket es privado. Guardamos la ruta estable del objeto y el
+          // admin genera una URL firmada cuando necesita visualizarlo.
+          comprobantePagoUrl = path
+        }
+      }
     }
-
-    const path = `inscripciones/${formData.dni}/${Date.now()}.${extension}`
-    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, buffer, {
-      contentType: mimeType,
-      upsert: false,
-    })
-
-    if (uploadError) throw uploadError
-
-    // El bucket es privado. Guardamos la ruta estable del objeto y el admin
-    // genera una URL firmada válida por un año cuando necesita visualizarlo.
-    comprobantePagoUrl = path
   } catch (error) {
-    const message = error instanceof Error ? error.message : "No se pudo guardar el comprobante"
-    return NextResponse.json({ error: message }, { status: 500 })
+    const message = error instanceof Error ? error.message : "error desconocido"
+    notas.push(`No se pudo procesar el comprobante (${message}). Pedírselo por WhatsApp.`)
   }
 
   const anios = Array.from(new Set([...(existente?.anios ?? []), CURRENT_YEAR]))
@@ -128,6 +147,7 @@ export async function POST(req: NextRequest) {
       metodo_pago: "transferencia",
       numero_referencia: formData.numeroReferencia,
       comprobante_pago_url: comprobantePagoUrl,
+      comprobante_nota: notas.join(" · "),
 
       estado: "pendiente",
       aprobado_por_admin: false,
@@ -142,16 +162,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: upsertError.message }, { status: 500 })
   }
 
-  await guardarGrupoNuevoSiCorresponde(supabase, normalizeGrupoCiclistas(formData.grupoCiclistas))
+  // Lo que sigue es "nice to have": la inscripcion ya esta guardada, y ningun
+  // fallo de acá puede devolverle un error a la persona.
+  try {
+    await guardarGrupoNuevoSiCorresponde(supabase, normalizeGrupoCiclistas(formData.grupoCiclistas))
+  } catch {}
 
   // Aviso a los organizadores. Va despues del alta y con await para que la
-  // funcion serverless no muera antes de mandarlo, pero cualquier fallo se
-  // ignora: la inscripcion ya quedo guardada y es lo que importa.
-  await notificarInscripcionNueva({
-    nombre: `${formData.nombre} ${formData.apellido}`.trim(),
-    localidad: formData.localidad,
-    grupo: normalizeGrupoCiclistas(formData.grupoCiclistas),
-  })
+  // funcion serverless no muera antes de mandarlo.
+  try {
+    await notificarInscripcionNueva({
+      nombre: `${formData.nombre} ${formData.apellido}`.trim(),
+      localidad: formData.localidad,
+      grupo: normalizeGrupoCiclistas(formData.grupoCiclistas),
+    })
+  } catch {}
 
   return NextResponse.json({ ok: true, numeroInscripcion, tokenQR })
 }

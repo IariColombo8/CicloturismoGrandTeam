@@ -7,8 +7,15 @@ import {
   submitSchema,
 } from "@/lib/inscripcion-schema"
 
-// Tests unitarios de la logica de validacion de inscripcion.
-// No usan navegador: corren en el proceso de Node de Playwright.
+// Tests unitarios de la validacion de la inscripcion.
+//
+// La politica cambio: antes el servidor rechazaba la inscripcion ante
+// cualquier dato raro (email con un typo, pais fuera de la lista, comprobante
+// que no se pudo subir) y la persona veia "Datos invalidos" despues de llenar
+// los cuatro pasos, perdiendo todo. Ahora solo el DNI y el nombre son
+// imprescindibles: el resto se normaliza a algo guardable y el equipo lo
+// corrige desde el panel. Una fila con un dato para revisar es mucho mejor que
+// una inscripcion que no existe.
 
 const baseData = {
   nombre: "Juan",
@@ -31,7 +38,7 @@ const baseData = {
   comprobanteBase64: "data:image/jpeg;base64,AAAA",
 }
 
-test.describe("submitSchema", () => {
+test.describe("submitSchema · lo que acepta", () => {
   test("acepta una inscripción válida y aplica defaults", () => {
     const result = submitSchema.safeParse(baseData)
     expect(result.success).toBe(true)
@@ -39,6 +46,7 @@ test.describe("submitSchema", () => {
     expect(result.data.relacionEmergencia).toBe("")
     expect(result.data.alergias).toBe("")
     expect(result.data.condicionSalud).toBe("")
+    expect(result.data.comprobanteNota).toBe("")
   })
 
   test("recorta espacios en nombre y email", () => {
@@ -53,56 +61,16 @@ test.describe("submitSchema", () => {
     expect(result.data.email).toBe("juan@example.com")
   })
 
-  test("rechaza DNI con formato inválido", () => {
-    for (const dni of ["123456", "123456789", "12.345.678", "abcdefgh", ""]) {
-      expect(submitSchema.safeParse({ ...baseData, dni }).success, `dni=${dni}`).toBe(false)
-    }
-  })
-
   test("acepta DNI de 7 y de 8 dígitos", () => {
     expect(submitSchema.safeParse({ ...baseData, dni: "1234567" }).success).toBe(true)
     expect(submitSchema.safeParse({ ...baseData, dni: "12345678" }).success).toBe(true)
   })
 
-  test("rechaza email inválido", () => {
-    for (const email of ["juan", "juan@", "@example.com", "juan example.com"]) {
-      expect(submitSchema.safeParse({ ...baseData, email }).success, `email=${email}`).toBe(false)
-    }
-  })
-
-  test("rechaza país fuera del enum", () => {
-    expect(submitSchema.safeParse({ ...baseData, pais: "Brasil" }).success).toBe(false)
-  })
-
-  test("rechaza grupo sanguíneo inválido", () => {
-    expect(submitSchema.safeParse({ ...baseData, grupoSanguineo: "Z+" }).success).toBe(false)
-    expect(submitSchema.safeParse({ ...baseData, grupoSanguineo: "o+" }).success).toBe(false)
-  })
-
-  test("rechaza campos obligatorios vacíos o solo espacios", () => {
-    const requeridos = [
-      "nombre",
-      "apellido",
-      "telefono",
-      "localidad",
-      "nombreEmergencia",
-      "telefonoEmergencia",
-      "grupoCiclistas",
-      "numeroReferencia",
-    ] as const
-
-    for (const campo of requeridos) {
-      expect(submitSchema.safeParse({ ...baseData, [campo]: "   " }).success, campo).toBe(false)
-    }
-  })
-
-  test("rechaza comprobante vacío", () => {
-    expect(submitSchema.safeParse({ ...baseData, comprobanteBase64: "" }).success).toBe(false)
-  })
-
-  test("rechaza un payload sin campos (no debe explotar)", () => {
-    const result = submitSchema.safeParse({})
-    expect(result.success).toBe(false)
+  test("limpia el DNI de puntos y espacios en vez de rechazarlo", () => {
+    const result = submitSchema.safeParse({ ...baseData, dni: " 12.345.678 " })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.dni).toBe("12345678")
   })
 
   test("ignora campos extra no declarados", () => {
@@ -110,6 +78,106 @@ test.describe("submitSchema", () => {
     expect(result.success).toBe(true)
     if (!result.success) return
     expect((result.data as Record<string, unknown>).hackeo).toBeUndefined()
+  })
+})
+
+test.describe("submitSchema · nada se pierde por un dato raro", () => {
+  test("un email con typo entra igual, para no perder la inscripción", () => {
+    for (const email of ["juan", "juan@", "@example.com", ""]) {
+      const result = submitSchema.safeParse({ ...baseData, email })
+      expect(result.success, `email=${email}`).toBe(true)
+    }
+  })
+
+  test("un país que no está en la lista se guarda tal cual", () => {
+    const result = submitSchema.safeParse({ ...baseData, pais: "Brasil" })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.pais).toBe("Brasil")
+  })
+
+  test("sin país, queda Argentina", () => {
+    const result = submitSchema.safeParse({ ...baseData, pais: "" })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.pais).toBe("Argentina")
+  })
+
+  test("el grupo sanguíneo se normaliza y lo desconocido queda DESCONOCIDO", () => {
+    const minuscula = submitSchema.safeParse({ ...baseData, grupoSanguineo: "o+" })
+    expect(minuscula.success).toBe(true)
+    if (minuscula.success) expect(minuscula.data.grupoSanguineo).toBe("O+")
+
+    const raro = submitSchema.safeParse({ ...baseData, grupoSanguineo: "Z+" })
+    expect(raro.success).toBe(true)
+    if (raro.success) expect(raro.data.grupoSanguineo).toBe("DESCONOCIDO")
+  })
+
+  test("los sí/no toleran acentos, mayúsculas y booleanos", () => {
+    for (const valor of ["Sí", "SI", "sí", true, 1, "true"]) {
+      const result = submitSchema.safeParse({ ...baseData, esCeliaco: valor })
+      expect(result.success, `valor=${String(valor)}`).toBe(true)
+      if (result.success) expect(result.data.esCeliaco).toBe("si")
+    }
+
+    for (const valor of ["No", "", null, undefined, "cualquier cosa"]) {
+      const result = submitSchema.safeParse({ ...baseData, esCeliaco: valor })
+      expect(result.success, `valor=${String(valor)}`).toBe(true)
+      if (result.success) expect(result.data.esCeliaco).toBe("no")
+    }
+  })
+
+  test("los campos secundarios vacíos no frenan la inscripción", () => {
+    const opcionales = [
+      "apellido",
+      "telefono",
+      "localidad",
+      "nombreEmergencia",
+      "telefonoEmergencia",
+      "numeroReferencia",
+      "fechaNacimiento",
+    ] as const
+
+    for (const campo of opcionales) {
+      expect(submitSchema.safeParse({ ...baseData, [campo]: "   " }).success, campo).toBe(true)
+    }
+  })
+
+  test("sin grupo de ciclistas queda 'Sin grupo'", () => {
+    const result = submitSchema.safeParse({ ...baseData, grupoCiclistas: "  " })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.grupoCiclistas).toBe("Sin grupo")
+  })
+
+  test("acepta una inscripción sin comprobante, con la nota del motivo", () => {
+    const result = submitSchema.safeParse({
+      ...baseData,
+      comprobanteBase64: "",
+      comprobanteNota: "PDF de 30 MB: pedírselo por WhatsApp",
+    })
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.comprobanteBase64).toBe("")
+    expect(result.data.comprobanteNota).toContain("WhatsApp")
+  })
+})
+
+test.describe("submitSchema · lo único imprescindible", () => {
+  test("sin DNI no hay fila que guardar", () => {
+    for (const dni of ["", "abcdefgh", "12345"]) {
+      expect(submitSchema.safeParse({ ...baseData, dni }).success, `dni=${dni}`).toBe(false)
+    }
+  })
+
+  test("sin nombre tampoco", () => {
+    expect(submitSchema.safeParse({ ...baseData, nombre: "   " }).success).toBe(false)
+  })
+
+  test("un payload vacío se rechaza sin explotar", () => {
+    expect(submitSchema.safeParse({}).success).toBe(false)
+    expect(submitSchema.safeParse(null).success).toBe(false)
+    expect(submitSchema.safeParse(undefined).success).toBe(false)
   })
 })
 
@@ -151,17 +219,20 @@ test.describe("parseDataUrl", () => {
       base64Data: "QUJD",
       extension: "png",
     })
-    expect(parseDataUrl("data:application/pdf;base64,QUJD").extension).toBe("pdf")
-    expect(parseDataUrl("data:image/webp;base64,QUJD").extension).toBe("webp")
+    expect(parseDataUrl("data:application/pdf;base64,QUJD")?.extension).toBe("pdf")
+    expect(parseDataUrl("data:image/webp;base64,QUJD")?.extension).toBe("webp")
   })
 
   test("acepta mime en mayúsculas", () => {
-    expect(parseDataUrl("data:IMAGE/JPEG;base64,QUJD").extension).toBe("jpg")
+    expect(parseDataUrl("data:IMAGE/JPEG;base64,QUJD")?.extension).toBe("jpg")
   })
 
-  test("rechaza formatos no permitidos", () => {
-    expect(() => parseDataUrl("data:image/svg+xml;base64,QUJD")).toThrow(/no permitido/i)
-    expect(() => parseDataUrl("data:text/html;base64,QUJD")).toThrow(/no permitido/i)
+  test("devuelve null (sin lanzar) si el formato no sirve", () => {
+    // Lanzar acá tiraba abajo la inscripción entera; ahora se guarda sin
+    // archivo y con la nota.
+    expect(parseDataUrl("data:image/svg+xml;base64,QUJD")).toBeNull()
+    expect(parseDataUrl("data:text/html;base64,QUJD")).toBeNull()
+    expect(parseDataUrl("")).toBeNull()
   })
 
   test("trata un base64 pelado como jpeg", () => {
@@ -174,11 +245,11 @@ test.describe("parseDataUrl", () => {
 })
 
 test.describe("límite de comprobante", () => {
-  test("el máximo es 5 MB", () => {
-    expect(MAX_COMPROBANTE_BYTES).toBe(5 * 1024 * 1024)
+  test("el tope del archivo ya comprimido es 4 MB", () => {
+    expect(MAX_COMPROBANTE_BYTES).toBe(4 * 1024 * 1024)
   })
 
-  test("un buffer por encima del límite se detecta", () => {
+  test("pasarse del tope no es un error: se detecta para dejar la nota", () => {
     const grande = Buffer.alloc(MAX_COMPROBANTE_BYTES + 1)
     expect(grande.length > MAX_COMPROBANTE_BYTES).toBe(true)
   })

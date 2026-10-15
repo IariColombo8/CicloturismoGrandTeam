@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Search } from "lucide-react"
+import CampoFecha from "./CampoFecha"
 
 interface PersonalInfoStepProps {
   formData: any
@@ -96,21 +97,13 @@ export default function PersonalInfoStep({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="fechaNacimiento" className="text-gray-300">
-              Fecha de Nacimiento <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="fechaNacimiento"
-              type="date"
-              value={formData.fechaNacimiento}
-              onChange={(e) =>
-                updateFormData({ fechaNacimiento: e.target.value })
-              }
-              className="bg-zinc-900 border-yellow-400/30 text-white"
-              required
-            />
-          </div>
+          {/* Día / mes / año en campos propios: el selector nativo de fecha no
+              abre en el navegador de Instagram ni en varios Android, y dejaba
+              la inscripción trabada en este paso. */}
+          <CampoFecha
+            value={formData.fechaNacimiento}
+            onChange={(iso) => updateFormData({ fechaNacimiento: iso })}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="email" className="text-gray-300">
