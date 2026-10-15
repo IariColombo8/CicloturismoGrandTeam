@@ -47,7 +47,9 @@ export default function CategoryStep({ formData, updateFormData, gruposGuardados
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-yellow-400">Experiencia en Ciclismo</h3>
 
-        <div className="space-y-3">
+        {/* data-campo: el anillo que marca "esto falta" rodea el bloque
+            entero (pregunta + opciones), no solo un botón. */}
+        <div className="space-y-3" id="campo-distancia" data-campo>
           <Label className="text-gray-300">
             ¿Ha recorrido 50 km antes? <span className="text-red-500">*</span>
           </Label>
@@ -75,7 +77,7 @@ export default function CategoryStep({ formData, updateFormData, gruposGuardados
           </p>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2" data-campo>
           <Label htmlFor="grupoCiclistas" className="text-gray-300">
             Grupo de ciclistas <span className="text-red-500">*</span>
           </Label>
@@ -156,7 +158,7 @@ export default function CategoryStep({ formData, updateFormData, gruposGuardados
       <div className="space-y-4 pt-6 border-t border-yellow-400/20">
         <h3 className="text-lg font-semibold text-yellow-400">Información Médica</h3>
 
-        <div className="space-y-2">
+        <div className="space-y-2" data-campo>
           <Label htmlFor="grupoSanguineo" className="text-gray-300">
             Grupo Sanguíneo <span className="text-red-500">*</span>
           </Label>
@@ -164,7 +166,7 @@ export default function CategoryStep({ formData, updateFormData, gruposGuardados
             value={formData.grupoSanguineo}
             onValueChange={(value) => updateFormData({ grupoSanguineo: value.toUpperCase() })}
           >
-            <SelectTrigger className="bg-zinc-900 border-yellow-400/30 text-white">
+            <SelectTrigger id="grupoSanguineo" className="bg-zinc-900 border-yellow-400/30 text-white">
               <SelectValue placeholder="Seleccioná tu grupo sanguíneo" />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-yellow-400/30">
@@ -181,7 +183,7 @@ export default function CategoryStep({ formData, updateFormData, gruposGuardados
           </Select>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3" id="campo-celiaco" data-campo>
           <Label className="text-gray-300">
             ¿Es celíaco/a? <span className="text-red-500">*</span>
           </Label>
@@ -201,7 +203,7 @@ export default function CategoryStep({ formData, updateFormData, gruposGuardados
           </RadioGroup>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3" id="campo-alergias" data-campo>
           <Label className="text-gray-300">
             ¿Tiene alergias? <span className="text-red-500">*</span>
           </Label>
@@ -234,7 +236,7 @@ export default function CategoryStep({ formData, updateFormData, gruposGuardados
           )}
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3" id="campo-salud" data-campo>
           <Label className="text-gray-300">
             ¿Tiene problemas de salud? <span className="text-red-500">*</span>
           </Label>

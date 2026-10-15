@@ -30,7 +30,7 @@ export default function PersonalInfoStep({
         </h3>
 
         {/* El DNI va primero y dispara la búsqueda automática desde la página padre. */}
-        <div className="space-y-2">
+        <div className="space-y-2" data-campo>
           <Label htmlFor="dni" className="text-gray-300">
             DNI/Cédula <span className="text-red-500">*</span>
           </Label>
@@ -67,7 +67,7 @@ export default function PersonalInfoStep({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-2" data-campo>
             <Label htmlFor="nombre" className="text-gray-300">
               Nombre <span className="text-red-500">*</span>
             </Label>
@@ -81,7 +81,7 @@ export default function PersonalInfoStep({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" data-campo>
             <Label htmlFor="apellido" className="text-gray-300">
               Apellido <span className="text-red-500">*</span>
             </Label>
@@ -105,7 +105,7 @@ export default function PersonalInfoStep({
             onChange={(iso) => updateFormData({ fechaNacimiento: iso })}
           />
 
-          <div className="space-y-2">
+          <div className="space-y-2" data-campo>
             <Label htmlFor="email" className="text-gray-300">
               Email <span className="text-red-500">*</span>
             </Label>
@@ -122,7 +122,7 @@ export default function PersonalInfoStep({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-2" data-campo>
             <Label htmlFor="telefono" className="text-gray-300">
               Teléfono <span className="text-red-500">*</span>
             </Label>
@@ -137,7 +137,7 @@ export default function PersonalInfoStep({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" data-campo>
             <Label htmlFor="pais" className="text-gray-300">
               País de residencia <span className="text-red-500">*</span>
             </Label>
@@ -159,7 +159,7 @@ export default function PersonalInfoStep({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2" data-campo>
           <Label htmlFor="localidad" className="text-gray-300">
             Ciudad/Localidad <span className="text-red-500">*</span>
           </Label>
@@ -180,7 +180,7 @@ export default function PersonalInfoStep({
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-2" data-campo>
             <Label htmlFor="nombreEmergencia" className="text-gray-300">
               Nombre Completo <span className="text-red-500">*</span>
             </Label>
@@ -196,7 +196,7 @@ export default function PersonalInfoStep({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" data-campo>
             <Label htmlFor="telefonoEmergencia" className="text-gray-300">
               Teléfono <span className="text-red-500">*</span>
             </Label>
@@ -214,7 +214,7 @@ export default function PersonalInfoStep({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2" data-campo>
           <Label htmlFor="relacionEmergencia" className="text-gray-300">
             Relación (Madre, Padre, Esposo/a, etc.)
           </Label>

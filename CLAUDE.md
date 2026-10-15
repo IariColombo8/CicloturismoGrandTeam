@@ -322,6 +322,15 @@ de datos:
 - **Prohibido** agregar validaciones que rechacen el envio (limites de tamaño,
   formatos, campos "obligatorios" nuevos) sin dejar un camino por el que la
   inscripcion igual se guarde.
+- **Falta un dato**: nunca un cartel que se va solo ni un boton gris. Se abre
+  `ModalFaltantes` con que falta (nombre de pantalla + ayuda) y al tocarlo la
+  pantalla lleva al campo y lo marca (`lib/foco.ts`, clase `.gt-resaltado`).
+  Un campo nuevo obligatorio se agrega a `camposFaltantes()` en
+  `app/inscripcion/page.tsx`, con su `id` y su linea de ayuda.
+- **Version del sitio** (`NEXT_PUBLIC_BUILD_ID`): sale del commit, nunca de la
+  fecha. Con la fecha, un build que cruzaba un cambio de minuto dejaba al
+  navegador y al servidor con versiones distintas y el cartel "Hicimos
+  actualizaciones" aparecia sin motivo.
 
 ### Errores del cliente
 

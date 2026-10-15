@@ -147,6 +147,35 @@ molesta a nadie.
   internet, el modal dice "Pedido guardado · Quedo guardado en este telefono" y
   se manda solo despues.
 
+## Cuando falta un dato: mostrar qué falta y llevar hasta ahí
+
+Hecho para que **nadie se quede sin saber qué hacer**. Antes, al tocar
+"Siguiente" sin completar algo aparecia un cartelito "Campos incompletos" que
+se iba en tres segundos: no decia que faltaba ni donde estaba.
+
+Ahora se abre `components/inscripcion/ModalFaltantes.tsx`:
+
+- Dice cuantos datos faltan ("Faltan 3 datos para seguir" / "Falta un dato").
+- Lista cada uno **con el nombre que se ve en pantalla** y una linea de ayuda
+  ("Grupo sanguineo · Si no lo sabes, elegi Desconocido").
+- Tocando cualquiera de la lista, o el boton "Empezar por el primero", el modal
+  se cierra, la pantalla se mueve hasta ese campo, le queda un **anillo dorado
+  que late** y, si se puede escribir ahi, el cursor ya esta puesto (`lib/foco.ts`).
+  El anillo se apaga solo cuando la persona carga el dato.
+- Para las preguntas de si/no el anillo rodea el bloque entero (pregunta y
+  opciones), no un boton suelto: por eso los bloques llevan `data-campo` y un
+  `id` (`campo-distancia`, `campo-celiaco`, ...).
+
+Dos cosas que cambiaron por esto mismo:
+
+- **El boton "Enviar inscripcion" ya no se deshabilita** por no haber aceptado
+  el deslinde. Un boton gris que no reacciona es el peor caso: la persona no
+  sabe que le falta. Ahora se puede tocar, y si falta aceptar, el modal lo
+  explica y lleva hasta la casilla.
+- El modal tiene **altura tope y scroll adentro**: con nueve datos faltantes, en
+  un celular la lista se iba de la pantalla y los botones quedaban fuera de
+  alcance.
+
 ## El servidor tampoco rechaza
 
 `lib/inscripcion-schema.ts` y `app/api/inscripcion/submit/route.ts`:
@@ -183,6 +212,7 @@ preparador de comprobante, asi que tampoco rechaza archivos grandes.
 | `e2e/inscripcion-iphone.spec.ts` | Lo mismo en Safari de iPhone (WebKit), que es donde se rompen primero los campos de fecha y el almacenamiento |
 | `e2e/offline.spec.ts` | Que el formulario abra sin internet, que aparezca la pantalla de sin conexion, que el push siga listo (un solo registro del worker) y que el aviso de version funcione y se pueda cerrar |
 | `e2e/responsive.spec.ts` | Las 7 paginas publicas en 320, 360, 390, 768 y 1280 px: nada puede salirse de la pantalla. Si algo se desborda, el error dice el elemento y su clase |
+| `e2e/faltantes.spec.ts` | Que el modal diga que falta con el nombre de pantalla, que lleve al campo y lo marque, que se pueda elegir cualquiera de la lista, y que los botones esten al alcance con la lista larga |
 | `e2e/remera-celular.spec.ts` | El pedido de remera abre y responde en celular, sin desbordes |
 | `e2e/unit/comprobante.spec.ts` | `prepararComprobante` nunca lanza, ni con archivos rotos o sin canvas |
 | `e2e/unit/cola-offline.spec.ts` | La cola: encola, reintenta, borra cuando entra, no pierde nada ni con el almacenamiento bloqueado |

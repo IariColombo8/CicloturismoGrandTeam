@@ -15,6 +15,8 @@ import CategoryStep from "@/components/inscripcion/CategoryStep"
 import PaymentStep from "@/components/inscripcion/PaymentStep"
 import ReviewStep from "@/components/inscripcion/ReviewStep"
 import MedallasBanner from "@/components/inscripcion/MedallasBanner"
+import ModalFaltantes from "@/components/inscripcion/ModalFaltantes"
+import { irAlCampo, limpiarResaltados, type CampoFaltante } from "@/lib/foco"
 import Navbar from "@/components/layout/Navbar"
 import { DATOS_TRANSFERENCIA_VACIOS, datosDesdeEvento } from "@/lib/transferencia"
 
@@ -128,6 +130,10 @@ export default function InscripcionPage() {
   const [estadoComprobante, setEstadoComprobante] = useState<"vacio" | "preparando" | "listo" | "aviso">("vacio")
   const [avisoComprobante, setAvisoComprobante] = useState("")
   const comprobanteRef = useRef<Promise<ComprobantePreparado> | null>(null)
+
+  // Lo que falta completar para pasar al paso siguiente. Mientras tenga algo,
+  // se muestra el modal que lleva a cada campo.
+  const [faltantes, setFaltantes] = useState<CampoFaltante[]>([])
 
   // La inscripción quedó guardada en el teléfono porque no había conexión.
   // No se puede navegar a la pantalla de éxito (sin internet el navegador
@@ -347,54 +353,108 @@ export default function InscripcionPage() {
   }
 
 
-  /** Qué falta, con el nombre que ve la persona en pantalla. */
-  const camposFaltantes = (step: number): string[] => {
-    const falta: string[] = []
-    const pedir = (valor: unknown, nombre: string) => {
-      if (!valor) falta.push(nombre)
+  /**
+   * Qué falta completar en este paso, con el nombre que la persona ve en
+   * pantalla, una línea de ayuda y el campo al que hay que llevarla.
+   */
+  const camposFaltantes = (step: number): CampoFaltante[] => {
+    const falta: CampoFaltante[] = []
+    const pedir = (valor: unknown, campo: CampoFaltante) => {
+      if (!valor) falta.push(campo)
     }
 
     if (step === 1) {
-      pedir(formData.dni, "DNI")
-      pedir(formData.nombre, "nombre")
-      pedir(formData.apellido, "apellido")
-      pedir(formData.fechaNacimiento, "fecha de nacimiento")
-      pedir(formData.email, "email")
-      pedir(formData.telefono, "teléfono")
-      pedir(formData.localidad, "ciudad")
-      pedir(formData.nombreEmergencia, "contacto de emergencia")
-      pedir(formData.telefonoEmergencia, "teléfono de emergencia")
+      pedir(formData.dni, { id: "dni", etiqueta: "DNI", ayuda: "Sin puntos ni espacios" })
+      pedir(formData.nombre, { id: "nombre", etiqueta: "Nombre", ayuda: "Tu nombre de pila" })
+      pedir(formData.apellido, { id: "apellido", etiqueta: "Apellido", ayuda: "Tu apellido" })
+      pedir(formData.fechaNacimiento, {
+        id: "fechaNacimiento-dia",
+        etiqueta: "Fecha de nacimiento",
+        ayuda: "Elegí el día, el mes y el año",
+      })
+      pedir(formData.email, { id: "email", etiqueta: "Email", ayuda: "Ahí te llega la confirmación con tu QR" })
+      pedir(formData.telefono, { id: "telefono", etiqueta: "Teléfono", ayuda: "Con el código de área" })
+      pedir(formData.localidad, { id: "localidad", etiqueta: "Ciudad", ayuda: "De dónde venís" })
+      pedir(formData.nombreEmergencia, {
+        id: "nombreEmergencia",
+        etiqueta: "Contacto de emergencia",
+        ayuda: "A quién llamamos si pasa algo durante el evento",
+      })
+      pedir(formData.telefonoEmergencia, {
+        id: "telefonoEmergencia",
+        etiqueta: "Teléfono de emergencia",
+        ayuda: "El teléfono de esa persona",
+      })
     }
 
     if (step === 2) {
-      pedir(formData.haRecorridoDistancia, "si recorriste 50 km antes")
-      pedir(formData.grupoCiclistas, "grupo de ciclistas")
-      pedir(formData.grupoSanguineo, "grupo sanguíneo")
-      pedir(formData.esCeliaco, "si sos celíaco/a")
-      pedir(formData.tieneAlergias, "si tenés alergias")
-      if (formData.tieneAlergias === "si") pedir(formData.alergias, "cuáles son tus alergias")
-      pedir(formData.tieneProblemasSalud, "si tenés problemas de salud")
-      if (formData.tieneProblemasSalud === "si") pedir(formData.condicionSalud, "cuál es tu condición de salud")
+      pedir(formData.haRecorridoDistancia, {
+        id: "campo-distancia",
+        etiqueta: "¿Recorriste 50 km antes?",
+        ayuda: "Elegí Sí o No",
+      })
+      pedir(formData.grupoCiclistas, {
+        id: "grupoCiclistas",
+        etiqueta: "Grupo de ciclistas",
+        ayuda: 'Si no pertenecés a ninguno, elegí "Sin grupo"',
+      })
+      pedir(formData.grupoSanguineo, {
+        id: "grupoSanguineo",
+        etiqueta: "Grupo sanguíneo",
+        ayuda: 'Si no lo sabés, elegí "Desconocido"',
+      })
+      pedir(formData.esCeliaco, { id: "campo-celiaco", etiqueta: "¿Sos celíaco/a?", ayuda: "Elegí Sí o No" })
+      pedir(formData.tieneAlergias, { id: "campo-alergias", etiqueta: "¿Tenés alergias?", ayuda: "Elegí Sí o No" })
+      if (formData.tieneAlergias === "si") {
+        pedir(formData.alergias, { id: "alergias", etiqueta: "Cuáles son tus alergias", ayuda: "Contanos a qué" })
+      }
+      pedir(formData.tieneProblemasSalud, {
+        id: "campo-salud",
+        etiqueta: "¿Tenés problemas de salud?",
+        ayuda: "Elegí Sí o No",
+      })
+      if (formData.tieneProblemasSalud === "si") {
+        pedir(formData.condicionSalud, {
+          id: "condicionSalud",
+          etiqueta: "Cuál es tu condición de salud",
+          ayuda: "Medicación o indicaciones importantes",
+        })
+      }
     }
 
     if (step === 3) {
-      pedir(formData.numeroReferencia, "nombre de quien transfirió")
-      pedir(formData.comprobanteFile, "comprobante de pago")
+      pedir(formData.numeroReferencia, {
+        id: "numeroReferencia",
+        etiqueta: "Nombre de quien transfirió",
+        ayuda: "El nombre que figura en la transferencia",
+      })
+      pedir(formData.comprobanteFile, {
+        id: "comprobante",
+        etiqueta: "Comprobante de pago",
+        ayuda: "La foto o el PDF de la transferencia",
+      })
     }
 
     return falta
   }
 
+  /** Lleva a la persona al campo y cierra el modal. */
+  const llevarAlCampo = (id: string) => {
+    setFaltantes([])
+    // Un instante para que el modal termine de cerrarse: si no, el
+    // desplazamiento queda tapado por la animación.
+    window.setTimeout(() => irAlCampo(id), 180)
+  }
+
   const handleNext = () => {
     const falta = camposFaltantes(currentStep)
     if (falta.length > 0) {
-      const lista = falta.length > 3 ? `${falta.slice(0, 3).join(", ")} y ${falta.length - 3} más` : falta.join(", ")
-      toast({
-        title: falta.length === 1 ? "Falta un dato" : "Faltan algunos datos",
-        description: `Completá ${lista} para seguir.`,
-      })
+      // Nada de un cartel que se va solo: se muestra qué falta y se lleva a la
+      // persona hasta el campo.
+      setFaltantes(falta)
       return
     }
+    limpiarResaltados()
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps))
   }
 
@@ -413,10 +473,15 @@ export default function InscripcionPage() {
    */
   const handleSubmit = async () => {
     if (!aceptaTerminos) {
-      toast({
-        title: "Falta aceptar el deslinde de responsabilidad",
-        description: "Leé y aceptá el deslinde de responsabilidad para terminar tu inscripción.",
-      })
+      // Mismo criterio que en los pasos: se dice qué falta y se lleva hasta
+      // ahí, en vez de un cartel que se va solo.
+      setFaltantes([
+        {
+          id: "acepta-terminos",
+          etiqueta: "Aceptar el deslinde de responsabilidad",
+          ayuda: 'Abrí "Leer Deslinde de Responsabilidad" y después marcá la casilla',
+        },
+      ])
       return
     }
 
@@ -732,7 +797,11 @@ export default function InscripcionPage() {
                 ) : (
                   <Button
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !aceptaTerminos}
+                    // No se deshabilita por falta de aceptar el deslinde: un
+                    // botón gris que no reacciona deja a la persona sin saber
+                    // qué hacer. Se puede tocar, y si falta aceptar se explica
+                    // en el modal y se la lleva hasta la casilla.
+                    disabled={isSubmitting}
                     className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {isSubmitting ? "Enviando..." : "Enviar Inscripción"}
@@ -744,6 +813,14 @@ export default function InscripcionPage() {
           </Card>
         </div>
       </div>
+
+      {/* Qué falta para seguir, con un botón que lleva a cada campo. */}
+      <ModalFaltantes
+        faltantes={faltantes}
+        abierto={faltantes.length > 0}
+        onCerrar={() => setFaltantes([])}
+        onIrAlCampo={llevarAlCampo}
+      />
     </div>
   )
 }

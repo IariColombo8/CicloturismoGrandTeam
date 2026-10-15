@@ -139,7 +139,13 @@ test.describe("Las notificaciones push siguen andando", () => {
       return urls
     })
 
-    const prohibidas = guardadas.filter((u) => /\/api\/|\/admin|\/login/.test(new URL(u).pathname))
+    // Los archivos JS del panel (/_next/static/chunks/app/admin/...) sí se
+    // pueden guardar: son estáticos y no tienen datos de nadie. Lo que no puede
+    // quedar guardado son las respuestas de las API y las páginas del panel.
+    const prohibidas = guardadas
+      .map((u) => new URL(u).pathname)
+      .filter((p) => !p.startsWith("/_next/"))
+      .filter((p) => /^\/api\/|^\/admin|^\/login|^\/auth/.test(p))
     expect(prohibidas, `No deberían estar guardadas:\n${prohibidas.join("\n")}`).toEqual([])
   })
 })
@@ -184,7 +190,7 @@ test.describe("Aviso de versión nueva", () => {
     // pantalla y se comía los clics del botón "Siguiente", que está al final
     // del formulario. La inscripción quedaba trabada.
     await page.getByRole("button", { name: /siguiente/i }).click({ timeout: 15_000 })
-    await expect(page.getByText(/faltan algunos datos|falta un dato/i).first()).toBeVisible()
+    await expect(page.getByRole("dialog").getByText(/faltan? \d* ?datos? para seguir/i)).toBeVisible()
   })
 
   test("no molesta cuando la versión es la correcta", async ({ page }) => {

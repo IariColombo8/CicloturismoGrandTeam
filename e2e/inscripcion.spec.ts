@@ -54,13 +54,16 @@ test.describe("Inscripción · paso 1", () => {
     await expect(page.locator("#dni")).toHaveValue("12345678")
   })
 
-  test("no avanza con campos vacíos y dice qué falta", async ({ page }) => {
+  test("no avanza con campos vacíos y abre la lista de lo que falta", async ({ page }) => {
     await page.getByRole("button", { name: /siguiente/i }).click()
-    // El aviso nombra los campos en vez de decir "campos incompletos": así la
-    // persona sabe qué completar sin tener que buscar.
-    await expect(page.getByText(/faltan algunos datos/i).first()).toBeVisible()
-    await expect(page.getByText(/completá dni, nombre, apellido y 6 más/i).first()).toBeVisible()
-    // Sigue en el paso 1.
+    // En vez de un cartel que se va solo, un modal con cada dato que falta y
+    // un botón que lleva hasta el campo. El detalle está en faltantes.spec.ts.
+    const modal = page.getByRole("dialog")
+    await expect(modal.getByText(/faltan 9 datos para seguir/i)).toBeVisible()
+
+    // Sigue en el paso 1. (Se cierra el modal primero: mientras está abierto,
+    // el fondo queda oculto para las búsquedas por rol.)
+    await modal.getByRole("button", { name: /^cerrar$/i }).click()
     await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
   })
 
@@ -68,6 +71,10 @@ test.describe("Inscripción · paso 1", () => {
     await completarPaso1(page)
     await page.fill("#telefonoEmergencia", "")
     await page.getByRole("button", { name: /siguiente/i }).click()
+
+    const modal = page.getByRole("dialog")
+    await expect(modal.getByText("Teléfono de emergencia", { exact: true })).toBeVisible()
+    await modal.getByRole("button", { name: /^cerrar$/i }).click()
     await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
   })
 
@@ -97,7 +104,11 @@ test.describe("Inscripción · paso 2 (salud)", () => {
     await expect(page.getByRole("heading", { name: /experiencia en ciclismo/i })).toBeVisible()
 
     await page.getByRole("button", { name: /siguiente/i }).click()
-    // Sigue en el paso 2.
+
+    // Dice qué falta de salud y sigue en el paso 2.
+    const modal = page.getByRole("dialog")
+    await expect(modal.getByText("Grupo sanguíneo", { exact: true })).toBeVisible()
+    await modal.getByRole("button", { name: /^cerrar$/i }).click()
     await expect(page.getByRole("heading", { name: /experiencia en ciclismo/i })).toBeVisible()
   })
 })

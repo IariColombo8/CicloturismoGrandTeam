@@ -155,7 +155,8 @@ export default function CampoFecha({
     "appearance-none"
 
   return (
-    <div className="space-y-2">
+    // data-campo: si falta la fecha, el anillo rodea los tres campos juntos.
+    <div className="space-y-2" data-campo>
       <Label htmlFor={`${id}-dia`} className="text-gray-300">
         {label} {requerido && <span className="text-red-500">*</span>}
       </Label>

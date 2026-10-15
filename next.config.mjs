@@ -1,12 +1,34 @@
-// Version del sitio. En Vercel es el commit; en local, la fecha del build.
+import { execSync } from 'node:child_process'
+
+// Version del sitio: el commit en Vercel y, en local, el commit de git.
 //
 // Sirve para dos cosas: nombrar la cache del Service Worker (asi cada deploy
 // empieza con una cache limpia) y que el navegador pueda darse cuenta de que
 // esta mostrando una version vieja y avisarle a la persona.
-const VERSION_SITIO =
-  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ||
-  process.env.NEXT_PUBLIC_BUILD_ID ||
-  `local-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}`
+//
+// Tiene que ser **el mismo valor en todo el build**. Antes salia de
+// `new Date()`, y como next.config se carga varias veces durante el build, uno
+// que cruzaba un cambio de minuto dejaba al navegador con una version y al
+// servidor con otra: el cartel "Hicimos actualizaciones" aparecia sin que
+// hubiera ninguna actualizacion.
+// execSync se importa arriba y no con require: este archivo es un modulo ES,
+// donde `require` no existe. Con require, el calculo caia siempre en el catch,
+// la version quedaba en "dev" y el aviso de actualizaciones nunca aparecia.
+function calcularVersion() {
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 8)
+  if (process.env.NEXT_PUBLIC_BUILD_ID) return process.env.NEXT_PUBLIC_BUILD_ID
+
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    // Sin git (o sin commits todavia): el aviso de version queda apagado.
+    return 'dev'
+  }
+}
+
+const VERSION_SITIO = calcularVersion()
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

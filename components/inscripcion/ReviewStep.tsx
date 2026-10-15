@@ -257,7 +257,8 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
             Leer Deslinde de Responsabilidad
           </Button>
 
-          <div className="flex items-start gap-3 pt-2">
+          {/* data-campo: si falta aceptar, el anillo rodea la casilla y su texto. */}
+          <div className="flex items-start gap-3 pt-2" data-campo>
             <Checkbox
               id="acepta-terminos"
               checked={aceptaTerminos}

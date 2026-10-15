@@ -203,7 +203,7 @@ export default function PaymentStep({
       </div>
 
       {/* Reference Number */}
-      <div className="space-y-2">
+      <div className="space-y-2" data-campo>
         <Label htmlFor="numeroReferencia" className="text-gray-300">
           Nombre de quien transfirio <span className="text-red-500">*</span>
         </Label>
@@ -219,7 +219,7 @@ export default function PaymentStep({
       </div>
 
       {/* Upload Proof */}
-      <div className="space-y-2">
+      <div className="space-y-2" data-campo>
         <Label htmlFor="comprobante" className="text-gray-300">
           Comprobante de Pago <span className="text-red-500">*</span>
         </Label>
