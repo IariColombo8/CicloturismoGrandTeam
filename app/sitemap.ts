@@ -29,6 +29,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: `${SITE_URL}/sorteos`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.6,
+    },
+    {
       url: `${SITE_URL}/contacto`,
       lastModified: now,
       changeFrequency: "monthly",

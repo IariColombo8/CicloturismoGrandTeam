@@ -40,9 +40,9 @@ npm run test:e2e    # E2E: levanta el dev server en el puerto 3100
 npm run test:e2e:ui # E2E en modo interactivo
 ```
 
-Hay tests con Playwright: 70 unitarios (`e2e/unit/**`, logica pura) y 147 E2E
+Hay tests con Playwright: 114 unitarios (`e2e/unit/**`, logica pura) y 235 E2E
 (`e2e/**`), que incluyen el recorrido completo de la inscripcion en un Pixel 5 y
-en un iPhone 13 (WebKit), y un barrido de 7 paginas publicas en 5 anchos de
+en un iPhone 13 (WebKit), y un barrido de 8 paginas publicas en 5 anchos de
 pantalla. **Correr `npm run test` antes de tocar la inscripcion o el formulario
 de remera.** Detalle en `docs/inscripcion-sin-errores.md`.
 
@@ -137,6 +137,17 @@ public.notas_caja            -> texto, resuelta, creada_por, creada_en
   "falta la transferencia de Lore"). Se cargan en /admin/registro-inscripciones y se
   leen en /admin/gastos y en el PDF/Excel de finanzas. Helpers en lib/notasCaja.ts.
   RLS: solo admin/grandteam (sin lectura publica: dice quien no pago)
+public.sorteos               -> nombre, descripcion, total_sorteos, estado, publico, orden,
+                                excluir_grupos TEXT[], excluir_participantes UUID[],
+                                incluir_participantes UUID[], solo_confirmados, solo_acreditados
+  Una tanda de sorteo ("Sorteo de premios", "La bici"). RLS: SELECT publico solo si publico=true,
+  ALL solo admin/grandteam. El rol anon no tiene permiso sobre las columnas de exclusiones.
+public.sorteo_premios        -> sorteo_id, nombre, descripcion, imagen_url, cantidad, visible, orden
+public.sorteo_resultados     -> sorteo_id, premio_id, premio_nombre, orden, slot, ronda, vuelta,
+                                participante_id, nombre, localidad, grupo, estado, resuelto_en
+  estado: "pendiente" (esperando reclamo) | "reclamado" | "no_reclamo"
+  NUNCA se guarda el DNI: la persona va por participante_id y se copia nombre/localidad,
+  que es lo que se anuncia en el escenario y lo que se publica en /sorteos.
 public.alojamientos          -> nombre, descripcion, logo_url, website, telefono, whatsapp,
                                 direccion, instagram, imagenes TEXT[], activo, orden
   imagenes = galeria de fotos extra (URLs del bucket `sponsors`, carpeta alojamientos/)
@@ -170,6 +181,7 @@ de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual
 /contacto                    -> Pagina de contacto
 /login                       -> Login admin (Supabase Auth / Google OAuth)
 /grand-team                  -> Pagina Grand Team (dashboard publico)
+/sorteos                     -> Premios que se sortean y ganadores (en vivo)
 /grand-team/dashboard        -> Stats Grand Team
 ```
 
@@ -187,6 +199,7 @@ de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual
 /admin/emails                -> Bandeja de correos (Gmail API): leer, responder y redactar
 /admin/ciclos                -> Gestion de ciclos/categorias
 /admin/grandteam             -> Panel especifico para rol Grand Team
+/admin/sorteos               -> Sorteos: bolillero del evento + configuracion (premios, exclusiones)
 /admin/sponsors              -> CRUD completo de sponsors (oro/plata/bronce) con upload de logo
 /admin/alojamientos          -> CRUD de alojamientos bike friendly (logo + galeria de fotos)
 ```
@@ -200,6 +213,7 @@ GET  /api/remera/settings        -> Retorna alias/datos de pago para el formular
 POST /api/inscripcion/submit     -> Guarda inscripcion (si se crean rutas API)
 POST /api/sponsors/upload-logo   -> Sube logo de sponsor a Supabase Storage (max 2MB, jpg/png/webp/svg/gif)
 POST /api/galeria/upload         -> Sube foto de galeria al bucket publico `galeria` (max 6MB, jpg/png/webp/avif)
+POST /api/sorteos/upload-imagen  -> Sube la foto de un premio al bucket `sponsors` (carpeta sorteos/, max 6MB)
 POST /api/alojamientos/upload-imagen -> Sube foto de alojamiento al bucket `sponsors` (max 6MB, jpg/png/webp/avif)
 POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y participantes a "pendiente"
 
@@ -270,6 +284,30 @@ Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam
 3. Landing (`components/home/Alojamientos.tsx`) lista los activos en grilla; la tarjeta **no** linkea al sitio web
 4. Al tocar una tarjeta se abre `components/home/AlojamientoModal.tsx` (dynamic import) con galeria, descripcion, direccion (link a Google Maps), telefono, WhatsApp, Instagram y boton "Ver sitio web"
 5. Tipos y helpers compartidos en `lib/alojamientos.ts`
+
+### Sorteos (regla importante: tiene que funcionar sin wifi)
+
+Detalle completo en **`docs/sorteos.md`**. Dos partes: `/admin/sorteos` (pestañas
+"Sortear" y "Configuracion") y `/sorteos` (premios y ganadores, publico y en vivo).
+
+Reglas del bolillero, todas en `lib/sorteos.ts` (puro, cubierto por `e2e/unit/sorteos.spec.ts`):
+
+- **Nadie sale dos veces hasta que salieron todos.** Si hay mas sorteos que inscriptos, se
+  reparte a todo el mundo y recien ahi arranca la ronda 2 con el bolillero lleno otra vez.
+- **El que no reclama no pierde el premio**: queda en la lista de "no reclamaron" y el premio
+  sin dueño. "Rehacer el sorteo de los que no reclamaron" sortea solo esos nombres, por esos
+  premios; los que ya ganaron no vuelven a entrar. Se puede repescar cuantas veces haga falta.
+- Cada tanda arranca de cero: salir en el sorteo de premios no saca a nadie del de la bici.
+- Cada tirada resuelve un **slot** (puesto 1..total_sorteos) y vale el ultimo resultado de ese
+  slot. Es lo que garantiza que ningun premio se pierda al repescar en cualquier orden.
+
+**Sin internet** (`lib/sorteosLocal.ts`): el dia del evento no hay wifi. Al abrir el panel con
+conexion se precarga todo (sorteos, premios, resultados e inscriptos) en el dispositivo; despues
+el azar se tira en el telefono y cada tirada se guarda local con su UUID y se sube sola al volver
+la señal (upsert: reintentar no duplica). `/admin/sorteos` es la **unica** ruta de /admin que el
+Service Worker cachea (`IGUAL_SE_GUARDA` en `public/sw.js`), para que la pantalla abra sin red.
+**Prohibido** agregar al bolillero algo que necesite servidor en el momento (una RPC para sortear,
+validaciones online): el sorteo se hace en el escenario, sin señal.
 
 ### Flujo de Correos (Gmail API)
 

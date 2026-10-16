@@ -8,6 +8,7 @@ const AboutTeam = dynamic(() => import("@/components/home/AboutTeam"), { ssr: tr
 const RemeraSection = dynamic(() => import("@/components/remera/RemeraSection"), { ssr: true })
 const RouteMap = dynamic(() => import("@/components/home/RouteMap"), { ssr: true })
 const Gallery = dynamic(() => import("@/components/home/Gallery"), { ssr: true })
+const Sorteos = dynamic(() => import("@/components/home/Sorteos"), { ssr: true })
 const Sponsors = dynamic(() => import("@/components/home/Sponsors"), { ssr: true })
 const Alojamientos = dynamic(() => import("@/components/home/Alojamientos"), { ssr: true })
 const CallToAction = dynamic(() => import("@/components/home/CallToAction"), { ssr: true })
@@ -31,6 +32,7 @@ export default async function Home() {
       <RemeraSection />
       <RouteMap />
       <Gallery images={teamPhotos} fotografos={fotografos} />
+      <Sorteos />
       <Sponsors />
       <Alojamientos />
       <CallToAction />

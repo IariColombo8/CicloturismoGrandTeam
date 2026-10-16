@@ -23,6 +23,7 @@ import {
   BedDouble,
   UserCog,
   Mail,
+  Ticket,
   LucideIcon,
 } from "lucide-react"
 import { useAdminLayout } from "./AdminLayoutContext"
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { href: "/admin/grandteam", label: "Grand Team", icon: Users },
   { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
   { href: "/admin/alojamientos", label: "Alojamientos", icon: BedDouble },
+  { href: "/admin/sorteos", label: "Sorteos", icon: Ticket },
   { href: "/admin/galeria", label: "Galeria", icon: Images },
   { href: "/admin/usuarios", label: "Usuarios y Roles", icon: UserCog },
   { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },

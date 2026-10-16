@@ -23,6 +23,7 @@ import {
   UserCog,
   Settings,
   Mail,
+  Ticket,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
@@ -156,6 +157,7 @@ export default function Navbar() {
     { id: "galeria", label: "Galería" },
     { id: "patrocinadores", label: "Sponsors" },
     { id: "alojamientos", label: "Alojamientos" },
+    { id: "sorteos", label: "Sorteos" },
     { id: "pedir-remera", label: "Pedir Remera" },
     { id: "contacto", label: "Contacto" },
   ], [])
@@ -182,6 +184,7 @@ export default function Navbar() {
       { href: "/admin/grandteam", label: "Grand Team", icon: Users },
       { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
       { href: "/admin/alojamientos", label: "Alojamientos", icon: BedDouble },
+      { href: "/admin/sorteos", label: "Sorteos", icon: Ticket },
       { href: "/admin/galeria", label: "Galeria", icon: Images },
       { href: "/admin/usuarios", label: "Usuarios y Roles", icon: UserCog },
       { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },

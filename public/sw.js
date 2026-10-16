@@ -30,9 +30,17 @@ const BASICOS = ["/offline.html"]
 // Nunca se guardan: datos que tienen que ser frescos o privados.
 const NUNCA_CACHEAR = [/^\/api\//, /^\/admin/, /^\/login/, /^\/auth/]
 
+// Excepcion al bloqueo de /admin: el panel de sorteos tiene que abrir el dia
+// del evento aunque no haya señal. Lo que se guarda es la pagina vacia (el
+// shell) y sus archivos JS; los nombres y los premios los precarga la propia
+// pagina en el telefono (lib/sorteosLocal.ts).
+const IGUAL_SE_GUARDA = [/^\/admin\/sorteos/]
+
 const esGet = (req) => req.method === "GET"
 const mismoOrigen = (url) => url.origin === self.location.origin
-const prohibido = (url) => NUNCA_CACHEAR.some((re) => re.test(url.pathname))
+const prohibido = (url) =>
+  !IGUAL_SE_GUARDA.some((re) => re.test(url.pathname)) &&
+  NUNCA_CACHEAR.some((re) => re.test(url.pathname))
 
 self.addEventListener("install", (event) => {
   // Primero lo importante: tomar el control sin esperar a que se cierren las

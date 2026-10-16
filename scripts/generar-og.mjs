@@ -49,6 +49,13 @@ const PAGINAS = [
     ancho: 400,
   },
   {
+    archivo: "sorteos.png",
+    titulo: "SORTEOS",
+    bajada: "Premios para los inscriptos",
+    detalle: "Mirá los premios y los ganadores de cada sorteo",
+    imagen: "logo.png",
+  },
+  {
     archivo: "contacto.png",
     titulo: "CONTACTO",
     bajada: "¿Tenés dudas sobre el cicloturismo?",

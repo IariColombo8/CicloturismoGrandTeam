@@ -28,6 +28,12 @@ const PAGINAS = [
     imagen: "/og/remera.png",
   },
   {
+    ruta: "/sorteos",
+    titulo: /sorteos y ganadores/i,
+    descripcion: /premios que sorteamos entre todos los inscriptos/i,
+    imagen: "/og/sorteos.png",
+  },
+  {
     ruta: "/contacto",
     titulo: /contacto/i,
     descripcion: /escribinos y te respondemos/i,
