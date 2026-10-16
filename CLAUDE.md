@@ -40,7 +40,7 @@ npm run test:e2e    # E2E: levanta el dev server en el puerto 3100
 npm run test:e2e:ui # E2E en modo interactivo
 ```
 
-Hay tests con Playwright: 114 unitarios (`e2e/unit/**`, logica pura) y 235 E2E
+Hay tests con Playwright: 120 unitarios (`e2e/unit/**`, logica pura) y 235 E2E
 (`e2e/**`), que incluyen el recorrido completo de la inscripcion en un Pixel 5 y
 en un iPhone 13 (WebKit), y un barrido de 8 paginas publicas en 5 anchos de
 pantalla. **Correr `npm run test` antes de tocar la inscripcion o el formulario
@@ -142,7 +142,10 @@ public.sorteos               -> nombre, descripcion, total_sorteos, estado, publ
                                 incluir_participantes UUID[], solo_confirmados, solo_acreditados
   Una tanda de sorteo ("Sorteo de premios", "La bici"). RLS: SELECT publico solo si publico=true,
   ALL solo admin/grandteam. El rol anon no tiene permiso sobre las columnas de exclusiones.
-public.sorteo_premios        -> sorteo_id, nombre, descripcion, imagen_url, cantidad, visible, orden
+public.sorteo_premios        -> sorteo_id, nombre, descripcion, imagen_url, cantidad, visible, orden,
+                                nivel ("principal" | "segundo" | "otro")
+  nivel = jerarquia en la web (mejor premio / segundo / otros). Solo cambia como se
+    MUESTRA en /sorteos; el orden en que se sortea lo sigue dando `orden`.
 public.sorteo_resultados     -> sorteo_id, premio_id, premio_nombre, orden, slot, ronda, vuelta,
                                 participante_id, nombre, localidad, grupo, estado, resuelto_en
   estado: "pendiente" (esperando reclamo) | "reclamado" | "no_reclamo"
@@ -181,7 +184,7 @@ de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual
 /contacto                    -> Pagina de contacto
 /login                       -> Login admin (Supabase Auth / Google OAuth)
 /grand-team                  -> Pagina Grand Team (dashboard publico)
-/sorteos                     -> Premios que se sortean y ganadores (en vivo)
+/sorteos                     -> Pagina unica de los sorteos: premios por jerarquia y ganadores (en vivo)
 /grand-team/dashboard        -> Stats Grand Team
 ```
 
@@ -289,6 +292,15 @@ Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam
 
 Detalle completo en **`docs/sorteos.md`**. Dos partes: `/admin/sorteos` (pestañas
 "Sortear" y "Configuracion") y `/sorteos` (premios y ganadores, publico y en vivo).
+
+**Los sorteos viven en una sola pagina** (`/sorteos`, en el menu "Detalles"): la home ya no
+tiene seccion de sorteos, porque la misma cosa se contaba dos veces y a medias.
+
+Cada premio tiene una **jerarquia** (`sorteo_premios.nivel`: mejor premio / segundo / otros) que
+el panel elige con los botones "Lugar en la web". La pagina muestra el mejor grande arriba, el
+segundo abajo y el resto en grilla (`premiosPorNivel()` en `lib/sorteos.ts`). **La jerarquia no
+cambia el orden en que se sortea** (eso es `orden`, las flechas del editor): asi se puede mostrar
+la bici primera y sortearla al final. Hay test que lo fija.
 
 Reglas del bolillero, todas en `lib/sorteos.ts` (puro, cubierto por `e2e/unit/sorteos.spec.ts`):
 

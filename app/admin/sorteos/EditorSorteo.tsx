@@ -15,18 +15,23 @@ import {
   Gift,
   ImageIcon,
   Loader2,
+  Medal,
   Plus,
   Save,
   Trash2,
+  Trophy,
   Users,
   X,
 } from "lucide-react"
 import {
   claveTexto,
+  nivelDePremio,
   participantesElegibles,
   tiradasDePremios,
+  NIVELES_PREMIO,
   PREMIO_PLACEHOLDER,
   type FilaParticipante,
+  type NivelPremio,
   type Premio,
   type Sorteo,
 } from "@/lib/sorteos"
@@ -36,6 +41,13 @@ import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
 import SelectorPersonas from "./SelectorPersonas"
 
 type SorteoEditable = Omit<Sorteo, "id"> & { id?: string }
+
+/** Icono de cada jerarquia, para reconocerla de un golpe de vista. */
+const ICONO_NIVEL: Record<NivelPremio, typeof Trophy> = {
+  principal: Trophy,
+  segundo: Medal,
+  otro: Gift,
+}
 
 const SORTEO_VACIO: SorteoEditable = {
   nombre: "",
@@ -508,6 +520,12 @@ export default function EditorSorteo({
                   No hace falta cargarlos todos: con los más importantes alcanza. Las tiradas sin
                   premio cargado se anuncian como “Premio N”.
                 </p>
+                <p className="text-xs text-zinc-500">
+                  <span className="text-yellow-400/80">Lugar en la web</span> es cómo se ven en{" "}
+                  <span className="font-mono">/sorteos</span>: el mejor premio va grande arriba, el
+                  segundo abajo y el resto en grilla. No cambia el orden en que se sortean, que lo
+                  dan las flechas.
+                </p>
 
                 {listaPremios.length === 0 ? (
                   <p className="py-4 text-center text-sm text-zinc-500">Todavía no cargaste premios.</p>
@@ -614,6 +632,32 @@ export default function EditorSorteo({
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
+                          </div>
+
+                          {/* Jerarquia: donde se muestra en la pagina publica */}
+                          <div className="flex flex-wrap items-center gap-1.5 border-t border-zinc-800 pt-2">
+                            <span className="mr-1 text-xs text-zinc-500">Lugar en la web:</span>
+                            {NIVELES_PREMIO.map((opcion) => {
+                              const activo = nivelDePremio(premio) === opcion.nivel
+                              const Icono = ICONO_NIVEL[opcion.nivel]
+                              return (
+                                <button
+                                  key={opcion.nivel}
+                                  type="button"
+                                  onClick={() => actualizarPremio(premio.id, { nivel: opcion.nivel })}
+                                  aria-pressed={activo}
+                                  className={[
+                                    "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors",
+                                    activo
+                                      ? "border-yellow-400 bg-yellow-400/15 text-yellow-300"
+                                      : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400",
+                                  ].join(" ")}
+                                >
+                                  <Icono className="h-3 w-3" aria-hidden="true" />
+                                  {opcion.etiqueta}
+                                </button>
+                              )
+                            })}
                           </div>
                         </div>
                       </li>

@@ -4,8 +4,11 @@ import {
   estadoBolillero,
   etiquetaPremio,
   ganadores,
+  nivelDePremio,
   participantesElegibles,
   planDePremios,
+  premiosOrdenados,
+  premiosPorNivel,
   prepararTirada,
   slotsSinReclamar,
   slotsSinTirar,
@@ -15,6 +18,7 @@ import {
   VUELTA_SORTEO,
   type Candidato,
   type FilaParticipante,
+  type NivelPremio,
   type Premio,
   type Resultado,
   type Sorteo,
@@ -146,8 +150,13 @@ test.describe("participantesElegibles", () => {
 // Premios
 // ──────────────────────────────────────────────────────────────
 
-test.describe("planDePremios", () => {
-  const premio = (id: string, orden: number, cantidad = 1): Premio => ({
+function premioCon(
+  id: string,
+  orden: number,
+  cantidad = 1,
+  nivel: NivelPremio = "otro",
+): Premio {
+  return {
     id,
     sorteo_id: "s1",
     nombre: id,
@@ -156,7 +165,12 @@ test.describe("planDePremios", () => {
     cantidad,
     visible: true,
     orden,
-  })
+    nivel,
+  }
+}
+
+test.describe("planDePremios", () => {
+  const premio = premioCon
 
   test("reparte cada premio tantas veces como su cantidad", () => {
     const plan = planDePremios([premio("gorra", 0, 2), premio("bidon", 1)], 4)
@@ -174,6 +188,65 @@ test.describe("planDePremios", () => {
     const plan = planDePremios([premio("a", 0, 5)], 2)
     expect(plan).toHaveLength(2)
     expect(tiradasDePremios([premio("a", 0, 5)])).toBe(5)
+  })
+
+  test("la jerarquia de la web no cambia el orden del sorteo", () => {
+    // La bici se muestra primera pero se sortea al final: son dos cosas
+    // distintas y el plan tiene que seguir las flechas (`orden`).
+    const plan = planDePremios(
+      [premioCon("bidon", 0), premioCon("bici", 1, 1, "principal")],
+      2,
+    )
+    expect(plan.map((p) => p?.nombre)).toEqual(["bidon", "bici"])
+  })
+})
+
+// ──────────────────────────────────────────────────────────────
+// Jerarquia de los premios en la pagina publica
+// ──────────────────────────────────────────────────────────────
+
+test.describe("premiosPorNivel", () => {
+  test("agrupa del mejor premio al resto y respeta el orden adentro", () => {
+    const bloques = premiosPorNivel([
+      premioCon("gorra", 2),
+      premioCon("bici", 5, 1, "principal"),
+      premioCon("casco", 1, 1, "segundo"),
+      premioCon("bidon", 0),
+    ])
+
+    expect(bloques.map((b) => b.nivel)).toEqual(["principal", "segundo", "otro"])
+    expect(bloques[2].premios.map((p) => p.nombre)).toEqual(["bidon", "gorra"])
+  })
+
+  test("no devuelve bloques vacios: un titulo sin premios se ve peor que nada", () => {
+    const bloques = premiosPorNivel([premioCon("bici", 0, 1, "principal")])
+    expect(bloques).toHaveLength(1)
+    expect(bloques[0].titulo).toBe("El mejor premio")
+  })
+
+  test("el titulo pasa a plural cuando hay varios", () => {
+    const bloques = premiosPorNivel([
+      premioCon("bici", 0, 1, "principal"),
+      premioCon("rodillo", 1, 1, "principal"),
+    ])
+    expect(bloques[0].titulo).toBe("Los mejores premios")
+  })
+
+  test("un premio viejo sin nivel cae en 'otros' y no se pierde", () => {
+    // Los premios cargados antes de la columna, y las copias guardadas en el
+    // telefono para el dia del evento, vienen sin `nivel`.
+    const viejo = { ...premioCon("gorra", 0), nivel: undefined } as unknown as Premio
+    expect(nivelDePremio(viejo)).toBe("otro")
+
+    const bloques = premiosPorNivel([viejo])
+    expect(bloques).toHaveLength(1)
+    expect(bloques[0].premios.map((p) => p.nombre)).toEqual(["gorra"])
+  })
+
+  test("un nivel desconocido no rompe la pagina", () => {
+    const raro = { ...premioCon("misterio", 0), nivel: "lo-que-sea" } as unknown as Premio
+    expect(nivelDePremio(raro)).toBe("otro")
+    expect(premiosOrdenados([raro])).toHaveLength(1)
   })
 })
 

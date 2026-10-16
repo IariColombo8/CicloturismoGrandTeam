@@ -29,6 +29,13 @@ import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { usePathname, useRouter } from "next/navigation"
 
+/** Item del menu: seccion de la portada (`id`) o pagina propia (`href`). */
+interface EnlaceNav {
+  id: string
+  label: string
+  href?: string
+}
+
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -150,14 +157,16 @@ export default function Navbar() {
     { id: "inicio", label: "Inicio" },
   ], [])
 
-  // Sub-secciones agrupadas bajo el dropdown "Detalles"
-  const detailsLinks = useMemo(() => [
+  // Sub-secciones agrupadas bajo el dropdown "Detalles". Las que tienen `href`
+  // son paginas propias (los sorteos tienen la suya, con todos los premios);
+  // el resto son secciones de la portada.
+  const detailsLinks = useMemo<EnlaceNav[]>(() => [
     { id: "nosotros", label: "Sobre Nosotros" },
     { id: "detalles", label: "Mapa" },
     { id: "galeria", label: "Galería" },
     { id: "patrocinadores", label: "Sponsors" },
     { id: "alojamientos", label: "Alojamientos" },
-    { id: "sorteos", label: "Sorteos" },
+    { id: "sorteos", label: "Sorteos", href: "/sorteos" },
     { id: "pedir-remera", label: "Pedir Remera" },
     { id: "contacto", label: "Contacto" },
   ], [])
@@ -217,6 +226,38 @@ export default function Navbar() {
     )
   }
 
+  // Item de los dropdowns (desktop y mobile): un link de pagina si trae `href`,
+  // si no el salto a la seccion de la portada. Unica fuente de markup para que
+  // agregar una pagina al menu sea cambiar una sola linea en la lista.
+  const renderDropdownItem = (link: EnlaceNav, className: string) =>
+    link.href ? (
+      <Link
+        key={link.id}
+        href={link.href}
+        onClick={() => {
+          setIsMobileMenuOpen(false)
+          setOpenDropdown(null)
+        }}
+        className={className}
+      >
+        {link.label}
+      </Link>
+    ) : (
+      <a
+        key={link.id}
+        href={`/#${link.id}`}
+        onClick={(e) => handleSectionClick(e, link.id)}
+        className={className}
+      >
+        {link.label}
+      </a>
+    )
+
+  const CLASE_ITEM_DESKTOP =
+    "block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
+  const CLASE_ITEM_MOBILE =
+    "block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
+
   const renderMobileLink = (link: { id: string; label: string }) => {
     const active = isLinkActive(link.id)
     return (
@@ -269,16 +310,7 @@ export default function Navbar() {
                     isOpen={openDropdown === "inicio"}
                     onToggle={() => toggleDropdown("inicio")}
                   >
-                    {flatSectionLinks.map((link) => (
-                      <a
-                        key={link.id}
-                        href={`/#${link.id}`}
-                        onClick={(e) => handleSectionClick(e, link.id)}
-                        className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
-                      >
-                        {link.label}
-                      </a>
-                    ))}
+                    {flatSectionLinks.map((link) => renderDropdownItem(link, CLASE_ITEM_DESKTOP))}
                   </DropdownMenu>
 
                   <DropdownMenu
@@ -311,16 +343,7 @@ export default function Navbar() {
                     isOpen={openDropdown === "detalles"}
                     onToggle={() => toggleDropdown("detalles")}
                   >
-                    {detailsLinks.map((link) => (
-                      <a
-                        key={link.id}
-                        href={`/#${link.id}`}
-                        onClick={(e) => handleSectionClick(e, link.id)}
-                        className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
-                      >
-                        {link.label}
-                      </a>
-                    ))}
+                    {detailsLinks.map((link) => renderDropdownItem(link, CLASE_ITEM_DESKTOP))}
                   </DropdownMenu>
 
                   <DropdownMenu
@@ -352,16 +375,7 @@ export default function Navbar() {
                     isOpen={openDropdown === "detalles"}
                     onToggle={() => toggleDropdown("detalles")}
                   >
-                    {detailsLinks.map((link) => (
-                      <a
-                        key={link.id}
-                        href={`/#${link.id}`}
-                        onClick={(e) => handleSectionClick(e, link.id)}
-                        className="block px-4 py-3 text-gray-300 hover:bg-yellow-400/10 hover:text-yellow-400 transition-colors"
-                      >
-                        {link.label}
-                      </a>
-                    ))}
+                    {detailsLinks.map((link) => renderDropdownItem(link, CLASE_ITEM_DESKTOP))}
                   </DropdownMenu>
                 </>
               )}
@@ -467,16 +481,7 @@ export default function Navbar() {
                   isOpen={openDropdown === "inicio"}
                   onToggle={() => toggleDropdown("inicio")}
                 >
-                  {flatSectionLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
+                  {flatSectionLinks.map((link) => renderDropdownItem(link, CLASE_ITEM_MOBILE))}
                 </MobileDropdown>
 
                 {adminLinks.map((link) => {
@@ -502,16 +507,7 @@ export default function Navbar() {
                   isOpen={openDropdown === "detalles"}
                   onToggle={() => toggleDropdown("detalles")}
                 >
-                  {detailsLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
+                  {detailsLinks.map((link) => renderDropdownItem(link, CLASE_ITEM_MOBILE))}
                 </MobileDropdown>
 
                 <MobileDropdown
@@ -543,16 +539,7 @@ export default function Navbar() {
                   isOpen={openDropdown === "detalles"}
                   onToggle={() => toggleDropdown("detalles")}
                 >
-                  {detailsLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={`/#${link.id}`}
-                      onClick={(e) => handleSectionClick(e, link.id)}
-                      className="block text-gray-400 hover:text-yellow-400 py-2 transition-colors text-sm pl-8"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
+                  {detailsLinks.map((link) => renderDropdownItem(link, CLASE_ITEM_MOBILE))}
                 </MobileDropdown>
               </>
             )}

@@ -8,7 +8,6 @@ const AboutTeam = dynamic(() => import("@/components/home/AboutTeam"), { ssr: tr
 const RemeraSection = dynamic(() => import("@/components/remera/RemeraSection"), { ssr: true })
 const RouteMap = dynamic(() => import("@/components/home/RouteMap"), { ssr: true })
 const Gallery = dynamic(() => import("@/components/home/Gallery"), { ssr: true })
-const Sorteos = dynamic(() => import("@/components/home/Sorteos"), { ssr: true })
 const Sponsors = dynamic(() => import("@/components/home/Sponsors"), { ssr: true })
 const Alojamientos = dynamic(() => import("@/components/home/Alojamientos"), { ssr: true })
 const CallToAction = dynamic(() => import("@/components/home/CallToAction"), { ssr: true })
@@ -31,8 +30,9 @@ export default async function Home() {
       <AboutTeam />
       <RemeraSection />
       <RouteMap />
+      {/* Los sorteos tienen su propia pagina (/sorteos), linkeada desde el menu:
+          los premios y los ganadores en vivo no entraban en un adelanto. */}
       <Gallery images={teamPhotos} fotografos={fotografos} />
-      <Sorteos />
       <Sponsors />
       <Alojamientos />
       <CallToAction />

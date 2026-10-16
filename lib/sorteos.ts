@@ -33,6 +33,16 @@ export interface Sorteo {
   solo_acreditados: boolean
 }
 
+/**
+ * Jerarquia del premio en la pagina publica: el mejor, el segundo y el resto.
+ *
+ * Solo cambia como se MUESTRA (el mejor grande arriba, los otros en grilla).
+ * El orden en que se sortea lo sigue mandando `orden`, con las flechas del
+ * panel: son dos cosas distintas y mezclarlas dejaria al admin sin poder
+ * elegir, por ejemplo, sortear la bici al final y mostrarla primera.
+ */
+export type NivelPremio = "principal" | "segundo" | "otro"
+
 export interface Premio {
   id: string
   sorteo_id: string
@@ -42,6 +52,81 @@ export interface Premio {
   cantidad: number
   visible: boolean
   orden: number
+  nivel: NivelPremio
+}
+
+export interface NivelPremioInfo {
+  nivel: NivelPremio
+  /** Lo que elige el admin en el panel. */
+  etiqueta: string
+  /** Titulo del bloque en la web cuando hay uno solo. */
+  titulo: string
+  /** Titulo del bloque cuando hay varios. */
+  tituloPlural: string
+}
+
+/** Los tres niveles, del mas importante al resto (este es el orden de la web). */
+export const NIVELES_PREMIO: NivelPremioInfo[] = [
+  {
+    nivel: "principal",
+    etiqueta: "Mejor premio",
+    titulo: "El mejor premio",
+    tituloPlural: "Los mejores premios",
+  },
+  {
+    nivel: "segundo",
+    etiqueta: "Segundo premio",
+    titulo: "El segundo premio",
+    tituloPlural: "Los segundos premios",
+  },
+  {
+    nivel: "otro",
+    etiqueta: "Otros premios",
+    titulo: "Otro premio",
+    tituloPlural: "Otros premios",
+  },
+]
+
+const PESO_NIVEL: Record<NivelPremio, number> = { principal: 0, segundo: 1, otro: 2 }
+
+/**
+ * Nivel de un premio, tolerante: los premios cargados antes de que existiera
+ * la columna (y las copias guardadas en el telefono para el dia del evento)
+ * vienen sin nivel y son "otros premios".
+ */
+export function nivelDePremio(premio: { nivel?: string | null } | null | undefined): NivelPremio {
+  const nivel = premio?.nivel
+  return nivel === "principal" || nivel === "segundo" ? nivel : "otro"
+}
+
+/** Premios como se muestran en la web: primero los mejores, despues por orden. */
+export function premiosOrdenados(premios: Premio[]): Premio[] {
+  return [...premios].sort(
+    (a, b) =>
+      PESO_NIVEL[nivelDePremio(a)] - PESO_NIVEL[nivelDePremio(b)] ||
+      a.orden - b.orden ||
+      a.nombre.localeCompare(b.nombre),
+  )
+}
+
+export interface BloquePremios {
+  nivel: NivelPremio
+  /** Titulo ya resuelto en singular o plural. */
+  titulo: string
+  premios: Premio[]
+}
+
+/**
+ * Los premios agrupados por jerarquia para la pagina publica.
+ *
+ * Los niveles vacios no vuelven: un titulo "Segundo premio" sin nada abajo se
+ * ve peor que no tener el bloque.
+ */
+export function premiosPorNivel(premios: Premio[]): BloquePremios[] {
+  return NIVELES_PREMIO.map(({ nivel, titulo, tituloPlural }) => {
+    const propios = premiosOrdenados(premios.filter((p) => nivelDePremio(p) === nivel))
+    return { nivel, titulo: propios.length === 1 ? titulo : tituloPlural, premios: propios }
+  }).filter((bloque) => bloque.premios.length > 0)
 }
 
 export interface Resultado {

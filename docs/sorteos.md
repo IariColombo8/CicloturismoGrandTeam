@@ -72,6 +72,21 @@ tiradas sin premio cargado se anuncian como "Premio N".
 Las fotos se suben con `POST /api/sorteos/upload-imagen` al bucket `sponsors`,
 carpeta `sorteos/`.
 
+### Jerarquía ("lugar en la web")
+
+Cada premio es **mejor premio**, **segundo premio** u **otro premio**
+(`sorteo_premios.nivel`), y `/sorteos` los muestra en ese orden: el mejor
+grande arriba, el segundo abajo y el resto en grilla. Sin esto, una grilla de
+iguales no dejaba ver cuál era el premio importante.
+
+**No cambia el orden en que se sortean**, que lo siguen dando las flechas
+(`orden`): así se puede mostrar la bici primera y sortearla al final. Está
+cubierto por un test, porque es justo lo que se rompe sin darse cuenta.
+
+Los premios cargados antes de que existiera la columna —y las copias guardadas
+en el teléfono para el día del evento— vienen sin `nivel`: `nivelDePremio()` los
+cuenta como "otros" en vez de hacerlos desaparecer de la página.
+
 ## Sin internet (importante)
 
 El día del evento no hay wifi. La configuración se hace antes, con conexión; el
@@ -97,13 +112,17 @@ La barra espaciadora también sortea: en el escenario se usa con una mano.
 
 ## Página pública
 
-`/sorteos` muestra, de las tandas marcadas **públicas**: la descripción, los
-premios visibles y los ganadores que reclamaron. Se actualiza en vivo (canal
-realtime de `sorteo_resultados`), así la gente lo sigue desde el celular.
+Los sorteos tienen **una página propia y nada más**: `/sorteos`, linkeada desde
+"Detalles → Sorteos" en el menú. Antes había además un adelanto en la home, y
+entre las dos vistas la misma cosa se contaba dos veces y a medias.
 
-La home tiene además una sección corta (`components/home/Sorteos.tsx`,
-`#sorteos`) con un adelanto de los premios y los últimos ganadores, que no se
-renderiza si no hay nada publicado.
+Muestra, de las tandas marcadas **públicas**: la descripción, los premios
+visibles agrupados por jerarquía y los ganadores que reclamaron. Se actualiza en
+vivo (canal realtime de `sorteo_resultados`), así la gente lo sigue desde el
+celular mientras se sortea.
+
+Si no hay nada publicado la página no queda vacía: dice que todavía no se
+publicaron los sorteos y lleva a inscribirse.
 
 ### Qué se publica y qué no
 
@@ -119,13 +138,15 @@ quién se dejó afuera).
 public.sorteos            -> nombre, descripcion, total_sorteos, estado, publico, orden,
                              excluir_grupos TEXT[], excluir_participantes UUID[],
                              incluir_participantes UUID[], solo_confirmados, solo_acreditados
-public.sorteo_premios     -> sorteo_id, nombre, descripcion, imagen_url, cantidad, visible, orden
+public.sorteo_premios     -> sorteo_id, nombre, descripcion, imagen_url, cantidad, visible, orden,
+                             nivel: "principal" | "segundo" | "otro" (jerarquia en la web)
 public.sorteo_resultados  -> sorteo_id, premio_id, premio_nombre, orden, slot, ronda, vuelta,
                              participante_id, nombre, localidad, grupo, estado, resuelto_en
   estado: "pendiente" (esperando respuesta) | "reclamado" | "no_reclamo"
 ```
 
-Migración: `supabase/migrations/20261015_sorteos.sql`.
+Migraciones: `supabase/migrations/20261015_sorteos.sql` y
+`20261016_premio_nivel.sql` (la columna `nivel`).
 
 ## Archivos
 
@@ -138,7 +159,6 @@ Migración: `supabase/migrations/20261015_sorteos.sql`.
 | `app/admin/sorteos/Bolillero.tsx` | La pantalla del escenario. |
 | `app/admin/sorteos/EditorSorteo.tsx` | Configuración de la tanda y sus premios. |
 | `app/admin/sorteos/SelectorPersonas.tsx` | Buscador de inscriptos para las listas. |
-| `app/sorteos/page.tsx` | Página pública (premios + ganadores, en vivo). |
-| `components/home/Sorteos.tsx` | Sección de la landing. |
+| `app/sorteos/page.tsx` | La única página pública (premios por jerarquía + ganadores en vivo). |
 | `app/api/sorteos/upload-imagen/route.ts` | Subida de fotos de premios. |
-| `e2e/unit/sorteos.spec.ts` | 23 tests de las reglas del bolillero. |
+| `e2e/unit/sorteos.spec.ts` | Tests de las reglas del bolillero y de la jerarquía. |
