@@ -46,7 +46,9 @@ export default function PaymentStep({
   estadoComprobante = "vacio",
   avisoComprobante = "",
 }: PaymentStepProps) {
-  const [fileName, setFileName] = useState<string>("")
+  // Si el comprobante ya estaba cargado (volver al paso o borrador restaurado)
+  // mostramos su nombre en vez de pedirlo de nuevo.
+  const [fileName, setFileName] = useState<string>(formData.comprobanteFile?.name || "")
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   // Cualquier dato copiable (alias, CBU, etc.). Tomó un id local para feedback.

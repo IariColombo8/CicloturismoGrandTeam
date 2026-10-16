@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { prepararComprobante, type ComprobantePreparado } from "@/lib/inscripcion/comprobante"
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw, WifiOff } from "lucide-react"
 import PersonalInfoStep from "@/components/inscripcion/PersonalInfoStep"
 import CategoryStep from "@/components/inscripcion/CategoryStep"
 import PaymentStep from "@/components/inscripcion/PaymentStep"
@@ -28,6 +28,44 @@ import { DATOS_TRANSFERENCIA_VACIOS, datosDesdeEvento } from "@/lib/transferenci
 const DRAFT_KEY = "inscripcion-draft-v2"
 const LEGACY_DRAFT_KEY = "inscripcion-draft-v1"
 const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14 // 14 días
+// El comprobante se guarda aparte (ya comprimido, como Data URL) para poder
+// retomar en el paso 3/4 sin volver a adjuntarlo. Si no entra en el quota de
+// localStorage (ej. PDF pesado) simplemente no se guarda.
+const DRAFT_COMPROBANTE_KEY = "inscripcion-draft-comprobante-v1"
+
+type ComprobanteGuardado = { name: string; dataUrl: string }
+
+function saveComprobanteDraft(data: ComprobanteGuardado) {
+  try {
+    localStorage.setItem(DRAFT_COMPROBANTE_KEY, JSON.stringify(data))
+  } catch {
+    try {
+      localStorage.removeItem(DRAFT_COMPROBANTE_KEY)
+    } catch {}
+  }
+}
+
+function clearComprobanteDraft() {
+  try {
+    localStorage.removeItem(DRAFT_COMPROBANTE_KEY)
+  } catch {}
+}
+
+function loadComprobanteDraft(): File | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_COMPROBANTE_KEY)
+    if (!raw) return null
+    const { name, dataUrl } = JSON.parse(raw) as ComprobanteGuardado
+    const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl || "")
+    if (!match) return null
+    const bin = atob(match[2])
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return new File([bytes], name || "comprobante", { type: match[1] })
+  } catch {
+    return null
+  }
+}
 
 const defaultFormData = {
   // Personal Info
@@ -124,6 +162,8 @@ export default function InscripcionPage() {
   const [buscandoDNI, setBuscandoDNI] = useState(false)
   const ultimoDniBuscadoRef = useRef<string>("")
   const [gruposGuardados, setGruposGuardados] = useState<string[]>([])
+  // Arranca en true para no romper la hidratación; se corrige en el mount.
+  const [isOnline, setIsOnline] = useState(true)
 
   // El comprobante se comprime apenas se elige, mientras la persona sigue
   // llenando el formulario. Así el envío no espera nada y una foto de 20 MB
@@ -150,6 +190,7 @@ export default function InscripcionPage() {
       comprobanteRef.current = null
       setEstadoComprobante("vacio")
       setAvisoComprobante("")
+      clearComprobanteDraft()
       return
     }
 
@@ -161,6 +202,9 @@ export default function InscripcionPage() {
     tarea.then((resultado) => {
       // Si mientras tanto eligió otro archivo, ese manda.
       if (comprobanteRef.current !== tarea) return
+      // Se guarda ya comprimido junto al borrador: si se corta internet o
+      // cierra la pestaña, al retomar no tiene que volver a adjuntarlo.
+      if (resultado.base64) saveComprobanteDraft({ name: file.name, dataUrl: resultado.base64 })
       setAvisoComprobante(resultado.motivo)
       setEstadoComprobante(resultado.motivo ? "aviso" : "listo")
     })
@@ -224,11 +268,19 @@ export default function InscripcionPage() {
     const draft = loadDraft()
     canPersistDraftRef.current = true
     if (draft) {
-      setFormData(draft.data)
-      setCurrentStep(draft.step)
+      const comprobante = loadComprobanteDraft()
+      if (comprobante) elegirComprobante(comprobante)
+      // Sin comprobante no se puede pasar del paso 3: lo dejamos ahí para
+      // que lo vuelva a adjuntar en vez de mandarlo a un paso 4 que falla.
+      const step = !comprobante && draft.step > 3 ? 3 : draft.step
+      setFormData({ ...draft.data, comprobanteFile: comprobante })
+      setCurrentStep(step)
       toast({
         title: "Borrador restaurado",
-        description: "Continuamos donde lo dejaste. Revisá los datos antes de enviar.",
+        description:
+          step === 3 && !comprobante
+            ? "Continuamos donde lo dejaste. Volvé a adjuntar el comprobante de pago para seguir."
+            : "Continuamos donde lo dejaste. Revisá los datos antes de enviar.",
       })
     }
     setHasDraft(null)
@@ -239,6 +291,7 @@ export default function InscripcionPage() {
       localStorage.removeItem(DRAFT_KEY)
       localStorage.removeItem(LEGACY_DRAFT_KEY)
     } catch {}
+    clearComprobanteDraft()
     canPersistDraftRef.current = true
     setFormData(defaultFormData)
     setCurrentStep(1)
@@ -304,53 +357,73 @@ export default function InscripcionPage() {
     }
   }, [formData.dni, toast])
 
-  useEffect(() => {
-    const loadEventConfig = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("eventos")
-          .select("*")
-          .eq("id", "2026")
-          .maybeSingle()
+  const loadEventConfig = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("eventos")
+        .select("*")
+        .eq("id", "2026")
+        .maybeSingle()
 
-        if (!error && data) {
-          setEventConfig({
-            costoInscripcion: data.costo_inscripcion || 0,
-            aliasTransferencia: data.alias_transferencia || "",
-            datosTransferencia: data.datos_transferencia || "",
-            // Banco / alias / CBU / titular por separado, para la tarjeta con
-            // un boton de copiar en cada dato.
-            transferencia: datosDesdeEvento(data)
-          })
-        }
-      } catch (error) {
-        console.error("Error loading event config:", error)
+      if (!error && data) {
+        setEventConfig({
+          costoInscripcion: data.costo_inscripcion || 0,
+          aliasTransferencia: data.alias_transferencia || "",
+          datosTransferencia: data.datos_transferencia || "",
+          // Banco / alias / CBU / titular por separado, para la tarjeta con
+          // un boton de copiar en cada dato.
+          transferencia: datosDesdeEvento(data)
+        })
       }
+    } catch (error) {
+      console.error("Error loading event config:", error)
     }
-    
+  }, [])
+
+  // Grupos de ciclistas para alimentar el combo autocompletable del paso 2.
+  // Se guardan en content_settings.id = "grupos".
+  const loadGrupos = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("content_settings")
+        .select("data")
+        .eq("id", "grupos")
+        .maybeSingle()
+
+      const lista = (data as { data?: { lista?: string[] } } | null)?.data?.lista
+      if (Array.isArray(lista)) setGruposGuardados(lista)
+    } catch (error) {
+      console.error("Error cargando grupos de ciclistas:", error)
+    }
+  }, [])
+
+  useEffect(() => {
     loadEventConfig()
-  }, [])
-
-  // Grupos de ciclistas cargados una sola vez para alimentar el combo
-  // autocompletable del paso 2. Se guardan en content_settings.id = "grupos".
-  useEffect(() => {
-    const loadGrupos = async () => {
-      try {
-        const { data } = await supabase
-          .from("content_settings")
-          .select("data")
-          .eq("id", "grupos")
-          .maybeSingle()
-
-        const lista = (data as { data?: { lista?: string[] } } | null)?.data?.lista
-        if (Array.isArray(lista)) setGruposGuardados(lista)
-      } catch (error) {
-        console.error("Error cargando grupos de ciclistas:", error)
-      }
-    }
-
     loadGrupos()
-  }, [])
+  }, [loadEventConfig, loadGrupos])
+
+  // Detección de conexión: si la persona empezó sin internet, al volver la
+  // red recargamos la config del evento (precio, alias) y los grupos, que
+  // habían fallado, y le avisamos que ya puede seguir donde quedó.
+  useEffect(() => {
+    setIsOnline(navigator.onLine)
+    const handleOnline = () => {
+      setIsOnline(true)
+      loadEventConfig()
+      loadGrupos()
+      toast({
+        title: "Conexión recuperada",
+        description: "Ya tenés internet. Podés continuar con tu inscripción.",
+      })
+    }
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [loadEventConfig, loadGrupos, toast])
 
   const totalSteps = 4
   const progress = (currentStep / totalSteps) * 100
@@ -548,6 +621,7 @@ export default function InscripcionPage() {
         localStorage.removeItem(DRAFT_KEY)
         localStorage.removeItem(LEGACY_DRAFT_KEY)
       } catch {}
+      clearComprobanteDraft()
 
       if (resultado === "en-cola") {
         // Sin internet no se puede cargar ninguna página: el navegador
@@ -655,6 +729,23 @@ export default function InscripcionPage() {
 
       <div className="container mx-auto px-4 py-24 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
+          {/* Aviso de sin conexión: el borrador se sigue guardando localmente */}
+          {!isOnline && (
+            <div
+              role="status"
+              className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3"
+            >
+              <WifiOff className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <p className="text-red-400 font-semibold text-sm sm:text-base">Estás sin conexión a internet</p>
+                <p className="text-gray-400 text-xs sm:text-sm mt-1">
+                  Podés seguir completando: tus datos se guardan en este dispositivo. Cuando vuelva la conexión vas a
+                  poder enviar la inscripción desde donde quedaste.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Banner de draft existente */}
           {hasDraft && (
             <div className="mb-6 bg-gradient-to-r from-yellow-400/10 to-amber-600/10 border border-yellow-400/30 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
