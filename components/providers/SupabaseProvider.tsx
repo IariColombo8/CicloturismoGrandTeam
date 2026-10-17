@@ -92,7 +92,7 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
       setUser(currentSession?.user ?? null)
 
       if (currentSession?.user) {
-        resolveUserRole(currentSession.user.email)
+        resolveUserRole(currentSession.user.email, currentSession.user)
       } else {
         setUserRole(null)
         setLoading(false)
@@ -112,7 +112,8 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
 
         if (newSession?.user) {
           const email = newSession.user.email
-          setTimeout(() => resolveUserRole(email), 0)
+          const authUser = newSession.user
+          setTimeout(() => resolveUserRole(email, authUser), 0)
         } else {
           lastRoleEmail.current = null
           setUserRole(null)
@@ -129,7 +130,7 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
   // Resolver el rol: usa cache de sessionStorage si esta fresco (el admin
   // no espera el viaje a la base) y evita consultas duplicadas por email.
   // Si hay cache se revalida en segundo plano sin bloquear la UI.
-  const resolveUserRole = (email: string | undefined) => {
+  const resolveUserRole = (email: string | undefined, authUser?: User | null) => {
     if (!email) {
       setUserRole("usuario")
       setLoading(false)
@@ -146,11 +147,42 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Con cache: revalidacion en segundo plano. Sin cache: fetch normal.
-    fetchUserRole(email)
+    fetchUserRole(email, authUser)
+  }
+
+  /**
+   * Vincula la cuenta de Google con la fila de `administradores`.
+   *
+   * Hace falta porque el panel decide que mostrar mirando el EMAIL, y la base
+   * (RLS) decide que se puede guardar mirando `auth_user_id`. Un admin con ese
+   * campo en NULL veia todo el panel y cada guardado le fallaba. Ahora, si al
+   * resolver el rol detectamos que no esta vinculado, lo vinculamos ahi mismo.
+   */
+  const vincularCuenta = async (email: string, authUser: User) => {
+    try {
+      await supabase.rpc("link_auth_user", {
+        p_email: email,
+        p_auth_user_id: authUser.id,
+        p_display_name:
+          (authUser.user_metadata as any)?.full_name ||
+          (authUser.user_metadata as any)?.name ||
+          null,
+        p_photo_url: (authUser.user_metadata as any)?.avatar_url || null,
+        p_login_method: authUser.app_metadata?.provider || "email",
+      })
+    } catch (error) {
+      // No bloquea nada: si falla, el admin ve el panel igual y el error real
+      // aparece recien al guardar, ya explicado.
+      console.error("No se pudo vincular la cuenta con administradores:", error)
+    }
   }
 
   // Obtener rol del usuario desde tabla administradores
-  const fetchUserRole = async (email: string | undefined, retryCount = 0) => {
+  const fetchUserRole = async (
+    email: string | undefined,
+    authUser?: User | null,
+    retryCount = 0,
+  ) => {
     if (!email) {
       setUserRole("usuario")
       setLoading(false)
@@ -160,7 +192,7 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data, error } = await supabase
         .from("administradores")
-        .select("role")
+        .select("role, auth_user_id")
         .eq("email", email)
         .maybeSingle()
 
@@ -171,11 +203,16 @@ export const SupabaseProvider = ({ children }: { children: ReactNode }) => {
         const role = (data as any).role || "usuario"
         setUserRole(role)
         writeRoleCache(email, role)
+
+        // Sin vincular => la base le va a rechazar todo. Se arregla ahora.
+        if (authUser && (data as any).auth_user_id !== authUser.id) {
+          vincularCuenta(email, authUser)
+        }
       } else {
         // No se encontro registro. Puede que link_auth_user aun no termino.
         // Reintentar una vez despues de un breve delay.
         if (retryCount < 1) {
-          setTimeout(() => fetchUserRole(email, retryCount + 1), 1500)
+          setTimeout(() => fetchUserRole(email, authUser, retryCount + 1), 1500)
           return
         }
         setUserRole("usuario")

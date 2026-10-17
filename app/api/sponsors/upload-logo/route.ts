@@ -1,65 +1,33 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase-admin"
+import { subirImagen } from "@/lib/api/subirImagen"
 
+// Logo de sponsor al bucket publico "sponsors" (en la raiz, como siempre).
+// Acepta cualquier imagen: antes solo JPG/PNG de 2MB y cualquier foto de
+// celular quedaba afuera con un error que no explicaba nada.
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
     const file = formData.get("file") as File | null
-    const sponsorName = formData.get("nombre") as string | null
+    const nombre = formData.get("nombre") as string | null
 
     if (!file) {
-      return NextResponse.json({ error: "No se envio archivo" }, { status: 400 })
+      return NextResponse.json({ error: "No llego ningun archivo" }, { status: 400 })
     }
 
-    // Validar tipo de archivo
-    const allowedTypes = ["image/jpeg", "image/png"]
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Formato no permitido. Solo se aceptan archivos JPG o PNG." },
-        { status: 400 }
-      )
+    const resultado = await subirImagen({
+      file,
+      nombre,
+      nombrePorDefecto: "sponsor",
+    })
+
+    if (!resultado.ok) {
+      return NextResponse.json({ error: resultado.error }, { status: resultado.status })
     }
 
-    // Validar tamanio (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: "El archivo es muy grande. Maximo 2MB." },
-        { status: 400 }
-      )
-    }
-
-    const supabase = createAdminClient()
-
-    // Generar nombre unico. Los logos van al bucket publico "sponsors"
-    // (separado de "comprobantes" que es privado y guarda datos sensibles).
-    const ext = file.name.split(".").pop() || "png"
-    const slug = (sponsorName || "sponsor")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-    const path = `${slug}-${Date.now()}.${ext}`
-
-    const buffer = Buffer.from(await file.arrayBuffer())
-
-    const { error: uploadError } = await supabase.storage
-      .from("sponsors")
-      .upload(path, buffer, {
-        contentType: file.type,
-        upsert: true,
-      })
-
-    if (uploadError) {
-      console.error("Error subiendo logo:", uploadError)
-      return NextResponse.json({ error: "Error al subir el archivo" }, { status: 500 })
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("sponsors")
-      .getPublicUrl(path)
-
-    return NextResponse.json({ url: urlData.publicUrl })
+    return NextResponse.json({ url: resultado.url })
   } catch (error) {
     console.error("Error en upload-logo:", error)
-    return NextResponse.json({ error: "Error interno" }, { status: 500 })
+    const detalle = error instanceof Error ? error.message : "error desconocido"
+    return NextResponse.json({ error: `Error del servidor: ${detalle}` }, { status: 500 })
   }
 }

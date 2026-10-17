@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase-admin"
+import { subirImagen } from "@/lib/api/subirImagen"
 
-const TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp", "image/avif"]
-const MAX_BYTES = 6 * 1024 * 1024
-
-// Sube una foto de alojamiento al bucket publico "sponsors" (carpeta alojamientos/).
-// Acepta formatos de foto (no solo logos) y hasta 6MB, igual que la galeria.
+// Foto de alojamiento al bucket publico "sponsors" (carpeta alojamientos/).
+// Declaraba 6MB y WEBP/AVIF, pero el bucket solo aceptaba 2MB de JPG/PNG:
+// el Storage las rechazaba y la pantalla decia "Error al subir la imagen".
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
@@ -13,45 +11,24 @@ export async function POST(req: NextRequest) {
     const nombre = formData.get("nombre") as string | null
 
     if (!file) {
-      return NextResponse.json({ error: "No se envio archivo" }, { status: 400 })
+      return NextResponse.json({ error: "No llego ningun archivo" }, { status: 400 })
     }
 
-    if (!TIPOS_PERMITIDOS.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Formato no permitido. Solo JPG, PNG, WEBP o AVIF." },
-        { status: 400 }
-      )
+    const resultado = await subirImagen({
+      file,
+      carpeta: "alojamientos",
+      nombre,
+      nombrePorDefecto: "alojamiento",
+    })
+
+    if (!resultado.ok) {
+      return NextResponse.json({ error: resultado.error }, { status: resultado.status })
     }
 
-    if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: "La imagen es muy grande. Maximo 6MB." }, { status: 400 })
-    }
-
-    const supabase = createAdminClient()
-
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase()
-    const slug = (nombre || "alojamiento")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") || "alojamiento"
-    const path = `alojamientos/${slug}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-
-    const buffer = Buffer.from(await file.arrayBuffer())
-
-    const { error: uploadError } = await supabase.storage
-      .from("sponsors")
-      .upload(path, buffer, { contentType: file.type, upsert: true })
-
-    if (uploadError) {
-      console.error("Error subiendo imagen de alojamiento:", uploadError)
-      return NextResponse.json({ error: "Error al subir la imagen" }, { status: 500 })
-    }
-
-    const { data: urlData } = supabase.storage.from("sponsors").getPublicUrl(path)
-
-    return NextResponse.json({ url: urlData.publicUrl })
+    return NextResponse.json({ url: resultado.url })
   } catch (error) {
     console.error("Error en alojamientos/upload-imagen:", error)
-    return NextResponse.json({ error: "Error interno" }, { status: 500 })
+    const detalle = error instanceof Error ? error.message : "error desconocido"
+    return NextResponse.json({ error: `Error del servidor: ${detalle}` }, { status: 500 })
   }
 }

@@ -11,7 +11,10 @@ import {
   Trophy, Medal, Award, Plus, Pencil, Trash2, X, Save,
   Loader2, Search, Eye, EyeOff, GripVertical, ImageIcon,
   Phone, Mail, Instagram, Facebook, Globe, MapPin, Clock, RotateCcw,
+  AlertCircle,
 } from "lucide-react"
+import { prepararImagen } from "@/lib/imagenes/prepararImagen"
+import { explicarError } from "@/lib/errores"
 import {
   claveBorrador,
   listarBorradores,
@@ -99,10 +102,17 @@ export default function AdminSponsorsPage() {
   const [saving, setSaving] = useState(false)
   const [servicioInput, setServicioInput] = useState("")
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  // Lo que salio mal, con el detalle real. Se muestra dentro del modal:
+  // un alert vacio ("Error al guardar: ") no le sirve a nadie.
+  const [errorModal, setErrorModal] = useState("")
+  const [avisoModal, setAvisoModal] = useState("")
 
   // Confirmar eliminacion
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [errorBorrar, setErrorBorrar] = useState("")
+  // Errores de la pantalla (ocultar/mostrar, carga de la lista)
+  const [errorLista, setErrorLista] = useState("")
 
   // Borradores: lo que se esta cargando no se pierde si se cierra la pestaña.
   const [confirmarSalida, setConfirmarSalida] = useState(false)
@@ -150,11 +160,14 @@ export default function AdminSponsorsPage() {
 
       if (error) {
         console.error("Error cargando sponsors:", error)
+        setErrorLista(explicarError(error))
       } else {
         setSponsors(data || [])
+        setErrorLista("")
       }
     } catch (err) {
       console.error("Error inesperado cargando sponsors:", err)
+      setErrorLista(explicarError(err))
     } finally {
       setLoading(false)
     }
@@ -202,6 +215,8 @@ export default function AdminSponsorsPage() {
     setEditingSponsor(inicial)
     setIsNew(true)
     setServicioInput("")
+    setErrorModal("")
+    setAvisoModal("")
     setModalOpen(true)
   }
 
@@ -212,6 +227,8 @@ export default function AdminSponsorsPage() {
     setEditingSponsor(inicial)
     setIsNew(false)
     setServicioInput("")
+    setErrorModal("")
+    setAvisoModal("")
     setModalOpen(true)
   }
 
@@ -219,6 +236,8 @@ export default function AdminSponsorsPage() {
     setModalOpen(false)
     setEditingSponsor(null)
     setConfirmarSalida(false)
+    setErrorModal("")
+    setAvisoModal("")
     referenciaRef.current = ""
     refrescarBorradores()
   }
@@ -263,13 +282,19 @@ export default function AdminSponsorsPage() {
     return () => window.removeEventListener("keydown", alPresionar)
   })
 
-  // Guardar sponsor
+  // Guardar sponsor.
+  // Nunca se niega a guardar: el unico dato que la base exige es el nombre, y
+  // si viene vacio se pone uno provisorio. Un sponsor cargado a medias se
+  // completa despues; uno que el formulario no dejo guardar se pierde.
   const handleSave = async () => {
-    if (!editingSponsor || !editingSponsor.nombre?.trim()) return
+    if (!editingSponsor) return
     setSaving(true)
+    setErrorModal("")
+
+    const nombre = editingSponsor.nombre?.trim() || "Sponsor sin nombre"
 
     const payload = {
-      nombre: editingSponsor.nombre,
+      nombre,
       nombre_comercial: editingSponsor.nombre_comercial || null,
       descripcion: editingSponsor.descripcion || null,
       logo_url: editingSponsor.logo_url || null,
@@ -289,22 +314,37 @@ export default function AdminSponsorsPage() {
     }
 
     try {
+      // .select() para que la base confirme que la fila quedo escrita: sin
+      // esto, una politica que filtra en silencio parece un guardado exitoso.
       if (isNew) {
-        const { error } = await supabase.from("sponsors").insert(payload)
+        const { data, error } = await supabase.from("sponsors").insert(payload).select("id")
         if (error) throw error
+        if (!data || data.length === 0) {
+          throw new Error(
+            "La base acepto el pedido pero no guardo la fila (suele ser un permiso). Cerra sesion, volve a entrar y probá de nuevo.",
+          )
+        }
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("sponsors")
           .update(payload)
           .eq("id", editingSponsor.id)
+          .select("id")
         if (error) throw error
+        if (!data || data.length === 0) {
+          throw new Error(
+            "No se actualizo ninguna fila: puede que otra persona haya borrado este sponsor, o que tu usuario no tenga permiso.",
+          )
+        }
       }
       // Ya esta en la base: el borrador no tiene mas sentido.
       descartarBorrador()
       closeModal()
       fetchSponsors()
     } catch (err: any) {
-      alert("Error al guardar: " + (err?.message || ""))
+      // El borrador queda intacto: lo cargado no se pierde aunque falle.
+      guardarAhora()
+      setErrorModal(explicarError(err))
     } finally {
       setSaving(false)
     }
@@ -314,36 +354,50 @@ export default function AdminSponsorsPage() {
   const handleDelete = async () => {
     if (!deleteId) return
     setDeleting(true)
+    setErrorBorrar("")
     try {
       const { error } = await supabase.from("sponsors").delete().eq("id", deleteId)
       if (error) throw error
       setDeleteId(null)
       fetchSponsors()
     } catch (err: any) {
-      alert("Error al eliminar: " + (err?.message || ""))
+      setErrorBorrar(explicarError(err))
     } finally {
       setDeleting(false)
     }
   }
 
-  // Toggle activo
+  // Mostrar / ocultar en la pagina. Si falla hay que enterarse: antes el
+  // ojito no hacia nada y no decia por que.
   const toggleActivo = async (sponsor: Sponsor) => {
-    await supabase
+    const { error } = await supabase
       .from("sponsors")
       .update({ activo: !sponsor.activo })
       .eq("id", sponsor.id)
+    if (error) {
+      setErrorLista(explicarError(error))
+      return
+    }
+    setErrorLista("")
     fetchSponsors()
   }
 
-  // Subir logo
+  // Subir logo.
+  // Acepta cualquier imagen: las fotos pesadas se reducen en el telefono antes
+  // de viajar. Si la subida falla, el sponsor se guarda igual sin logo (se
+  // puede agregar despues) y en pantalla queda el motivo real.
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !editingSponsor) return
 
     setUploadingLogo(true)
+    setErrorModal("")
+    setAvisoModal("")
     try {
+      const preparada = await prepararImagen(file)
+
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("file", preparada.archivo)
       formData.append("nombre", editingSponsor.nombre || "sponsor")
 
       const res = await fetch("/api/sponsors/upload-logo", {
@@ -351,15 +405,27 @@ export default function AdminSponsorsPage() {
         body: formData,
       })
 
-      const result = await res.json()
-      if (!res.ok) {
-        alert(result.error || "Error al subir el logo")
+      let result: any = null
+      try {
+        result = await res.json()
+      } catch {
+        result = null
+      }
+
+      if (!res.ok || !result?.url) {
+        setErrorModal(
+          (result?.error || `El servidor respondio ${res.status} sin detalle.`) +
+            " El sponsor se puede guardar igual y cargarle el logo mas tarde.",
+        )
         return
       }
 
       setEditingSponsor({ ...editingSponsor, logo_url: result.url })
+      if (preparada.aviso) setAvisoModal(preparada.aviso)
     } catch (err) {
-      alert("Error al subir el logo")
+      setErrorModal(
+        explicarError(err) + " El sponsor se puede guardar igual y cargarle el logo mas tarde.",
+      )
     } finally {
       setUploadingLogo(false)
       e.target.value = ""
@@ -420,6 +486,21 @@ export default function AdminSponsorsPage() {
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Algo fallo fuera del modal (ocultar/mostrar, cargar la lista) */}
+        {errorLista && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 p-3 sm:p-4 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="flex-1 text-xs sm:text-sm text-red-200 break-words">{errorLista}</p>
+            <button
+              onClick={() => setErrorLista("")}
+              className="text-red-400 hover:text-red-200"
+              aria-label="Cerrar aviso"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Sponsor nuevo que quedo a medio cargar */}
         {borradorNuevo && !modalOpen && (
           <div className="mb-6 rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -669,6 +750,30 @@ export default function AdminSponsorsPage() {
                   />
                 )}
 
+                {/* Que fallo, con el detalle real: sin esto no hay forma de arreglarlo */}
+                {errorModal && (
+                  <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-red-300 font-semibold">No se pudo completar</p>
+                      <p className="text-xs text-red-200/90 mt-0.5 break-words">{errorModal}</p>
+                    </div>
+                    <button
+                      onClick={() => setErrorModal("")}
+                      className="text-red-400 hover:text-red-200"
+                      aria-label="Cerrar aviso"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {avisoModal && (
+                  <div className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 p-3 text-xs text-yellow-200">
+                    {avisoModal}
+                  </div>
+                )}
+
                 {/* Tier */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Clasificacion *</label>
@@ -696,12 +801,12 @@ export default function AdminSponsorsPage() {
                 {/* Datos basicos */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Nombre *</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Nombre</label>
                     <Input
                       value={editingSponsor.nombre || ""}
                       onChange={(e) => setEditingSponsor({ ...editingSponsor, nombre: e.target.value })}
                       className="bg-zinc-800 border-zinc-700 text-white"
-                      placeholder="Nombre del sponsor"
+                      placeholder="Nombre del sponsor (se puede completar despues)"
                     />
                   </div>
                   <div>
@@ -756,15 +861,24 @@ export default function AdminSponsorsPage() {
                         )}
                         <input
                           type="file"
-                          accept="image/jpeg,image/png"
+                          accept="image/*"
                           onChange={handleLogoUpload}
                           disabled={uploadingLogo}
                           className="hidden"
                         />
                       </label>
                       <p className="text-[11px] text-zinc-500">
-                        Solo archivos JPG o PNG (max 2MB)
+                        Cualquier imagen (JPG, PNG, WEBP, HEIC...). Las fotos pesadas se reducen solas.
                       </p>
+                      {editingSponsor.logo_url && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingSponsor({ ...editingSponsor, logo_url: "" })}
+                          className="text-[11px] text-zinc-500 hover:text-red-400 underline"
+                        >
+                          Quitar imagen
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -937,9 +1051,11 @@ export default function AdminSponsorsPage() {
                 <Button variant="outline" onClick={intentarCerrar} className="border-zinc-700 text-zinc-400">
                   Cancelar
                 </Button>
+                {/* Nunca gris por "falta un dato": si no hay nombre se guarda
+                    como "Sponsor sin nombre" y se corrige despues. */}
                 <Button
                   onClick={handleSave}
-                  disabled={saving || !editingSponsor.nombre?.trim()}
+                  disabled={saving || uploadingLogo}
                   className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
@@ -966,13 +1082,24 @@ export default function AdminSponsorsPage() {
       {/* Modal Confirmar Eliminacion */}
       {deleteId && (
         <>
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50" onClick={() => setDeleteId(null)} />
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            onClick={() => {
+              setDeleteId(null)
+              setErrorBorrar("")
+            }}
+          />
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6 mx-4 max-w-sm w-full">
               <h3 className="text-white font-bold text-lg mb-2">Eliminar Sponsor</h3>
-              <p className="text-zinc-400 text-sm mb-6">
+              <p className="text-zinc-400 text-sm mb-4">
                 Esta accion no se puede deshacer. El sponsor sera eliminado permanentemente.
               </p>
+              {errorBorrar && (
+                <p className="text-xs text-red-300 bg-red-500/10 border border-red-500/40 rounded-lg p-2 mb-4 break-words">
+                  {errorBorrar}
+                </p>
+              )}
               <div className="flex gap-3 justify-end">
                 <Button variant="outline" onClick={() => setDeleteId(null)} className="border-zinc-700 text-zinc-400">
                   Cancelar

@@ -218,10 +218,12 @@ GET  /api/remera/lookup?dni=X    -> Busca participante y pedido de remera por DN
 POST /api/remera/submit          -> Guarda/actualiza pedido de remera (UPSERT por DNI)
 GET  /api/remera/settings        -> Retorna alias/datos de pago para el formulario publico
 POST /api/inscripcion/submit     -> Guarda inscripcion (si se crean rutas API)
-POST /api/sponsors/upload-logo   -> Sube logo de sponsor a Supabase Storage (max 2MB, jpg/png/webp/svg/gif)
+POST /api/sponsors/upload-logo   -> Sube logo de sponsor al bucket `sponsors` (cualquier imagen, max 10MB)
 POST /api/galeria/upload         -> Sube foto de galeria al bucket publico `galeria` (max 6MB, jpg/png/webp/avif)
-POST /api/sorteos/upload-imagen  -> Sube la foto de un premio al bucket `sponsors` (carpeta sorteos/, max 6MB)
-POST /api/alojamientos/upload-imagen -> Sube foto de alojamiento al bucket `sponsors` (max 6MB, jpg/png/webp/avif)
+POST /api/sorteos/upload-imagen  -> Sube la foto de un premio al bucket `sponsors` (carpeta sorteos/, max 10MB)
+POST /api/alojamientos/upload-imagen -> Sube foto de alojamiento al bucket `sponsors` (carpeta alojamientos/, max 10MB)
+
+Las tres rutas del bucket `sponsors` comparten `lib/api/subirImagen.ts`.
 POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y participantes a "pendiente"
 
 GET  /api/email/estado           -> Diagnostico de la conexion con Gmail (que variables faltan, casilla)
@@ -280,9 +282,39 @@ Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam
 
 1. Admin va a `/admin/sponsors` -> CRUD completo con filtro por tier
 2. Puede crear/editar sponsor con: nombre, logo (upload), tier, contacto, redes, servicios
-3. Logo se sube via `POST /api/sponsors/upload-logo` a Supabase Storage `comprobantes/sponsors/`
+3. Logo se sube via `POST /api/sponsors/upload-logo` al bucket publico `sponsors`
 4. Landing publica (`components/home/Sponsors.tsx`) carga sponsors activos desde Supabase con fallback a hardcoded
 5. Sponsors se muestran clasificados por tier: oro, plata, bronce
+
+### Cargar un sponsor (o una foto) no puede fallar en silencio
+
+Misma filosofia que la inscripcion, aplicada al panel. Tres cosas que fallaban
+a la vez y ninguna decia por que:
+
+- **El bucket mandaba mas que el codigo.** `storage.buckets.sponsors` estaba en
+  2 MB y solo JPG/PNG, mientras las rutas declaraban 6 MB y WEBP/AVIF: toda foto
+  de celular la rechazaba el Storage y la pantalla decia "Error al subir el
+  archivo". Ahora el bucket acepta 10 MB y cualquier imagen
+  (`20261016_sponsors_sin_fallos.sql`). **Si se cambia un limite en una ruta,
+  revisar el bucket**: manda el bucket, no el codigo.
+- **Las imagenes se reducen en el dispositivo** antes de subir, con
+  `lib/imagenes/prepararImagen.ts` (nunca lanza: si no puede, sube el original).
+  Lo usan sponsors, alojamientos y sorteos. Los inputs son `accept="image/*"`.
+- **El error siempre dice algo.** `lib/errores.ts` (`explicarError`) traduce el
+  error de Supabase a una frase con el detalle real; las rutas devuelven el
+  mensaje del Storage en vez de un generico. **Prohibido** un `alert` que pueda
+  quedar vacio o un error que se trague el motivo.
+- **Nada obligatorio bloquea el guardado**: sin nombre se guarda como "Sponsor
+  sin nombre" y se corrige despues. El boton nunca esta gris por falta de datos.
+  Si el guardado falla, el borrador se guarda solo (no se pierde lo cargado).
+- El `insert`/`update` va con `.select()`: sin eso, una fila filtrada por RLS
+  parece un guardado exitoso.
+
+**La UI autoriza por email y la base por `auth_user_id`.** Un admin con
+`administradores.auth_user_id` en NULL veia todo el panel y cada guardado le
+fallaba por RLS. `SupabaseProvider` ahora llama a `link_auth_user` apenas
+detecta esa diferencia, y la RPC compara emails sin distinguir mayusculas ni
+espacios. Tests: `e2e/unit/cargar-sponsor.spec.ts`.
 
 ### Flujo de Alojamientos (Bike Friendly)
 

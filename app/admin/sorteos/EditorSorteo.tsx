@@ -39,6 +39,7 @@ import { claveBorrador, useBorradorFormulario } from "@/hooks/useBorradorFormula
 import BannerBorrador from "@/components/admin/BannerBorrador"
 import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
 import SelectorPersonas from "./SelectorPersonas"
+import { prepararImagen } from "@/lib/imagenes/prepararImagen"
 
 type SorteoEditable = Omit<Sorteo, "id"> & { id?: string }
 
@@ -249,8 +250,10 @@ export default function EditorSorteo({
   const subirFoto = async (premio: Premio, archivo: File) => {
     setSubiendo(premio.id)
     try {
+      // Las fotos de premios salen del celular: se reducen antes de subirlas.
+      const preparada = await prepararImagen(archivo)
       const formData = new FormData()
-      formData.append("file", archivo)
+      formData.append("file", preparada.archivo)
       formData.append("nombre", premio.nombre)
       const res = await fetch("/api/sorteos/upload-imagen", { method: "POST", body: formData })
       const resultado = await res.json()

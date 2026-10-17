@@ -31,6 +31,7 @@ import {
 } from "@/hooks/useBorradorFormulario"
 import BannerBorrador, { fechaBorrador } from "@/components/admin/BannerBorrador"
 import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
+import { prepararImagen } from "@/lib/imagenes/prepararImagen"
 
 interface Alojamiento {
   id: string
@@ -205,8 +206,10 @@ export default function AdminAlojamientosPage() {
 
     setSubiendoLogo(true)
     try {
+      // Las fotos pesadas se reducen en el telefono antes de viajar.
+      const preparada = await prepararImagen(file)
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("file", preparada.archivo)
       formData.append("nombre", `alojamiento-${editando.nombre || "sin-nombre"}`)
 
       const res = await fetch("/api/sponsors/upload-logo", { method: "POST", body: formData })
@@ -248,8 +251,9 @@ export default function AdminAlojamientosPage() {
 
     for (const file of files.slice(0, disponibles)) {
       try {
+        const preparada = await prepararImagen(file)
         const formData = new FormData()
-        formData.append("file", file)
+        formData.append("file", preparada.archivo)
         formData.append("nombre", editando.nombre || "alojamiento")
 
         const res = await fetch("/api/alojamientos/upload-imagen", {
@@ -624,7 +628,7 @@ export default function AdminAlojamientosPage() {
               <div>
                 <Label htmlFor="logo">Logo o foto (JPG/PNG, máx 2MB)</Label>
                 <div className="flex items-center gap-3 mt-1">
-                  <Input id="logo" type="file" accept="image/jpeg,image/png" onChange={subirLogo} />
+                  <Input id="logo" type="file" accept="image/*" onChange={subirLogo} />
                   {subiendoLogo && <Loader2 className="w-4 h-4 animate-spin text-yellow-400" />}
                 </div>
                 {editando.logo_url && (
@@ -646,14 +650,14 @@ export default function AdminAlojamientosPage() {
                   Fotos del alojamiento ({(editando.imagenes ?? []).length}/{MAX_IMAGENES})
                 </Label>
                 <p className="text-xs text-zinc-500 mt-1">
-                  JPG, PNG, WEBP o AVIF (máx 6MB cada una). Podés seleccionar varias a la vez.
+                  Cualquier imagen: las fotos pesadas se reducen solas. Podés seleccionar varias a la vez.
                 </p>
                 <div className="flex items-center gap-3 mt-2">
                   <Input
                     id="imagenes"
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    accept="image/*"
                     onChange={subirImagenes}
                     disabled={subiendoImagenes || (editando.imagenes ?? []).length >= MAX_IMAGENES}
                   />
