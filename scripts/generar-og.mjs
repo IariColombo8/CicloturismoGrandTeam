@@ -43,10 +43,12 @@ const PAGINAS = [
     bajada: "Hacé tu pedido de la remera del evento",
     // Lo que mas preguntan, dicho antes de que pregunten.
     detalle: "Solo con envío a domicilio y después del evento",
-    imagen: "remera.png",
-    // Solo el frente de la remera: la imagen trae frente y espalda.
-    recorte: { left: 170, top: 60, width: 600, height: 980 },
-    ancho: 400,
+    // Esta pieza viene armada del diseño (public/remera-og.png): muestra la
+    // remera definitiva —con las estrellas, las Malvinas y el logo del
+    // sponsor— y la version armada acá mostraba el diseño viejo. Solo se
+    // ajusta la medida. El titulo y los textos de arriba quedan como
+    // referencia de lo que dice la pieza.
+    pieza: "remera-og.png",
   },
   {
     archivo: "sorteos.png",
@@ -153,6 +155,19 @@ function armarFondo({ titulo, bajada, detalle }) {
 await mkdir(DESTINO, { recursive: true })
 
 for (const pagina of PAGINAS) {
+  // Pieza ya diseñada: no se arma nada, solo se lleva a la medida de la vista
+  // previa (1200x630).
+  if (pagina.pieza) {
+    await sharp(join(PUBLIC, pagina.pieza))
+      .resize(ANCHO, ALTO, { fit: "cover" })
+      // Con paleta pesa 150 KB en vez de 600: WhatsApp deja de mostrar la
+      // vista previa grande cuando la imagen es muy pesada.
+      .png({ compressionLevel: 9, palette: true, effort: 10 })
+      .toFile(join(DESTINO, pagina.archivo))
+    console.log(`✓ public/og/${pagina.archivo} (pieza de diseño)`)
+    continue
+  }
+
   const ancho = pagina.ancho ?? 420
   let imagen = sharp(join(PUBLIC, pagina.imagen))
   if (pagina.recorte) imagen = imagen.extract(pagina.recorte)

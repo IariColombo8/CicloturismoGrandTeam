@@ -167,8 +167,12 @@ de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual
   el `layout.tsx` de cada ruta: las paginas son client components y no pueden
   exportar `metadata`.
 - Las imagenes viven en `public/og/` y se generan con
-  `node scripts/generar-og.mjs` (negro + dorado + logo; la de la remera muestra
-  la remera). **No se editan a mano**: se cambia el texto en el script.
+  `node scripts/generar-og.mjs` (negro + dorado + logo). **No se editan a
+  mano**: se cambia el texto en el script.
+- La de la remera es la excepcion: la pieza viene del diseño
+  (`public/remera-og.png`, con la remera definitiva y el logo del sponsor) y el
+  script solo la lleva a 1200x630 (`pieza:` en vez de `imagen:`). Para
+  cambiarla se reemplaza ese archivo y se vuelve a correr el script.
 - La home sigue con `METADATOS.png`, que es la pieza de diseño del evento.
 - `e2e/vista-previa.spec.ts` verifica que cada pagina tenga texto e imagen
   propios, que la imagen exista (una vista previa rota se ve peor que ninguna) y

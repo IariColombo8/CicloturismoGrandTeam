@@ -54,7 +54,10 @@ export const REMERA_CONTENT_DEFAULTS: RemeraContentData = {
   title: "Remera Grand Team Bike",
   description:
     "Llevate la remera oficial de la edición 2026. Elegí tu talle, adjuntá el comprobante y el equipo coordina la entrega con vos.",
-  images: ["/remera.png"],
+  // El diseño definitivo (con las estrellas y el sponsor). Es el mismo que
+  // tiene cargado el panel: si la base no responde, no se muestra una remera
+  // distinta de la que se va a entregar.
+  images: ["/remerab.png"],
   price: "",
   callToActionTitle: "¿Querés tu remera?",
   callToActionDescription: "",
