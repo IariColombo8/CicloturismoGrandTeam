@@ -68,6 +68,11 @@ export const metadata: Metadata = {
     canonical: "/",
   },
 
+  // Verificacion de propiedad en Google Search Console (etiqueta HTML).
+  verification: {
+    google: "CK0oGylO6ZC1nk3qv2MBgRNxzQ3LM7dn60Mw-vW6lik",
+  },
+
   formatDetection: {
     email: false,
     address: false,
