@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { autorizar } from "@/lib/api/autorizar"
 import { enviarPushATodos } from "@/lib/push/enviar"
 import { calcularSaldoEsperado, formatearPesos } from "@/lib/finanzas/saldoEsperado"
+import { CUENTA } from "@/lib/finanzas/cuenta"
 
 export const dynamic = "force-dynamic"
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   const resultado = await enviarPushATodos({
     titulo: "Prueba: nueva inscripcion",
     cuerpo: saldo
-      ? `Juan Perez (prueba)\nEn el BNA deberia haber ${formatearPesos(
+      ? `Juan Perez (prueba)\nEn ${CUENTA} deberia haber ${formatearPesos(
           saldo.verificado + saldo.precio
         )} con esta`
       : "Juan Perez (prueba)",

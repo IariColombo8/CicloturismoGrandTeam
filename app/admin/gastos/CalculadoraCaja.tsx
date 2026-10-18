@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Wallet, ChevronDown, List } from "lucide-react"
 import { ListaModal } from "./ListaModal"
+import { CUENTA, ETIQUETA_PLATA } from "@/lib/finanzas/cuenta"
+import { desdeCuando, fechaCorta } from "@/lib/finanzas/comisiones"
 import { formatARS, totalGasto, type DesglosePagos, type Gasto, type Ingreso } from "./tipos"
 
 interface Item {
@@ -34,7 +36,7 @@ interface CalculadoraCajaProps {
 
 /**
  * Calculadora manual de caja: elegis que entradas y que salidas contar
- * para simular cuanta plata hay realmente disponible en el banco.
+ * para simular cuanta plata hay realmente disponible en la cuenta.
  */
 export function CalculadoraCaja({
   gastos,
@@ -53,7 +55,12 @@ export function CalculadoraCaja({
     const deIngresos: Item[] = ingresos.map((i) => ({
       id: `ingreso-${i.id}`,
       label: i.descripcion,
-      detalle: i.categoria,
+      // Un acumulador (comisiones de Naranja X) no tiene una sola fecha: lo que
+      // ubica el monto es desde cuando se viene sumando.
+      detalle:
+        i.items.length > 0
+          ? `${i.categoria} · desde el ${fechaCorta(desdeCuando(i.items))}`
+          : i.categoria,
       monto: i.monto,
       defaultChecked: i.estado === "cobrado",
       etiqueta: i.estado === "cobrado" ? undefined : "Por cobrar",
@@ -200,7 +207,8 @@ export function CalculadoraCaja({
                 Calculadora de caja
               </CardTitle>
               <CardDescription className="text-gray-400 text-left">
-                Elegí qué entradas y salidas contar para calcular cuánta plata hay realmente en el banco
+                Elegí qué entradas y salidas contar para calcular cuánta plata hay realmente en{" "}
+                {CUENTA}
               </CardDescription>
             </div>
             <ChevronDown
@@ -324,7 +332,7 @@ export function CalculadoraCaja({
                 totalBanco >= 0 ? "border-yellow-400/30 bg-yellow-400/10" : "border-red-500/40 bg-red-500/10"
               }`}
             >
-              <p className="text-xs text-gray-400">Plata en el BNA (según lo tildado)</p>
+              <p className="text-xs text-gray-400">{ETIQUETA_PLATA} (según lo tildado)</p>
               <p className={`text-3xl font-bold ${totalBanco >= 0 ? "text-yellow-400" : "text-red-500"}`}>
                 {totalBanco < 0 ? "-" : ""}
                 {formatARS(Math.abs(totalBanco))}

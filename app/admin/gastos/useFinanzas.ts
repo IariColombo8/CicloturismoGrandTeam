@@ -5,6 +5,12 @@ import { supabase } from "@/lib/supabase"
 import type { DesglosePagos, EstadoPago, Gasto, Ingreso, InscripcionPago, Movimiento } from "./tipos"
 import { formatARS, montoCobrado, montoEsperado, totalGasto } from "./tipos"
 import { mapNotaCaja, type NotaCaja } from "@/lib/notasCaja"
+import {
+  desdeCuando,
+  fechaCorta,
+  parsearItemsComision,
+  totalComisiones,
+} from "@/lib/finanzas/comisiones"
 
 const ESTADO_CONFIRMADA = "confirmada"
 const ESTADO_PENDIENTE = "pendiente"
@@ -88,16 +94,21 @@ function mapGasto(g: any): Gasto {
 }
 
 function mapIngreso(i: any): Ingreso {
+  // Si el ingreso acumula acreditaciones (comisiones de Naranja X), el total
+  // sale de los items y no de la columna: aunque se guarden siempre iguales,
+  // asi un monto desincronizado no puede mentir en ninguna cuenta.
+  const items = parsearItemsComision(i.items)
   return {
     id: i.id,
     descripcion: i.descripcion,
-    monto: Number(i.monto) || 0,
+    monto: items.length > 0 ? totalComisiones(items) : Number(i.monto) || 0,
     categoria: i.categoria,
     estado: i.estado,
     fecha: i.fecha,
     comprobante: i.comprobante,
     creadoPor: i.creado_por,
     notas: i.notas,
+    items,
   }
 }
 
@@ -306,7 +317,12 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       id: i.id,
       tipo: "ingreso",
       descripcion: i.descripcion,
-      detalle: i.notas,
+      // Si es un acumulador (comisiones de Naranja X), lo que ubica el monto es
+      // desde cuando se viene sumando, no la nota.
+      detalle:
+        i.items.length > 0
+          ? `${i.items.length} acreditación${i.items.length === 1 ? "" : "es"} desde el ${fechaCorta(desdeCuando(i.items))}`
+          : i.notas,
       categoria: i.categoria,
       monto: i.monto,
       estado: i.estado,

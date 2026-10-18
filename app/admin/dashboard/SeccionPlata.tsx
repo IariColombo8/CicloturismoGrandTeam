@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { useFinanzas } from "@/app/admin/gastos/useFinanzas"
 import { formatARS, totalGasto } from "@/app/admin/gastos/tipos"
+import { ETIQUETA_PLATA } from "@/lib/finanzas/cuenta"
 import { Dato, FilaConteo, Panel, Seccion, SinDatos, Tarjeta } from "./piezas"
 import type { Conteo } from "./panorama"
 
@@ -147,7 +148,7 @@ export function SeccionPlata({ precio, habilitado }: { precio: number; habilitad
           cargando={cargando}
         />
         <Tarjeta
-          titulo="Plata en el banco"
+          titulo={ETIQUETA_PLATA}
           valor={formatARS(resumen.plataEnBanco)}
           title={formatARS(resumen.plataEnBanco)}
           detalle="Lo cobrado menos lo que ya se pagó"

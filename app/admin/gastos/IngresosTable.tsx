@@ -20,6 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Trash2, ExternalLink, Pencil } from "lucide-react"
 import { Paginacion } from "./Paginacion"
+import { desdeCuando, fechaCorta } from "@/lib/finanzas/comisiones"
 import { esLocalhost, formatARS, mensajeError, parseMonto, type Ingreso } from "./tipos"
 
 const PAGE_SIZE = 15
@@ -114,6 +115,14 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
               <TableRow key={ingreso.id} className="border-gray-700">
                 <TableCell className="text-white font-medium whitespace-normal break-words max-w-[38vw] sm:max-w-none text-xs sm:text-sm px-2 sm:px-4 py-2">
                   {ingreso.descripcion}
+                  {/* Ingreso acumulador (comisiones de Naranja X): la fila dice
+                      el total y desde cuándo; los días están en su tarjeta. */}
+                  {ingreso.items.length > 0 && (
+                    <span className="block text-[10px] sm:text-xs text-orange-300">
+                      {ingreso.items.length} acreditación{ingreso.items.length === 1 ? "" : "es"} desde
+                      el {fechaCorta(desdeCuando(ingreso.items))}
+                    </span>
+                  )}
                   {ingreso.notas && <span className="block text-[10px] sm:text-xs text-gray-500">{ingreso.notas}</span>}
                   <span className="block text-[10px] text-gray-500 capitalize sm:hidden">{ingreso.categoria}</span>
                   <span className="block sm:hidden mt-1">
@@ -160,7 +169,10 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
                         Cobrar
                       </Button>
                     )}
-                    {puedeEditar && (
+                    {/* Un acumulador no se edita ni se borra desde acá: su monto
+                        es la suma de los items y se maneja en su tarjeta (si no,
+                        un clic se lleva todas las comisiones cargadas). */}
+                    {puedeEditar && ingreso.items.length === 0 && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -170,7 +182,7 @@ export function IngresosTable({ ingresos, puedeEliminar, onEliminar, onMarcarCob
                         <Pencil className="w-4 h-4" />
                       </Button>
                     )}
-                    {puedeEliminar && (
+                    {puedeEliminar && ingreso.items.length === 0 && (
                       <Button
                         size="sm"
                         variant="outline"

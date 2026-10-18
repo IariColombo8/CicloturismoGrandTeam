@@ -7,12 +7,20 @@ import { Badge } from "@/components/ui/badge"
 import { Eye, List, TrendingDown, TrendingUp, Users } from "lucide-react"
 import { Paginacion } from "./Paginacion"
 import { ListaModal } from "./ListaModal"
-import { formatARS, type Gasto, type Movimiento } from "./tipos"
+import { CLASE_BADGE, estadoMovimiento, formatARS, type Gasto, type Movimiento } from "./tipos"
 
 const PAGE_SIZE = 15
 
 export type FiltroTipo = "todos" | "gasto" | "ingreso"
-export type FiltroEstado = "todos" | "aprobado" | "pendiente" | "rechazado" | "cobrado" | "por_cobrar"
+// Un gasto aprobado se filtra por "pagado" o "por_pagar": ver estadoGastoVisible.
+export type FiltroEstado =
+  | "todos"
+  | "pagado"
+  | "por_pagar"
+  | "pendiente"
+  | "rechazado"
+  | "cobrado"
+  | "por_cobrar"
 
 interface MovimientosTableProps {
   movimientos: Movimiento[]
@@ -22,7 +30,8 @@ interface MovimientosTableProps {
 }
 
 const ETIQUETA_ESTADO: Record<string, string> = {
-  aprobado: "Aprobado",
+  pagado: "Pagado",
+  por_pagar: "Por pagar",
   pendiente: "Pendiente",
   rechazado: "Rechazado",
   cobrado: "Cobrado",
@@ -30,18 +39,25 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   confirmado: "Confirmado",
 }
 
-function badgeEstado(estado: string) {
+/**
+ * Badge de una fila. Los gastos aprobados dicen "Pagado" o "Por pagar" (que es
+ * lo unico que cambia de uno a otro), los ingresos "Cobrado" o "Por cobrar".
+ */
+function badgeEstado(mov: Movimiento) {
+  const estado = estadoMovimiento(mov)
   const texto = ETIQUETA_ESTADO[estado] || estado
   switch (estado) {
-    case "aprobado":
+    case "pagado":
     case "cobrado":
     case "confirmado":
-      return <Badge className="bg-green-500/20 text-green-500">{texto}</Badge>
+      return <Badge className={CLASE_BADGE.verde}>{texto}</Badge>
+    case "por_pagar":
+      return <Badge className={CLASE_BADGE.naranja}>{texto}</Badge>
     case "pendiente":
     case "por_cobrar":
-      return <Badge className="bg-yellow-400/20 text-yellow-400">{texto}</Badge>
+      return <Badge className={CLASE_BADGE.amarillo}>{texto}</Badge>
     case "rechazado":
-      return <Badge className="bg-red-500/20 text-red-500">{texto}</Badge>
+      return <Badge className={CLASE_BADGE.rojo}>{texto}</Badge>
     default:
       return <Badge>{texto}</Badge>
   }
@@ -56,7 +72,7 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
   const filtrados = useMemo(() => {
     return movimientos.filter((mov) => {
       const pasaTipo = filtroTipo === "todos" || mov.tipo === filtroTipo
-      const pasaEstado = filtroEstado === "todos" || mov.estado === filtroEstado
+      const pasaEstado = filtroEstado === "todos" || estadoMovimiento(mov) === filtroEstado
       return pasaTipo && pasaEstado
     })
   }, [movimientos, filtroTipo, filtroEstado])
@@ -100,7 +116,7 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
                       </div>
                       {mov.detalle && <span className="block text-[10px] sm:text-xs text-gray-500">{mov.detalle}</span>}
                       <span className="block text-[10px] text-gray-500 capitalize sm:hidden">{mov.categoria}</span>
-                      <span className="block sm:hidden mt-1">{badgeEstado(mov.estado)}</span>
+                      <span className="block sm:hidden mt-1">{badgeEstado(mov)}</span>
                     </TableCell>
                     <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{mov.categoria}</TableCell>
                     <TableCell
@@ -112,7 +128,7 @@ export function MovimientosTable({ movimientos, onVerGasto, filtroTipo, filtroEs
                     <TableCell className="text-gray-400 text-sm hidden md:table-cell">
                       {mov.fecha ? new Date(mov.fecha).toLocaleDateString("es-AR") : "-"}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">{badgeEstado(mov.estado)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{badgeEstado(mov)}</TableCell>
                     <TableCell className="text-right px-1 sm:px-4 py-2">
                       {mov.origen ? (
                         <Button

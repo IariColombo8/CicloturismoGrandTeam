@@ -1,21 +1,19 @@
 // Exportacion de gastos e ingresos a PDF y Excel.
 // Las librerias se importan de forma dinamica (dynamic import) para no engordar
 // el bundle inicial: solo se cargan cuando el usuario realmente descarga algo.
-import type { Gasto, Ingreso, NotaCaja } from "./tipos"
-import { formatARS, totalGasto } from "./tipos"
+import type { Gasto, Ingreso, NotaCaja, TonoEstado } from "./tipos"
+import { estadoGastoVisible, formatARS, totalGasto } from "./tipos"
 import type { ResumenFinanciero } from "./useFinanzas"
+import { ETIQUETA_PLATA } from "@/lib/finanzas/cuenta"
+import { descripcionComisiones, fechaCorta, ordenarComisiones } from "@/lib/finanzas/comisiones"
 
 const NOMBRE_ARCHIVO_BASE = "grand-team-finanzas"
 
-const ETIQUETA_ESTADO_GASTO: Record<string, string> = {
-  pendiente: "Pendiente",
-  aprobado: "Aprobado",
-  rechazado: "Rechazado",
-}
-
-function etiquetaPago(gasto: Gasto): string {
-  if (gasto.estado !== "aprobado") return "-"
-  return gasto.pagado ? "Pagado" : "Sin pagar"
+// El estado de un gasto se lee "Pagado" / "Por pagar" (ver estadoGastoVisible):
+// estan aprobados todos, asi que la columna "Aprobado" + la columna "Pago"
+// decian dos veces lo mismo y ahora es una sola.
+function etiquetaEstadoGasto(gasto: Gasto): string {
+  return estadoGastoVisible(gasto).texto
 }
 
 function fechaLegible(fecha: string | null): string {
@@ -172,14 +170,22 @@ function ordenarIngresos(filas: FilaIngreso[]): FilaIngreso[] {
   )
 }
 
-/** Ingresos cargados a mano, en el mismo formato que las filas de inscripciones. */
+/**
+ * Ingresos cargados a mano, en el mismo formato que las filas de inscripciones.
+ *
+ * El acumulador de comisiones de Naranja X va en UNA fila: el total y desde
+ * cuando. Imprimir cada acreditacion seria media pagina de montos de $300 que
+ * no le dicen nada a nadie; el detalle dia por dia esta en el panel y en la
+ * hoja "Comisiones" del Excel.
+ */
 function filasIngresosManuales(ingresos: Ingreso[]): FilaIngreso[] {
   return ingresos.map((i) => ({
-    descripcion: i.descripcion,
+    descripcion: descripcionComisiones(i.descripcion, i.items),
     categoria: i.categoria,
     monto: i.monto,
     estado: i.estado,
-    fecha: fechaLegible(i.fecha),
+    // El acumulador no tiene una fecha sola: la que importa es desde cuando.
+    fecha: i.items.length > 0 ? "-" : fechaLegible(i.fecha),
     notas: i.notas || "",
   }))
 }
@@ -188,7 +194,7 @@ function armarTarjetas(resumen: ResumenFinanciero): TarjetaResumen[] {
   return [
     { titulo: "Ingresos", valor: formatARS(resumen.totalIngresos), color: VERDE },
     {
-      titulo: "Plata en el BNA",
+      titulo: ETIQUETA_PLATA,
       valor: `${resumen.plataEnBanco < 0 ? "-" : ""}${formatARS(Math.abs(resumen.plataEnBanco))}`,
       color: resumen.plataEnBanco < 0 ? ROJO_FUERTE : ESMERALDA,
     },
@@ -257,18 +263,18 @@ function dibujarTarjetas(
   return startY + cardHeight
 }
 
-/** Color de texto para el badge de estado de un gasto. */
-function colorEstadoGasto(estado: string): RGB {
-  if (estado === "aprobado") return VERDE
-  if (estado === "rechazado") return ROJO_FUERTE
-  return DORADO // pendiente
+/** Los mismos colores que el badge de la pantalla, en RGB para el PDF. */
+const COLOR_TONO: Record<TonoEstado, RGB> = {
+  verde: VERDE,
+  naranja: NARANJA,
+  amarillo: DORADO,
+  rojo: ROJO_FUERTE,
 }
 
-/** Color de texto para si un gasto aprobado ya se pagó o no. */
-function colorPago(texto: string): RGB {
-  if (texto === "Pagado") return VERDE
-  if (texto === "Sin pagar") return NARANJA
-  return TEXTO_GRIS
+/** Color de texto para el estado de un gasto ("Pagado" / "Por pagar"). */
+function colorEstadoGasto(gasto: Gasto | undefined): RGB {
+  if (!gasto) return TEXTO_GRIS
+  return COLOR_TONO[estadoGastoVisible(gasto).tono]
 }
 
 /** Color de texto para el badge de estado de un ingreso. */
@@ -348,8 +354,7 @@ export async function exportarFinanzasPDF(
     g.descripcion,
     g.categoria,
     formatARS(totalGasto(g, confirmados)),
-    ETIQUETA_ESTADO_GASTO[g.estado] || g.estado,
-    etiquetaPago(g),
+    etiquetaEstadoGasto(g),
     fechaLegible(g.fecha),
   ])
 
@@ -361,19 +366,15 @@ export async function exportarFinanzasPDF(
   autoTable(doc, {
     ...estiloTabla,
     startY: yDespuesTarjetas + 30,
-    head: [["Descripción", "Categoría", "Monto", "Estado", "Pago", "Fecha"]],
-    body: filasGastos.length > 0 ? filasGastos : [["Sin gastos registrados", "", "", "", "", ""]],
+    head: [["Descripción", "Categoría", "Monto", "Estado", "Fecha"]],
+    body: filasGastos.length > 0 ? filasGastos : [["Sin gastos registrados", "", "", "", ""]],
     didParseCell: (data) => {
       if (data.section !== "body" || filasGastos.length === 0) return
       if (data.column.index === 2) {
         data.cell.styles.textColor = ROJO
         data.cell.styles.fontStyle = "bold"
       } else if (data.column.index === 3) {
-        data.cell.styles.textColor = colorEstadoGasto(
-          gastosOrdenados[data.row.index]?.estado || "pendiente",
-        )
-      } else if (data.column.index === 4) {
-        data.cell.styles.textColor = colorPago(String(data.cell.raw))
+        data.cell.styles.textColor = colorEstadoGasto(gastosOrdenados[data.row.index])
       }
     },
   })
@@ -504,8 +505,7 @@ export async function exportarFinanzasExcel(
       Descripción: g.descripcion,
       Categoría: g.categoria,
       Monto: totalGasto(g, confirmados),
-      Estado: ETIQUETA_ESTADO_GASTO[g.estado] || g.estado,
-      Pago: etiquetaPago(g),
+      Estado: etiquetaEstadoGasto(g),
       Fecha: fechaLegible(g.fecha),
       "Creado por": g.creadoPor || "",
     })),
@@ -532,6 +532,23 @@ export async function exportarFinanzasExcel(
   XLSX.utils.book_append_sheet(libro, hojaResumen, "Resumen")
   XLSX.utils.book_append_sheet(libro, hojaGastos, "Gastos")
   XLSX.utils.book_append_sheet(libro, hojaIngresos, "Ingresos")
+
+  // Hoja aparte con las comisiones dia por dia. En el PDF esto va resumido en
+  // una fila; el Excel es la planilla de trabajo, asi que aca sí va el detalle.
+  const comisiones = ingresos.filter((i) => i.items.length > 0)
+  if (comisiones.length > 0) {
+    const hojaComisiones = XLSX.utils.json_to_sheet(
+      comisiones.flatMap((i) =>
+        ordenarComisiones(i.items).map((item) => ({
+          Ingreso: i.descripcion,
+          Fecha: fechaCorta(item.fecha),
+          Monto: item.monto,
+          Nota: item.nota || "",
+        })),
+      ),
+    )
+    XLSX.utils.book_append_sheet(libro, hojaComisiones, "Comisiones")
+  }
 
   const notasVisibles = notas.filter((n) => n.texto.trim())
   if (notasVisibles.length > 0) {

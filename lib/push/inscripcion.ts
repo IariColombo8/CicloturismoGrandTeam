@@ -4,6 +4,7 @@
 
 import { enviarPushATodos } from "./enviar"
 import { calcularSaldoEsperado, formatearPesos } from "@/lib/finanzas/saldoEsperado"
+import { CUENTA } from "@/lib/finanzas/cuenta"
 
 export interface DatosInscripcionNueva {
   nombre: string
@@ -12,8 +13,8 @@ export interface DatosInscripcionNueva {
 }
 
 /**
- * Notifica una inscripcion nueva incluyendo cuanta plata deberia haber en el
- * BNA contando esa transferencia.
+ * Notifica una inscripcion nueva incluyendo cuanta plata deberia haber en la
+ * cuenta del evento (Naranja X) contando esa transferencia.
  *
  * Nunca lanza: el alta de la inscripcion ya esta hecha y no puede fallar por
  * un problema de notificaciones.
@@ -29,11 +30,11 @@ export async function notificarInscripcionNueva(datos: DatosInscripcionNueva): P
     // Plata ya verificada + SOLO esta inscripcion. No se suman las pendientes
     // viejas: son transferencias sin confirmar y harian crecer el numero con
     // plata que quiza nunca entro.
-    const montoBna = saldo
-      ? `En el BNA deberia haber ${formatearPesos(saldo.verificado + saldo.precio)} con esta`
+    const montoCuenta = saldo
+      ? `En ${CUENTA} deberia haber ${formatearPesos(saldo.verificado + saldo.precio)} con esta`
       : null
 
-    const lineas = [detalle || null, montoBna].filter(Boolean)
+    const lineas = [detalle || null, montoCuenta].filter(Boolean)
 
     await enviarPushATodos({
       titulo: `Nueva inscripcion: ${datos.nombre}`,

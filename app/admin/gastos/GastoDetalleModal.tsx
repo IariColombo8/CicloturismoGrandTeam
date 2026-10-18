@@ -25,7 +25,8 @@ interface GastoDetalleModalProps {
   esAdmin: boolean
   confirmados: number
   userEmail: string
-  getStatusBadge: (estado: string) => React.ReactNode
+  /** Badge del estado del gasto: dice "Pagado" o "Por pagar". */
+  getStatusBadge: (gasto: Gasto) => React.ReactNode
   onCambio: () => Promise<void>
 }
 
@@ -268,7 +269,7 @@ export function GastoDetalleModal({
                 </div>
                 <div>
                   <Label className="text-gray-400">Estado</Label>
-                  {getStatusBadge(gasto.estado)}
+                  {getStatusBadge(gasto)}
                 </div>
                 <div>
                   <Label className="text-gray-400">Creado por</Label>

@@ -14,7 +14,8 @@ interface GastosTableProps {
   gastos: Gasto[]
   confirmados: number
   onView: (gasto: Gasto) => void
-  getStatusBadge: (estado: string) => React.ReactNode
+  /** Badge del estado del gasto: dice "Pagado" o "Por pagar". */
+  getStatusBadge: (gasto: Gasto) => React.ReactNode
   onTogglePagado?: (gasto: Gasto) => void
 }
 
@@ -54,16 +55,9 @@ export function GastosTable({ gastos, confirmados, onView, getStatusBadge, onTog
                     )}
                   </div>
                   <span className="block text-[10px] text-gray-500 capitalize sm:hidden">{gasto.categoria}</span>
-                  <span className="block sm:hidden mt-1">
-                    <div className="flex flex-col gap-1">
-                      {getStatusBadge(gasto.estado)}
-                      {gasto.estado === "aprobado" && !gasto.pagado && (
-                        <Badge className="bg-orange-500/20 text-orange-400 whitespace-nowrap text-[10px]">
-                          Aún no se pagó
-                        </Badge>
-                      )}
-                    </div>
-                  </span>
+                  {/* El badge ya dice "Pagado" o "Por pagar": antes había un
+                      segundo badge "Aún no se pagó" que repetía lo mismo. */}
+                  <span className="block sm:hidden mt-1">{getStatusBadge(gasto)}</span>
                 </TableCell>
                 <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{gasto.categoria}</TableCell>
                 <TableCell className="text-white font-bold text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4 py-2">
@@ -78,16 +72,7 @@ export function GastosTable({ gastos, confirmados, onView, getStatusBadge, onTog
                   {gasto.creadoPor}
                   <span className="block text-xs text-gray-500 capitalize">({gasto.rolCreador})</span>
                 </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  <div className="flex flex-col gap-1">
-                    {getStatusBadge(gasto.estado)}
-                    {gasto.estado === "aprobado" && !gasto.pagado && (
-                      <Badge className="bg-orange-500/20 text-orange-400 whitespace-nowrap">
-                        Aún no se pagó
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
+                <TableCell className="hidden sm:table-cell">{getStatusBadge(gasto)}</TableCell>
                 <TableCell className="text-right px-1.5 sm:px-4 py-2">
                   <div className="flex justify-end gap-1 sm:gap-2">
                     {onTogglePagado && gasto.estado === "aprobado" && (
@@ -99,12 +84,12 @@ export function GastosTable({ gastos, confirmados, onView, getStatusBadge, onTog
                             ? "border-orange-500/50 text-orange-400 bg-transparent px-1.5 sm:px-3"
                             : "border-green-500/50 text-green-400 bg-transparent px-1.5 sm:px-3"
                         }
-                        title={gasto.pagado ? "Marcar que aún no se pagó" : "Marcar como pagado"}
+                        title={gasto.pagado ? "Marcar como por pagar" : "Marcar como pagado"}
                         onClick={() => onTogglePagado(gasto)}
                       >
                         <CircleDollarSign className="w-4 h-4 sm:hidden" />
                         <span className="hidden sm:inline">
-                          {gasto.pagado ? "Aún no se pagó" : "Marcar pagado"}
+                          {gasto.pagado ? "Marcar por pagar" : "Marcar pagado"}
                         </span>
                       </Button>
                     )}

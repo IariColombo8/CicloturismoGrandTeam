@@ -22,8 +22,17 @@ import { PagosTable } from "./PagosTable"
 import { GastoFormModal } from "./GastoFormModal"
 import { IngresoFormModal } from "./IngresoFormModal"
 import { GastoDetalleModal } from "./GastoDetalleModal"
+import { ComisionesNaranja } from "./ComisionesNaranja"
 import { useFinanzas } from "./useFinanzas"
-import { formatARS, mensajeError, type Gasto } from "./tipos"
+import {
+  CLASE_BADGE,
+  estadoGastoVisible,
+  estadoMovimiento,
+  formatARS,
+  mensajeError,
+  type Gasto,
+} from "./tipos"
+import { ETIQUETA_PLATA } from "@/lib/finanzas/cuenta"
 import { exportarFinanzasExcel, exportarFinanzasPDF } from "./exportFinanzas"
 
 type Vista = "todo" | "gastos" | "ingresos" | "pagos" | "rechazados"
@@ -49,7 +58,7 @@ export default function GastosPage() {
   const movimientosFiltrados = useMemo(() => {
     return movimientos.filter((mov) => {
       const pasaTipo = filtroTipo === "todos" || mov.tipo === filtroTipo
-      const pasaEstado = filtroEstado === "todos" || mov.estado === filtroEstado
+      const pasaEstado = filtroEstado === "todos" || estadoMovimiento(mov) === filtroEstado
       return pasaTipo && pasaEstado
     })
   }, [movimientos, filtroTipo, filtroEstado])
@@ -73,17 +82,11 @@ export default function GastosPage() {
   const rechazados = gastos.filter((g) => g.estado === "rechazado")
   const confirmadas = inscripciones.filter((i) => i.estado === "confirmada")
 
-  const getStatusBadge = (estado: string) => {
-    switch (estado) {
-      case "pendiente":
-        return <Badge className="bg-yellow-400/20 text-yellow-400">Pendiente</Badge>
-      case "aprobado":
-        return <Badge className="bg-green-500/20 text-green-500">Aprobado</Badge>
-      case "rechazado":
-        return <Badge className="bg-red-500/20 text-red-500">Rechazado</Badge>
-      default:
-        return <Badge>{estado}</Badge>
-    }
+  // El badge de un gasto dice "Pagado" o "Por pagar", no "Aprobado": estan
+  // aprobados todos, lo que hace falta saber es si la plata ya salió.
+  const getStatusBadge = (gasto: Gasto) => {
+    const { texto, tono } = estadoGastoVisible(gasto)
+    return <Badge className={CLASE_BADGE[tono]}>{texto}</Badge>
   }
 
   const handleEliminarIngreso = async (id: string) => {
@@ -245,7 +248,7 @@ export default function GastosPage() {
           </div>
         )}
 
-        {/* Dashboard: Ingresos | Plata en BNA, Gastos Aprobados | Balance. 2x2 en celu, los 4 en una fila en PC */}
+        {/* Dashboard: Ingresos | Plata en Naranja X, Gastos Aprobados | Balance. 2x2 en celu, los 4 en una fila en PC */}
         <div className="mb-6 sm:mb-8">
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-6">
             <Card className="bg-gray-800/50 border-green-500/20 py-2 sm:py-4 gap-1.5 sm:gap-2">
@@ -295,7 +298,7 @@ export default function GastosPage() {
               <CardHeader className="pb-0 px-2.5 sm:px-4">
                 <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-400 flex items-center gap-1 sm:gap-2">
                   <Landmark className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
-                  <span className="truncate">Plata en el BNA</span>
+                  <span className="truncate">{ETIQUETA_PLATA}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-2.5 sm:px-4">
@@ -435,8 +438,9 @@ export default function GastosPage() {
                         </SelectTrigger>
                         <SelectContent className="bg-gray-700 border-gray-600">
                           <SelectItem value="todos">Todos los estados</SelectItem>
-                          <SelectItem value="aprobado">Aprobado</SelectItem>
-                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="pagado">Pagado</SelectItem>
+                          <SelectItem value="por_pagar">Por pagar</SelectItem>
+                          <SelectItem value="pendiente">Pendiente de aprobar</SelectItem>
                           <SelectItem value="rechazado">Rechazado</SelectItem>
                           <SelectItem value="cobrado">Cobrado</SelectItem>
                           <SelectItem value="por_cobrar">Por cobrar</SelectItem>
@@ -544,13 +548,24 @@ export default function GastosPage() {
             )}
 
             {vista === "ingresos" && (
-              <IngresosTable
-                ingresos={ingresos}
-                puedeEliminar={esAdmin}
-                onEliminar={handleEliminarIngreso}
-                onMarcarCobrado={handleMarcarCobrado}
-                onGuardado={recargar}
-              />
+              <div className="space-y-4">
+                {/* Las comisiones de Naranja X entran de a poco y en fechas
+                    distintas: se cargan acá y suman en un solo ingreso. */}
+                <ComisionesNaranja
+                  ingresos={ingresos}
+                  puedeEditar={esAdmin}
+                  userEmail={user?.email || ""}
+                  userRole={userRole || ""}
+                  onGuardado={recargar}
+                />
+                <IngresosTable
+                  ingresos={ingresos}
+                  puedeEliminar={esAdmin}
+                  onEliminar={handleEliminarIngreso}
+                  onMarcarCobrado={handleMarcarCobrado}
+                  onGuardado={recargar}
+                />
+              </div>
             )}
 
             {vista === "pagos" && (

@@ -1,5 +1,6 @@
 // lib/finanzas/saldoEsperado.ts
-// Calcula cuanta plata "deberia" haber en la cuenta del BNA en este momento.
+// Calcula cuanta plata "deberia" haber en la cuenta del evento (Naranja X, que
+// antes era el BNA; el nombre vive en lib/finanzas/cuenta.ts) en este momento.
 // Lo usa la notificacion de inscripcion nueva, para avisar en el mismo mensaje
 // cuanto tendria que haber entrado si todos los inscriptos transfirieron.
 //

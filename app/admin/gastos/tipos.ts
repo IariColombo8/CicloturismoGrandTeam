@@ -1,5 +1,7 @@
 // Tipos y helpers compartidos del modulo de finanzas (/admin/gastos)
 
+import type { ItemComision } from "@/lib/finanzas/comisiones"
+
 export type EstadoGasto = "pendiente" | "aprobado" | "rechazado"
 export type EstadoIngreso = "cobrado" | "por_cobrar"
 
@@ -31,6 +33,12 @@ export interface Ingreso {
   comprobante: string | null
   creadoPor: string | null
   notas: string | null
+  /**
+   * Acreditaciones que componen el ingreso, cuando es uno acumulador (las
+   * comisiones de Naranja X entran de a poco y en fechas distintas). Vacio en
+   * un ingreso normal: ahi `monto` es todo lo que hay que saber.
+   */
+  items: ItemComision[]
 }
 
 /**
@@ -144,6 +152,54 @@ export function montoEsperado(inscripcion: InscripcionPago, precioBase: number):
   return precioBase
 }
 
+
+/** Color del badge de estado. Cada pantalla lo traduce a sus clases. */
+export type TonoEstado = "verde" | "naranja" | "amarillo" | "rojo"
+
+/** Clases de Tailwind de cada tono, para que todas las tablas pinten igual. */
+export const CLASE_BADGE: Record<TonoEstado, string> = {
+  verde: "bg-green-500/20 text-green-500",
+  naranja: "bg-orange-500/20 text-orange-400",
+  amarillo: "bg-yellow-400/20 text-yellow-400",
+  rojo: "bg-red-500/20 text-red-500",
+}
+
+/**
+ * Como se muestra el estado de un gasto.
+ *
+ * Un gasto aprobado **no dice "Aprobado"**: a esta altura estan aprobados
+ * todos, asi que esa columna no informaba nada. Lo unico que hace falta saber
+ * mirando la lista es si la plata ya salio o todavia hay que pagarla, igual que
+ * los ingresos dicen "Cobrado" o "Por cobrar".
+ */
+export function estadoGastoVisible(gasto: Pick<Gasto, "estado" | "pagado">): {
+  /** Lo que se lee en el badge y en el PDF. */
+  texto: string
+  tono: TonoEstado
+  /** Valor con el que se filtra la lista de movimientos. */
+  clave: "pagado" | "por_pagar" | "pendiente" | "rechazado"
+} {
+  if (gasto.estado === "aprobado") {
+    return gasto.pagado
+      ? { texto: "Pagado", tono: "verde", clave: "pagado" }
+      : { texto: "Por pagar", tono: "naranja", clave: "por_pagar" }
+  }
+  if (gasto.estado === "rechazado") {
+    return { texto: "Rechazado", tono: "rojo", clave: "rechazado" }
+  }
+  // Propuesto y todavia sin aprobar: ni pagado ni por pagar.
+  return { texto: "Pendiente", tono: "amarillo", clave: "pendiente" }
+}
+
+/**
+ * Estado con el que se muestra y se filtra una fila de la vista "Todo".
+ * Un gasto aprobado se lee como "Pagado" o "Por pagar" (ver
+ * `estadoGastoVisible`); los ingresos ya venian con su propio estado.
+ */
+export function estadoMovimiento(mov: Movimiento): string {
+  if (mov.tipo === "gasto" && mov.origen) return estadoGastoVisible(mov.origen).clave
+  return mov.estado
+}
 
 /**
  * Total de un gasto segun la cantidad de participantes.

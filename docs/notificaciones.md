@@ -30,7 +30,7 @@ llegue al celular.
 ```
 Nueva inscripcion: Juan Perez
 Concepcion del Uruguay · Grand Team
-En el BNA deberia haber $1.071.920 con esta
+En Naranja X deberia haber $1.071.920 con esta
 ```
 
 El monto es la plata ya verificada **mas esa inscripcion sola**. Se calcula en
@@ -42,7 +42,7 @@ El monto es la plata ya verificada **mas esa inscripcion sola**. Se calcula en
 - gastos aprobados y pagados             (los "por participante" x confirmados)
 = verificado
 + el precio de la inscripcion que acaba de entrar
-= lo que deberia haber en el BNA
+= lo que deberia haber en Naranja X
 ```
 
 > **Las pendientes viejas no se suman.** Son transferencias que todavia no se
@@ -80,7 +80,8 @@ VAPID_SUBJECT=mailto:grandteamcdelu@gmail.com
 | Service Worker (recibe el push, abre el panel al tocar) | `public/sw.js` |
 | Envio con VAPID, limpieza de suscripciones muertas | `lib/push/enviar.ts` |
 | Armado del mensaje de inscripcion nueva | `lib/push/inscripcion.ts` |
-| Calculo del saldo esperado del BNA | `lib/finanzas/saldoEsperado.ts` |
+| Calculo del saldo esperado de la cuenta | `lib/finanzas/saldoEsperado.ts` |
+| Nombre de la cuenta (Naranja X, antes BNA) | `lib/finanzas/cuenta.ts` |
 | Alta/baja del dispositivo | `app/api/push/subscribe/route.ts` |
 | Notificacion de prueba | `app/api/push/probar/route.ts` |
 | Boton de activacion | `components/admin/NotificacionesPush.tsx` |

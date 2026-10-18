@@ -122,6 +122,10 @@ public.remera                -> dni, nombre, telefono, items (JSONB), estado, en
 public.content_settings      -> id (PK texto), data (JSONB)
   id puede ser: "remera" | "sponsors" | "fotos" | "contacto" | "confirmacion"
 public.gastos                -> descripcion, monto, categoria, estado, aprobado_por
+public.ingresos              -> descripcion, monto, categoria, estado, fecha, items (JSONB)
+  items = acreditaciones que componen el ingreso ([{id, fecha, monto, nota}]), y `monto`
+    es su suma. Lo usa el acumulador "Comisiones de Naranja X" (categoria 'comision');
+    en un ingreso normal queda en [].
 public.event_settings        -> cupo_maximo, precio, inscripciones_abiertas
 public.counters              -> id, count
 public.sponsors              -> nombre, nombre_comercial, descripcion, logo_url, tier (oro/plata/bronce)
@@ -411,7 +415,7 @@ Detalle completo en **`docs/notificaciones.md`**. Tres vias, todas implementadas
 2. **Notificacion del navegador**: si hay permiso y la pestaña no esta visible.
 3. **Push al celular** (funciona con el sitio cerrado): Service Worker en `public/sw.js`, claves VAPID, suscripciones en `public.push_subscriptions` y envio con `web-push` desde `lib/push/enviar.ts`. Lo dispara `POST /api/inscripcion/submit` via `lib/push/inscripcion.ts`.
 
-El mensaje incluye **cuanta plata deberia haber en el BNA** contando esa transferencia (`lib/finanzas/saldoEsperado.ts`): (confirmadas cobradas + ingresos cobrados − gastos pagados) + el precio de esa inscripcion. Las pendientes viejas **no** se suman: son transferencias sin verificar y harian crecer el numero con plata que quiza nunca entro. El `verificado` coincide con la calculadora de caja de `/admin/gastos` en sus valores por defecto.
+El mensaje incluye **cuanta plata deberia haber en Naranja X** contando esa transferencia (`lib/finanzas/saldoEsperado.ts`): (confirmadas cobradas + ingresos cobrados − gastos pagados) + el precio de esa inscripcion. Las pendientes viejas **no** se suman: son transferencias sin verificar y harian crecer el numero con plata que quiza nunca entro. El `verificado` coincide con la calculadora de caja de `/admin/gastos` en sus valores por defecto.
 
 Se activa por dispositivo desde el boton del panel. En iPhone requiere instalar el sitio como app (iOS 16.4+). Las claves VAPID **no se regeneran**: si cambian, hay que reactivar en cada dispositivo.
 
@@ -476,6 +480,52 @@ generico de Vercel. Ante un `ChunkLoadError` se recuperan solos: vuelven a bajar
 archivos JS que fallaron con `fetch(url, { cache: "reload" })` — unica forma de
 sobrescribir la cache HTTP, que para `/_next/static` es `immutable` — y recargan una vez
 por pestaña.
+
+### La cuenta del evento: Naranja X (antes BNA)
+
+El nombre de la cuenta **no se escribe suelto en ningun archivo**: sale de
+`lib/finanzas/cuenta.ts` (`CUENTA = "Naranja X"`, `ETIQUETA_PLATA = "Plata en Naranja X"`).
+Lo usan la tarjeta de `/admin/gastos`, la calculadora de caja, el dashboard
+(`SeccionPlata`), el PDF/Excel de finanzas y los push de inscripcion nueva
+(`lib/push/inscripcion.ts`, `/api/push/probar`). Si la cuenta vuelve a cambiar se toca
+**solo esa constante**, y todas las pantallas dicen lo mismo.
+
+### Comisiones de Naranja X (un ingreso con muchos dias adentro)
+
+Naranja X acredita comision cada tanto y de a montos chicos. Un ingreso por acreditacion
+dejaba la lista de finanzas llena de filas de $300 que tapaban los sponsors, asi que es
+**un solo ingreso acumulador**: `ingresos.categoria = 'comision'` y cada acreditacion es
+un item de `ingresos.items` (JSONB: `[{id, fecha, monto, nota}]`,
+`20261018_comisiones_naranja_x.sql`).
+
+- `ingresos.monto` se guarda **siempre igual a la suma de los items** (lo hace la tarjeta
+  al agregar o borrar uno), asi que la calculadora de caja, el saldo esperado del push y
+  los totales no necesitan saber nada de esto. `mapIngreso` igual deriva el total de los
+  items, para que un monto desincronizado no pueda mentir.
+- Se carga en `/admin/gastos` -> vista **Ingresos** -> tarjeta "Comisiones de Naranja X"
+  (`ComisionesNaranja.tsx`): fecha + monto + nota opcional, con el historial debajo.
+- En la grilla de ingresos ese acumulador **no se edita ni se borra** (un clic se llevaria
+  todas las comisiones): se tocan item por item desde la tarjeta.
+- **En el PDF va una sola fila**: el total y desde cuando ("desde el 12/10/2026,
+  8 acreditaciones"). El dia por dia esta en el panel y en la hoja "Comisiones" del Excel.
+- Logica pura en `lib/finanzas/comisiones.ts` (test: `e2e/unit/comisiones.spec.ts`). Las
+  fechas se formatean sin `new Date`: el Date de `"2026-10-18"` es medianoche UTC y en
+  Argentina mostraba el 17.
+
+### Un gasto dice "Pagado" o "Por pagar" (no "Aprobado")
+
+En la lista de gastos **estan aprobados todos**: la columna que decia "Aprobado" no
+informaba nada, y al lado habia un segundo badge "Aún no se pagó" diciendo lo mismo al
+revés. Ahora el estado de un gasto se lee como el de un ingreso ("Cobrado" / "Por
+cobrar"): **Pagado** (verde) o **Por pagar** (naranja); los que todavia no se aprobaron
+siguen como "Pendiente" y los rechazados como "Rechazado".
+
+- Sale de `estadoGastoVisible()` en `app/admin/gastos/tipos.ts` (texto + tono + clave de
+  filtro) y los colores de `CLASE_BADGE`. Lo usan la grilla de gastos, el modal de
+  detalle, la vista de Movimientos (via `estadoMovimiento()`) y el PDF/Excel.
+- El filtro de Movimientos filtra por "Pagado" / "Por pagar" en vez de por "Aprobado".
+- En el PDF y el Excel hay **una sola** columna de estado: la de "Pago" se fue, porque
+  repetia la misma informacion.
 
 ### Plata de las inscripciones (regla importante)
 
