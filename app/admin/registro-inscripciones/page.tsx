@@ -1307,38 +1307,20 @@ export default function RegistroInscripciones() {
     exportToCSV(datos, `inscripciones_${new Date().toISOString().slice(0, 10)}`)
   }
 
-  // --- Tarjetas de resumen (carrusel de 4 en 4) ---
-  // Son 9: las 4 de estado y las 5 de pago. Mostrarlas todas juntas ocupaba
-  // media pantalla antes de llegar al listado.
-  const tarjetas = useMemo<TarjetaResumen[]>(
-    () => [
-      // El color va completo y no interpolado: Tailwind no genera clases
-      // armadas en runtime (text-${color}-400 quedaba sin estilo).
+  // --- Tarjetas de resumen ---
+  // Son 4 y entran en una sola fila: Total, Pagadas, Faltan pagar y Gratis.
+  // Antes eran 9 (4 de estado + 5 de pago) en tres paginas de carrusel, y las
+  // de estado no agregaban nada: "Confirmadas" casi siempre era el total y lo
+  // que se mira es quien pago. Las dos de pagos raros (otro monto, otra forma)
+  // aparecen solo cuando hay alguno, y entonces se arma una segunda pagina.
+  const tarjetas = useMemo<TarjetaResumen[]>(() => {
+    // El color va completo y no interpolado: Tailwind no genera clases
+    // armadas en runtime (text-${color}-400 quedaba sin estilo).
+    const lista: TarjetaResumen[] = [
       { id: "total", titulo: "Total", valor: stats.total, icono: Users, color: "text-blue-400" },
       {
-        id: "confirmadas",
-        titulo: "Confirmadas",
-        valor: stats.confirmadas,
-        icono: CheckCircle,
-        color: "text-green-400",
-      },
-      {
-        id: "pendientes",
-        titulo: "Pendientes",
-        valor: stats.pendientes,
-        icono: Clock,
-        color: "text-yellow-400",
-      },
-      {
-        id: "rechazadas",
-        titulo: "Rechazadas",
-        valor: stats.rechazadas,
-        icono: XCircleIcon,
-        color: "text-red-400",
-      },
-      {
-        id: "pagaron",
-        titulo: "Pagaron",
+        id: "pagadas",
+        titulo: "Pagadas",
         valor: resumenPagos.pagaron,
         icono: DollarSign,
         color: "text-green-400",
@@ -1350,8 +1332,8 @@ export default function RegistroInscripciones() {
         },
       },
       {
-        id: "no-pagaron",
-        titulo: "No pagaron",
+        id: "faltan-pagar",
+        titulo: "Faltan pagar",
         valor: resumenPagos.noPagaron,
         icono: AlertTriangle,
         color: "text-orange-400",
@@ -1374,32 +1356,6 @@ export default function RegistroInscripciones() {
         },
       },
       {
-        id: "otro-monto",
-        titulo: "Pagaron otro monto",
-        valor: resumenPagos.distintos.length,
-        icono: ClipboardList,
-        color: "text-blue-400",
-        onVer: resumenPagos.distintos.length > 0 ? () => setVerPagosDistintos(true) : undefined,
-      },
-      {
-        // Pagaron de una forma que no entro a la caja (otra moneda, se lo
-        // dieron a alguien del equipo). No suma plata, pero no son deudores.
-        id: "otra-forma",
-        titulo: "Pagó de otra forma",
-        valor: resumenPagos.otraForma.length,
-        icono: StickyNote,
-        color: "text-purple-400",
-        onVer:
-          resumenPagos.otraForma.length > 0
-            ? () =>
-                setListaModal({
-                  titulo: "Pagaron de otra forma",
-                  descripcion: "Ya pagaron, pero esa plata todavía no entró a la caja",
-                  items: resumenPagos.otraForma,
-                })
-            : undefined,
-      },
-      {
         id: "gratis",
         titulo: "Gratis",
         valor: resumenPagos.gratis,
@@ -1407,19 +1363,56 @@ export default function RegistroInscripciones() {
         color: "text-blue-400",
         pie: "sin cargo",
       },
-    ],
-    [stats, resumenPagos, precioInscripcion]
-  )
+    ]
 
-  const totalPaginasTarjetas = Math.ceil(tarjetas.length / TARJETAS_POR_PAGINA)
+    // Pagos fuera de lo normal: ocupan lugar solo si existen.
+    if (resumenPagos.distintos.length > 0) {
+      lista.push({
+        id: "otro-monto",
+        titulo: "Pagaron otro monto",
+        valor: resumenPagos.distintos.length,
+        icono: ClipboardList,
+        color: "text-blue-400",
+        onVer: () => setVerPagosDistintos(true),
+      })
+    }
+
+    if (resumenPagos.otraForma.length > 0) {
+      // Pagaron de una forma que no entro a la caja (otra moneda, se lo
+      // dieron a alguien del equipo). No suma plata, pero no son deudores.
+      lista.push({
+        id: "otra-forma",
+        titulo: "Pagó de otra forma",
+        valor: resumenPagos.otraForma.length,
+        icono: StickyNote,
+        color: "text-purple-400",
+        onVer: () =>
+          setListaModal({
+            titulo: "Pagaron de otra forma",
+            descripcion: "Ya pagaron, pero esa plata todavía no entró a la caja",
+            items: resumenPagos.otraForma,
+          }),
+      })
+    }
+
+    return lista
+  }, [stats, resumenPagos, precioInscripcion])
+
+  const totalPaginasTarjetas = Math.max(1, Math.ceil(tarjetas.length / TARJETAS_POR_PAGINA))
+  // Las tarjetas de pagos raros aparecen y desaparecen con los datos (el panel
+  // escucha realtime): si estaba en la pagina 2 y se fueron, no puede quedar
+  // mirando una pagina vacia.
+  const paginaActual = Math.min(paginaTarjetas, totalPaginasTarjetas - 1)
   const tarjetasVisibles = tarjetas.slice(
-    paginaTarjetas * TARJETAS_POR_PAGINA,
-    paginaTarjetas * TARJETAS_POR_PAGINA + TARJETAS_POR_PAGINA
+    paginaActual * TARJETAS_POR_PAGINA,
+    paginaActual * TARJETAS_POR_PAGINA + TARJETAS_POR_PAGINA
   )
 
   /** Avanza o retrocede de pagina, dando la vuelta en los extremos. */
   const moverTarjetas = (paso: number) =>
-    setPaginaTarjetas((p) => (p + paso + totalPaginasTarjetas) % totalPaginasTarjetas)
+    setPaginaTarjetas(
+      (paginaActual + paso + totalPaginasTarjetas) % totalPaginasTarjetas
+    )
 
   // Derivados del modal de detalle: si el admin toco el email y si la
   // inscripcion esta en un estado donde el mail de confirmacion tiene sentido.
@@ -1508,46 +1501,49 @@ export default function RegistroInscripciones() {
           </div>
         )}
 
-        {/* Tarjetas de resumen: 9 en total, pero se muestran 4 por vez y el
-            resto se ve con las flechas. Las 9 juntas se comian la pantalla. */}
+        {/* Tarjetas de resumen: las 4 de pagos entran en una fila, asi que
+            normalmente no hay carrusel. Los puntos y las flechas aparecen solo
+            si hay una segunda pagina (pagos de otro monto o de otra forma). */}
         <div className="mb-6 animate-fadeIn">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-1.5">
-              {/* Un punto por pagina, para saber donde estas y saltar directo. */}
-              {Array.from({ length: totalPaginasTarjetas }).map((_, i) => (
+          {totalPaginasTarjetas > 1 && (
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5">
+                {/* Un punto por pagina, para saber donde estas y saltar directo. */}
+                {Array.from({ length: totalPaginasTarjetas }).map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setPaginaTarjetas(i)}
+                    aria-label={`Ver tarjetas ${i + 1} de ${totalPaginasTarjetas}`}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === paginaActual ? "w-5 bg-yellow-400" : "w-1.5 bg-zinc-700 hover:bg-zinc-600"
+                    }`}
+                  />
+                ))}
+                <span className="text-[11px] text-gray-500 ml-1.5">
+                  {paginaActual + 1}/{totalPaginasTarjetas}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
                 <button
-                  key={i}
                   type="button"
-                  onClick={() => setPaginaTarjetas(i)}
-                  aria-label={`Ver tarjetas ${i + 1} de ${totalPaginasTarjetas}`}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === paginaTarjetas ? "w-5 bg-yellow-400" : "w-1.5 bg-zinc-700 hover:bg-zinc-600"
-                  }`}
-                />
-              ))}
-              <span className="text-[11px] text-gray-500 ml-1.5">
-                {paginaTarjetas + 1}/{totalPaginasTarjetas}
-              </span>
+                  onClick={() => moverTarjetas(-1)}
+                  aria-label="Tarjetas anteriores"
+                  className="p-1.5 rounded-lg bg-zinc-900 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-800 transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moverTarjetas(1)}
+                  aria-label="Tarjetas siguientes"
+                  className="p-1.5 rounded-lg bg-zinc-900 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-800 transition-all"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => moverTarjetas(-1)}
-                aria-label="Tarjetas anteriores"
-                className="p-1.5 rounded-lg bg-zinc-900 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-800 transition-all"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => moverTarjetas(1)}
-                aria-label="Tarjetas siguientes"
-                className="p-1.5 rounded-lg bg-zinc-900 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-800 transition-all"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          )}
 
           <div className="grid gap-2 grid-cols-2 sm:gap-3 md:grid-cols-4">
             {tarjetasVisibles.map((tarjeta) => {

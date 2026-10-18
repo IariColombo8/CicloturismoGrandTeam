@@ -587,6 +587,14 @@ calculadora de caja, la vista de Movimientos y el PDF/Excel. En
 `/admin/registro-inscripciones` el mismo desglose son las 4 tarjetas de pagos, y en el
 push de inscripcion nueva lo usa `lib/finanzas/saldoEsperado.ts`.
 
+**Las tarjetas del registro hablan de plata, no de estados.** Son **4 y entran en una
+sola fila**: Total, **Pagadas**, **Faltan pagar** y **Gratis**. Eran 9 en tres paginas de
+carrusel (4 de estado + 5 de pago) y las de estado no decian nada: "Confirmadas" era casi
+el total, "Rechazadas" casi siempre 0, y lo que se mira es quien pago. Las dos de pagos
+raros ("Pagaron otro monto", "Pago de otra forma") **aparecen solo si hay alguno**, y
+recien ahi se arma una segunda pagina con sus puntos y flechas. El estado de la
+inscripcion sigue estando en el badge de cada fila y en el filtro.
+
 ### Dashboard Admin
 
 `/admin/dashboard` tiene tres secciones, y todas se calculan sobre **todas** las filas de la
