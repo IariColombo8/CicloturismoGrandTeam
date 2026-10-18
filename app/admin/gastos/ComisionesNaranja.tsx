@@ -185,7 +185,7 @@ export function ComisionesNaranja({
       <CardContent className="space-y-4">
         {puedeEditar && (
           <div className="grid grid-cols-2 sm:grid-cols-[auto_1fr_1fr_auto] gap-2 items-end rounded-lg border border-gray-700 bg-gray-700/30 p-3">
-            <div>
+            <div className="space-y-1">
               <Label className="text-gray-300 text-xs">Fecha</Label>
               <Input
                 type="date"
@@ -194,7 +194,7 @@ export function ComisionesNaranja({
                 className="bg-gray-700 border-gray-600 text-white"
               />
             </div>
-            <div>
+            <div className="space-y-1">
               <Label className="text-gray-300 text-xs">Monto</Label>
               <Input
                 type="text"
@@ -204,13 +204,8 @@ export function ComisionesNaranja({
                 placeholder="1234,56"
                 className="bg-gray-700 border-gray-600 text-white"
               />
-              {ultima && montoEditado === null && (
-                <p className="text-[10px] text-gray-500 mt-0.5">
-                  Es el de la última ({fechaCorta(ultima.fecha)}). Cambialo si acreditaron otro.
-                </p>
-              )}
             </div>
-            <div className="col-span-2 sm:col-span-1">
+            <div className="col-span-2 sm:col-span-1 space-y-1">
               <Label className="text-gray-300 text-xs">Nota (opcional)</Label>
               <Input
                 value={nota}
