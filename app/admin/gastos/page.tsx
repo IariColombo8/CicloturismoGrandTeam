@@ -621,6 +621,7 @@ export default function GastosPage() {
             ingresosCobrados={resumen.ingresosCobrados}
             ingresosPorCobrar={resumen.ingresosPorCobrar}
             inscriptosActuales={resumen.inscriptosTotales}
+            gratis={resumen.desglosePagos.gratis.cantidad}
           />
           {/* Notas de caja al final: se cargan en el registro de inscripciones
               y acá se leen (lo puntual de cada pago va en la nota del pago). */}

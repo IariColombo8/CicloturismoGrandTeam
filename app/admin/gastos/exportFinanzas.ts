@@ -6,6 +6,23 @@ import { estadoGastoVisible, formatARS, ordenarGastosPorPago, totalGasto } from 
 import type { ResumenFinanciero } from "./useFinanzas"
 import { ETIQUETA_PLATA } from "@/lib/finanzas/cuenta"
 import { descripcionComisiones, fechaCorta, ordenarComisiones } from "@/lib/finanzas/comisiones"
+import {
+  crearEstiloTabla,
+  dibujarCabecera,
+  dibujarTarjetas,
+  dibujarTituloSeccion,
+  pintarFondoPagina,
+  yDespuesDeTabla,
+  DORADO,
+  ESMERALDA,
+  NARANJA,
+  ROJO,
+  ROJO_FUERTE,
+  TEXTO_GRIS,
+  VERDE,
+  type RGB,
+  type TarjetaResumen,
+} from "./pdfEstilo"
 
 const NOMBRE_ARCHIVO_BASE = "grand-team-finanzas"
 
@@ -18,28 +35,6 @@ function etiquetaEstadoGasto(gasto: Gasto): string {
 
 function fechaLegible(fecha: string | null): string {
   return fecha ? new Date(fecha).toLocaleDateString("es-AR") : "-"
-}
-
-// Paleta calcada de la web (fondo negro/gris + acentos de color), para que el PDF
-// se vea como una foto del dashboard en vez de una planilla gris de toda la vida.
-type RGB = [number, number, number]
-const BG_PAGINA: RGB = [17, 24, 39] // gray-900
-const BG_TARJETA: RGB = [31, 41, 55] // gray-800
-const BG_FILA_PAR: RGB = [24, 32, 45] // levemente mas claro que el fondo
-const BORDE: RGB = [55, 65, 81] // gray-700
-const TEXTO_GRIS: RGB = [156, 163, 175] // gray-400
-const TEXTO_BLANCO: RGB = [229, 231, 235] // gray-200
-const DORADO: RGB = [250, 204, 21] // yellow-400
-const VERDE: RGB = [34, 197, 94] // green-500
-const ESMERALDA: RGB = [52, 211, 153] // emerald-400
-const ROJO: RGB = [248, 113, 113] // red-400
-const ROJO_FUERTE: RGB = [239, 68, 68] // red-500
-const NARANJA: RGB = [251, 146, 60] // orange-400
-
-interface TarjetaResumen {
-  titulo: string
-  valor: string
-  color: RGB
 }
 
 /** Fila de la tabla de ingresos, ya lista para el PDF y para el Excel. */
@@ -193,62 +188,6 @@ function armarTarjetas(resumen: ResumenFinanciero): TarjetaResumen[] {
   ]
 }
 
-/** Reduce el tamaño de fuente hasta que el texto entre en el ancho disponible. */
-function tamañoQueEntra(doc: import("jspdf").jsPDF, texto: string, anchoMax: number, inicial: number): number {
-  let tamaño = inicial
-  doc.setFontSize(tamaño)
-  while (tamaño > 8 && doc.getTextWidth(texto) > anchoMax) {
-    tamaño -= 1
-    doc.setFontSize(tamaño)
-  }
-  return tamaño
-}
-
-/** Pinta el fondo oscuro de toda la página actual. */
-function pintarFondoPagina(doc: import("jspdf").jsPDF): void {
-  const ancho = doc.internal.pageSize.getWidth()
-  const alto = doc.internal.pageSize.getHeight()
-  doc.setFillColor(...BG_PAGINA)
-  doc.rect(0, 0, ancho, alto, "F")
-}
-
-/** Dibuja las 4 tarjetas del mini-dashboard, con acento de color como en la web. */
-function dibujarTarjetas(
-  doc: import("jspdf").jsPDF,
-  tarjetas: TarjetaResumen[],
-  startY: number,
-  marginX: number,
-  anchoPagina: number,
-): number {
-  const gap = 10
-  const cardWidth = (anchoPagina - marginX * 2 - gap * 3) / 4
-  const cardHeight = 58
-
-  tarjetas.forEach((tarjeta, i) => {
-    const x = marginX + i * (cardWidth + gap)
-
-    doc.setFillColor(...BG_TARJETA)
-    doc.roundedRect(x, startY, cardWidth, cardHeight, 5, 5, "F")
-
-    // Barra de acento a la izquierda, como el border-l de las cards en la web.
-    doc.setFillColor(...tarjeta.color)
-    doc.roundedRect(x, startY, 4, cardHeight, 2, 2, "F")
-
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(8)
-    doc.setTextColor(...TEXTO_GRIS)
-    doc.text(tarjeta.titulo, x + 12, startY + 18)
-
-    doc.setFont("helvetica", "bold")
-    const tamaño = tamañoQueEntra(doc, tarjeta.valor, cardWidth - 20, 15)
-    doc.setFontSize(tamaño)
-    doc.setTextColor(...tarjeta.color)
-    doc.text(tarjeta.valor, x + 12, startY + 40)
-  })
-
-  return startY + cardHeight
-}
-
 /** Los mismos colores que el badge de la pantalla, en RGB para el PDF. */
 const COLOR_TONO: Record<TonoEstado, RGB> = {
   verde: VERDE,
@@ -268,71 +207,35 @@ function colorEstadoIngreso(estado: string): RGB {
   return estado === "cobrado" ? VERDE : DORADO
 }
 
-/** Genera y descarga un PDF con el resumen financiero y el detalle de gastos e ingresos, con la estética (oscura, con tarjetas de color) de la página. */
-export async function exportarFinanzasPDF(
+/**
+ * Arma el PDF de finanzas y lo devuelve sin guardarlo, con su nombre de
+ * archivo. Separado de la descarga para poder generarlo en un test.
+ */
+export async function armarFinanzasPDF(
   gastos: Gasto[],
   ingresos: Ingreso[],
   resumen: ResumenFinanciero,
   confirmados: number,
   precioBase: number,
   notas: NotaCaja[] = [],
-): Promise<void> {
-  const { default: jsPDF } = await import("jspdf")
+): Promise<{ doc: import("jspdf").jsPDF; nombreArchivo: string }> {
+  const { jsPDF } = await import("jspdf")
   const autoTable = (await import("jspdf-autotable")).default
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" })
   const anchoPagina = doc.internal.pageSize.getWidth()
   const marginX = 40
 
-  // El fondo se repinta por cada pagina nueva que agregue autoTable (willDrawPage).
-  // La pagina 1 la pintamos a mano porque el header/tarjetas se dibujan antes de
-  // que arranque la primera tabla.
-  let ultimaPaginaPintada = 1
+  // El fondo se repinta por cada pagina nueva que agregue autoTable (lo hace el
+  // willDrawPage del estilo). La pagina 1 se pinta a mano porque la cabecera y
+  // las tarjetas se dibujan antes de que arranque la primera tabla.
   pintarFondoPagina(doc)
-
-  const fechaGeneracion = new Date().toLocaleString("es-AR")
-
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(18)
-  doc.setTextColor(...DORADO)
-  doc.text("Grand Team Bike 2026", marginX, 42)
-
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(11)
-  doc.setTextColor(...TEXTO_GRIS)
-  doc.text("Finanzas", marginX, 58)
-
-  doc.setFontSize(8)
-  doc.text(`Generado el ${fechaGeneracion}`, anchoPagina - marginX, 42, { align: "right" })
+  dibujarCabecera(doc, "Finanzas", marginX, anchoPagina)
 
   const tarjetas = armarTarjetas(resumen)
   const yDespuesTarjetas = dibujarTarjetas(doc, tarjetas, 72, marginX, anchoPagina)
 
-  const estiloTabla = {
-    theme: "grid" as const,
-    margin: { left: marginX, right: marginX },
-    styles: {
-      fontSize: 8,
-      textColor: TEXTO_BLANCO,
-      lineColor: BORDE,
-      lineWidth: 0.5,
-    },
-    headStyles: {
-      fillColor: BG_TARJETA,
-      textColor: DORADO,
-      fontStyle: "bold" as const,
-      lineColor: BORDE,
-    },
-    alternateRowStyles: { fillColor: BG_FILA_PAR },
-    bodyStyles: { fillColor: BG_PAGINA },
-    willDrawPage: () => {
-      const paginaActual = doc.getNumberOfPages()
-      if (paginaActual > ultimaPaginaPintada) {
-        pintarFondoPagina(doc)
-        ultimaPaginaPintada = paginaActual
-      }
-    },
-  }
+  const estiloTabla = crearEstiloTabla(doc, marginX)
 
   // Detalle de gastos: pagados arriba, sin pagar abajo.
   const gastosOrdenados = ordenarGastosPorPago(gastos)
@@ -344,10 +247,7 @@ export async function exportarFinanzasPDF(
     fechaLegible(g.fecha),
   ])
 
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(12)
-  doc.setTextColor(...DORADO)
-  doc.text("Gastos", marginX, yDespuesTarjetas + 22)
+  dibujarTituloSeccion(doc, "Gastos", marginX, yDespuesTarjetas + 22)
 
   autoTable(doc, {
     ...estiloTabla,
@@ -365,7 +265,7 @@ export async function exportarFinanzasPDF(
     },
   })
 
-  const yDespuesGastos = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 22
+  const yDespuesGastos = yDespuesDeTabla(doc) + 22
 
   // Detalle de ingresos: primero las inscripciones (que son la mayor parte de
   // la plata) y despues los ingresos cargados a mano.
@@ -388,10 +288,7 @@ export async function exportarFinanzasPDF(
     filasIngresos.push(["TOTAL COBRADO", "", formatARS(resumen.totalIngresos), "", ""])
   }
 
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(12)
-  doc.setTextColor(...DORADO)
-  doc.text("Ingresos", marginX, yDespuesGastos)
+  dibujarTituloSeccion(doc, "Ingresos", marginX, yDespuesGastos)
 
   autoTable(doc, {
     ...estiloTabla,
@@ -423,13 +320,8 @@ export async function exportarFinanzasPDF(
   // Notas de caja: lo que no entra en ninguna tabla pero hay que recordar.
   const notasVisibles = notas.filter((n) => n.texto.trim())
   if (notasVisibles.length > 0) {
-    const yDespuesIngresos =
-      (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 22
-
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(12)
-    doc.setTextColor(...DORADO)
-    doc.text("Notas de caja", marginX, yDespuesIngresos)
+    const yDespuesIngresos = yDespuesDeTabla(doc) + 22
+    dibujarTituloSeccion(doc, "Notas de caja", marginX, yDespuesIngresos)
 
     autoTable(doc, {
       ...estiloTabla,
@@ -447,7 +339,30 @@ export async function exportarFinanzasPDF(
     })
   }
 
-  doc.save(`${NOMBRE_ARCHIVO_BASE}-${new Date().toISOString().slice(0, 10)}.pdf`)
+  return {
+    doc,
+    nombreArchivo: `${NOMBRE_ARCHIVO_BASE}-${new Date().toISOString().slice(0, 10)}.pdf`,
+  }
+}
+
+/** Genera y descarga un PDF con el resumen financiero y el detalle de gastos e ingresos, con la estética (oscura, con tarjetas de color) de la página. */
+export async function exportarFinanzasPDF(
+  gastos: Gasto[],
+  ingresos: Ingreso[],
+  resumen: ResumenFinanciero,
+  confirmados: number,
+  precioBase: number,
+  notas: NotaCaja[] = [],
+): Promise<void> {
+  const { doc, nombreArchivo } = await armarFinanzasPDF(
+    gastos,
+    ingresos,
+    resumen,
+    confirmados,
+    precioBase,
+    notas,
+  )
+  doc.save(nombreArchivo)
 }
 
 /** Genera y descarga un Excel (.xlsx) con resumen, gastos e ingresos en hojas separadas. */

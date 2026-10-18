@@ -522,6 +522,30 @@ un item de `ingresos.items` (JSONB: `[{id, fecha, monto, nota}]`,
   fechas se formatean sin `new Date`: el Date de `"2026-10-18"` es medianoche UTC y en
   Argentina mostraba el 17.
 
+### PDF de finanzas y PDF de la estimacion
+
+Son dos informes con la misma estetica (fondo oscuro + tarjetas de color, calcada de la
+web): `exportFinanzas.ts` (lo que paso de verdad) y `exportEstimacion.ts` (la proyeccion
+del estimador de inscriptos). El estilo compartido vive en `pdfEstilo.ts` — paleta,
+cabecera, tarjetas, estilo de tabla, titulos de seccion —; **ningun informe nuevo redefine
+colores ni vuelve a dibujar tarjetas**.
+
+- La cuenta de la estimacion es `lib/finanzas/estimacion.ts` (pura, con test). **La misma
+  funcion la usan la tarjeta en pantalla y el PDF**: antes de separarla, el PDF podia
+  decir otro numero que la pantalla desde la que se descargo.
+- El boton "PDF de esta cantidad" pregunta si hay que **tener en cuenta las inscripciones
+  gratis**: no pagan (salen de lo que entra) pero igual comen y llevan remera (siguen en
+  los gastos por participante). Si no hay ninguna gratis cargada, no pregunta nada. El
+  criterio elegido **queda escrito en el PDF**, para que un mes despues se entienda de
+  donde salio el numero.
+- Los dos informes separan `armar...PDF` (devuelve el `doc`) de `exportar...PDF` (lo
+  guarda), para poder generarlos en un test: `e2e/unit/pdf-finanzas.spec.ts` los arma con
+  datos de ejemplo y verifica que no exploten (incluido el caso "evento recien arrancado",
+  sin gastos ni ingresos).
+- `jspdf` se importa **nombrado** (`const { jsPDF } = await import("jspdf")`), no por
+  `default`: con el default, el mismo codigo que anda en el navegador tira "jsPDF is not a
+  constructor" en Node y no se puede testear.
+
 ### Un gasto dice "Pagado" o "Por pagar" (no "Aprobado")
 
 En la lista de gastos **estan aprobados todos**: la columna que decia "Aprobado" no
