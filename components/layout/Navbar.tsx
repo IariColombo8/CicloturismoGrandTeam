@@ -16,7 +16,6 @@ import {
   Shirt,
   ClipboardList,
   QrCode,
-  Bike,
   Handshake,
   BedDouble,
   Images,
@@ -189,7 +188,8 @@ export default function Navbar() {
       { href: "/admin/emails", label: "Correos", icon: Mail },
       { href: "/admin/remera", label: "Remeras", icon: Shirt },
       { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
-      { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
+      // Ciclos Provincia queda fuera del menu (la pagina sigue viva en /admin/ciclos):
+      // { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
       { href: "/admin/grandteam", label: "Grand Team", icon: Users },
       { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
       { href: "/admin/alojamientos", label: "Alojamientos", icon: BedDouble },

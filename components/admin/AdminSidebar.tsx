@@ -9,12 +9,10 @@ import {
   Users,
   Settings,
   ClipboardList,
-  Menu,
   X,
   ChevronLeft,
   ChevronRight,
   Home,
-  Bike,
   LogOut,
   Shirt,
   Images,
@@ -43,7 +41,8 @@ const navItems: NavItem[] = [
   { href: "/admin/emails", label: "Correos", icon: Mail },
   { href: "/admin/remera", label: "Remeras", icon: Shirt },
   { href: "/admin/gastos", label: "Gastos", icon: DollarSign },
-  { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
+  // Ciclos Provincia queda fuera del menu (la pagina sigue viva en /admin/ciclos):
+  // { href: "/admin/ciclos", label: "Ciclos Provincia", icon: Bike },
   { href: "/admin/grandteam", label: "Grand Team", icon: Users },
   { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },
   { href: "/admin/alojamientos", label: "Alojamientos", icon: BedDouble },
@@ -89,26 +88,10 @@ export default function AdminSidebar() {
 
   return (
     <>
-      {/* ─────── Botón hamburguesa (solo móvil) ───────
-        Se oculta cuando el menú está abierto para no
-        chocar con el header sticky del dashboard. */}
-      <button
-        type="button"
-        onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label={mobileOpen ? "Cerrar menú lateral" : "Abrir menú lateral"}
-        aria-expanded={mobileOpen}
-        aria-controls="admin-sidebar"
-        className={[
-          "md:hidden fixed top-[5.25rem] left-3 z-40",
-          "h-10 w-10 grid place-items-center rounded-lg",
-          "bg-zinc-900/90 backdrop-blur border border-yellow-400/30",
-          "text-yellow-400 shadow-lg",
-          "hover:bg-zinc-800 active:scale-95 transition-all",
-          mobileOpen ? "opacity-0 pointer-events-none" : "opacity-100",
-        ].join(" ")}
-      >
-        <Menu className="w-5 h-5" aria-hidden="true" />
-      </button>
+      {/* En movil NO hay boton hamburguesa propio del panel: eran dos menus
+        de tres rayas en la misma pantalla (este y el del Navbar) y el de
+        aca repetia lo que el general ya lista. La navegacion de admin en
+        movil sale del menu general del Navbar. */}
 
       {/* ─────── Overlay móvil ─────── */}
       {mobileOpen && (
