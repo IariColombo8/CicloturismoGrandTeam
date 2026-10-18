@@ -502,8 +502,10 @@ un item de `ingresos.items` (JSONB: `[{id, fecha, monto, nota}]`,
   al agregar o borrar uno), asi que la calculadora de caja, el saldo esperado del push y
   los totales no necesitan saber nada de esto. `mapIngreso` igual deriva el total de los
   items, para que un monto desincronizado no pueda mentir.
-- Se carga en `/admin/gastos` -> vista **Ingresos** -> tarjeta "Comisiones de Naranja X"
-  (`ComisionesNaranja.tsx`): fecha + monto + nota opcional, con el historial debajo.
+- Se carga en `/admin/gastos`, en la tarjeta "Comisiones de Naranja X"
+  (`ComisionesNaranja.tsx`) que esta **siempre a la vista**, arriba de Movimientos: fecha
+  + monto + nota opcional, con el historial debajo. Estuvo un rato dentro de la vista
+  "Ingresos" y ahi no se encontraba: quedaba detras de Filtros -> Vista.
 - En la grilla de ingresos ese acumulador **no se edita ni se borra** (un clic se llevaria
   todas las comisiones): se tocan item por item desde la tarjeta.
 - **En el PDF va una sola fila**: el total y desde cuando ("desde el 12/10/2026,

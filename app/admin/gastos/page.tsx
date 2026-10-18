@@ -364,6 +364,19 @@ export default function GastosPage() {
           </div>
         </div>
 
+        {/* Comisiones de Naranja X: siempre a la vista, arriba de los
+            movimientos. Estaba dentro de la vista "Ingresos" y quedaba
+            escondida detrás de Filtros → Vista, donde no se encontraba. */}
+        <div className="mb-6 sm:mb-8">
+          <ComisionesNaranja
+            ingresos={ingresos}
+            puedeEditar={esAdmin}
+            userEmail={user?.email || ""}
+            userRole={userRole || ""}
+            onGuardado={recargar}
+          />
+        </div>
+
         {/* Contenido */}
         <Card className="bg-gray-800/50 border-yellow-400/20 py-3 sm:py-6 gap-3 sm:gap-4">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 px-3 sm:px-6">
@@ -548,24 +561,13 @@ export default function GastosPage() {
             )}
 
             {vista === "ingresos" && (
-              <div className="space-y-4">
-                {/* Las comisiones de Naranja X entran de a poco y en fechas
-                    distintas: se cargan acá y suman en un solo ingreso. */}
-                <ComisionesNaranja
-                  ingresos={ingresos}
-                  puedeEditar={esAdmin}
-                  userEmail={user?.email || ""}
-                  userRole={userRole || ""}
-                  onGuardado={recargar}
-                />
-                <IngresosTable
-                  ingresos={ingresos}
-                  puedeEliminar={esAdmin}
-                  onEliminar={handleEliminarIngreso}
-                  onMarcarCobrado={handleMarcarCobrado}
-                  onGuardado={recargar}
-                />
-              </div>
+              <IngresosTable
+                ingresos={ingresos}
+                puedeEliminar={esAdmin}
+                onEliminar={handleEliminarIngreso}
+                onMarcarCobrado={handleMarcarCobrado}
+                onGuardado={recargar}
+              />
             )}
 
             {vista === "pagos" && (
