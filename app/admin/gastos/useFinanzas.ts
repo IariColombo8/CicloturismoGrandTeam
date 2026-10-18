@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import type { DesglosePagos, EstadoPago, Gasto, Ingreso, InscripcionPago, Movimiento } from "./tipos"
-import { formatARS, montoCobrado, montoEsperado, totalGasto } from "./tipos"
+import {
+  formatARS,
+  montoCobrado,
+  montoEsperado,
+  ordenarGastosPorPago,
+  ordenarIngresosPorCobro,
+  ordenarMovimientos,
+  totalGasto,
+} from "./tipos"
 import { mapNotaCaja, type NotaCaja } from "@/lib/notasCaja"
 import {
   desdeCuando,
@@ -426,13 +434,24 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       })
     }
 
-    return [...deInscripciones, ...deIngresos, ...deGastos].sort((a, b) => {
-      // La fila calculada no tiene fecha: va primero.
-      if (!a.fecha) return -1
-      if (!b.fecha) return 1
-      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-    })
+    // Pagado/cobrado arriba, por pagar/por cobrar abajo.
+    return ordenarMovimientos([...deInscripciones, ...deIngresos, ...deGastos])
   }, [gastos, ingresos, resumen.confirmados, resumen.desglosePagos, precioBase])
 
-  return { gastos, ingresos, inscripciones, notas, cargando, error, recargar, resumen, movimientos }
+  // Las listas salen ordenadas por situacion de pago: lo que ya se movio arriba
+  // y lo que falta abajo. Dentro de cada grupo sigue mandando la fecha.
+  const gastosOrdenados = useMemo(() => ordenarGastosPorPago(gastos), [gastos])
+  const ingresosOrdenados = useMemo(() => ordenarIngresosPorCobro(ingresos), [ingresos])
+
+  return {
+    gastos: gastosOrdenados,
+    ingresos: ingresosOrdenados,
+    inscripciones,
+    notas,
+    cargando,
+    error,
+    recargar,
+    resumen,
+    movimientos,
+  }
 }

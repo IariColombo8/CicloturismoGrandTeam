@@ -111,6 +111,24 @@ export function desdeCuando(items: ItemComision[]): string | null {
   return items.reduce((vieja, i) => (i.fecha < vieja ? i.fecha : vieja), items[0].fecha)
 }
 
+/**
+ * La ultima comision cargada (la de fecha mas nueva), para proponer su monto en
+ * el formulario: casi siempre acreditan lo mismo, asi que escribirlo de nuevo
+ * cada vez era trabajo al vacio.
+ */
+export function ultimaComision(items: ItemComision[]): ItemComision | null {
+  if (items.length === 0) return null
+  return items.reduce((masNueva, i) => (i.fecha > masNueva.fecha ? i : masNueva), items[0])
+}
+
+/**
+ * El monto como se escribe en el campo: con coma decimal, que es como se carga
+ * a mano en Argentina (`parseMonto` acepta coma y punto por igual).
+ */
+export function montoParaInput(monto: number): string {
+  return String(monto).replace(".", ",")
+}
+
 export function resumenComisiones(items: ItemComision[]): ResumenComisiones {
   return {
     total: totalComisiones(items),

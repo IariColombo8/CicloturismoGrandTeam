@@ -15,10 +15,12 @@ import {
   DESCRIPCION_COMISIONES,
   fechaCorta,
   hoyISO,
+  montoParaInput,
   nuevoItemComision,
   ordenarComisiones,
   resumenComisiones,
   totalComisiones,
+  ultimaComision,
   type ItemComision,
 } from "@/lib/finanzas/comisiones"
 import { formatARS, mensajeError, parseMonto, type Ingreso } from "./tipos"
@@ -49,7 +51,10 @@ export function ComisionesNaranja({
   const { toast } = useToast()
 
   const [fecha, setFecha] = useState(hoyISO())
-  const [monto, setMonto] = useState("")
+  // null = todavía no lo tocó, así que se muestra el monto de la última
+  // comisión (casi siempre acreditan lo mismo). Cualquier cosa que escriba
+  // manda, incluso dejarlo vacío.
+  const [montoEditado, setMontoEditado] = useState<string | null>(null)
   const [nota, setNota] = useState("")
   const [guardando, setGuardando] = useState(false)
 
@@ -61,6 +66,11 @@ export function ComisionesNaranja({
   )
   const items = useMemo(() => ordenarComisiones(ingreso?.items ?? []), [ingreso])
   const resumen = resumenComisiones(items)
+
+  // El monto arranca con el de la última acreditación: si acreditaron lo mismo,
+  // se guarda sin escribir nada.
+  const ultima = ultimaComision(items)
+  const monto = montoEditado ?? (ultima ? montoParaInput(ultima.monto) : "")
 
   /** Guarda la lista completa de items y deja `monto` igual a su suma. */
   const guardarItems = async (nuevos: ItemComision[]) => {
@@ -119,7 +129,9 @@ export function ComisionesNaranja({
         title: "Comisión cargada",
         description: `${formatARS(montoNumero)} del ${fechaCorta(fecha)}`,
       })
-      setMonto("")
+      // Volver a null deja el campo mostrando este mismo monto (ahora es el de
+      // la última comisión), listo para la próxima.
+      setMontoEditado(null)
       setNota("")
       setFecha(hoyISO())
       await onGuardado()
@@ -188,10 +200,15 @@ export function ComisionesNaranja({
                 type="text"
                 inputMode="decimal"
                 value={monto}
-                onChange={(e) => setMonto(e.target.value)}
+                onChange={(e) => setMontoEditado(e.target.value)}
                 placeholder="1234,56"
                 className="bg-gray-700 border-gray-600 text-white"
               />
+              {ultima && montoEditado === null && (
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  Es el de la última ({fechaCorta(ultima.fecha)}). Cambialo si acreditaron otro.
+                </p>
+              )}
             </div>
             <div className="col-span-2 sm:col-span-1">
               <Label className="text-gray-300 text-xs">Nota (opcional)</Label>

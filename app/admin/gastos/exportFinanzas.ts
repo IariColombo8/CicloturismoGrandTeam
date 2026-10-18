@@ -2,7 +2,7 @@
 // Las librerias se importan de forma dinamica (dynamic import) para no engordar
 // el bundle inicial: solo se cargan cuando el usuario realmente descarga algo.
 import type { Gasto, Ingreso, NotaCaja, TonoEstado } from "./tipos"
-import { estadoGastoVisible, formatARS, totalGasto } from "./tipos"
+import { estadoGastoVisible, formatARS, ordenarGastosPorPago, totalGasto } from "./tipos"
 import type { ResumenFinanciero } from "./useFinanzas"
 import { ETIQUETA_PLATA } from "@/lib/finanzas/cuenta"
 import { descripcionComisiones, fechaCorta, ordenarComisiones } from "@/lib/finanzas/comisiones"
@@ -147,20 +147,6 @@ function filasInscripciones(
   }
 
   return filas
-}
-
-/**
- * Orden de lectura de los gastos: primero lo que ya se pago, despues lo que
- * falta pagar, y al final lo que todavia no esta aprobado o se rechazo.
- */
-function ordenarGastos(gastos: Gasto[]): Gasto[] {
-  const rango = (g: Gasto): number => {
-    if (g.estado === "aprobado") return g.pagado ? 0 : 1
-    if (g.estado === "pendiente") return 2
-    return 3 // rechazado
-  }
-  // Sort estable: dentro de cada grupo se mantiene el orden por fecha que ya traen.
-  return [...gastos].sort((a, b) => rango(a) - rango(b))
 }
 
 /** Lo cobrado arriba, lo que falta cobrar abajo. */
@@ -349,7 +335,7 @@ export async function exportarFinanzasPDF(
   }
 
   // Detalle de gastos: pagados arriba, sin pagar abajo.
-  const gastosOrdenados = ordenarGastos(gastos)
+  const gastosOrdenados = ordenarGastosPorPago(gastos)
   const filasGastos = gastosOrdenados.map((g) => [
     g.descripcion,
     g.categoria,
@@ -501,7 +487,7 @@ export async function exportarFinanzasExcel(
 
   // Mismo orden que el PDF: pagados arriba, sin pagar abajo.
   const hojaGastos = XLSX.utils.json_to_sheet(
-    ordenarGastos(gastos).map((g) => ({
+    ordenarGastosPorPago(gastos).map((g) => ({
       Descripción: g.descripcion,
       Categoría: g.categoria,
       Monto: totalGasto(g, confirmados),

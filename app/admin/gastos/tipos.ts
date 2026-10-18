@@ -192,6 +192,60 @@ export function estadoGastoVisible(gasto: Pick<Gasto, "estado" | "pagado">): {
 }
 
 /**
+ * Orden de lectura de los gastos: primero lo que ya se pago, despues lo que
+ * falta pagar, y al final lo que todavia no esta aprobado o se rechazo. Es el
+ * mismo orden en la pantalla, en el PDF y en el Excel.
+ *
+ * El sort es estable, asi que dentro de cada grupo se mantiene el orden por
+ * fecha con el que vienen de la base (lo mas nuevo arriba).
+ */
+export function ordenarGastosPorPago(gastos: Gasto[]): Gasto[] {
+  const rango = (g: Gasto): number => {
+    if (g.estado === "aprobado") return g.pagado ? 0 : 1
+    if (g.estado === "pendiente") return 2
+    return 3 // rechazado
+  }
+  return [...gastos].sort((a, b) => rango(a) - rango(b))
+}
+
+/** Lo cobrado arriba, lo que falta cobrar abajo. */
+export function ordenarIngresosPorCobro(ingresos: Ingreso[]): Ingreso[] {
+  return [...ingresos].sort(
+    (a, b) => (a.estado === "cobrado" ? 0 : 1) - (b.estado === "cobrado" ? 0 : 1),
+  )
+}
+
+/**
+ * Orden de la vista "Todo": la plata que ya se movio arriba (pagado / cobrado)
+ * y lo que falta abajo (por pagar / por cobrar), igual que las otras listas.
+ */
+export function ordenarMovimientos(movimientos: Movimiento[]): Movimiento[] {
+  const rango = (mov: Movimiento): number => {
+    switch (estadoMovimiento(mov)) {
+      case "pagado":
+      case "cobrado":
+        return 0
+      case "por_pagar":
+      case "por_cobrar":
+        return 1
+      case "pendiente":
+        return 2
+      default:
+        return 3 // rechazado, o cualquier estado raro
+    }
+  }
+  return [...movimientos].sort((a, b) => {
+    const diferencia = rango(a) - rango(b)
+    if (diferencia !== 0) return diferencia
+    // Dentro del grupo: las filas calculadas (que no tienen fecha) primero y
+    // el resto de lo mas nuevo a lo mas viejo.
+    if (!a.fecha) return -1
+    if (!b.fecha) return 1
+    return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+  })
+}
+
+/**
  * Estado con el que se muestra y se filtra una fila de la vista "Todo".
  * Un gasto aprobado se lee como "Pagado" o "Por pagar" (ver
  * `estadoGastoVisible`); los ingresos ya venian con su propio estado.

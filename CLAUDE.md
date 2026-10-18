@@ -503,9 +503,17 @@ un item de `ingresos.items` (JSONB: `[{id, fecha, monto, nota}]`,
   los totales no necesitan saber nada de esto. `mapIngreso` igual deriva el total de los
   items, para que un monto desincronizado no pueda mentir.
 - Se carga en `/admin/gastos`, en la tarjeta "Comisiones de Naranja X"
-  (`ComisionesNaranja.tsx`) que esta **siempre a la vista**, arriba de Movimientos: fecha
-  + monto + nota opcional, con el historial debajo. Estuvo un rato dentro de la vista
-  "Ingresos" y ahi no se encontraba: quedaba detras de Filtros -> Vista.
+  (`ComisionesNaranja.tsx`) que esta **siempre a la vista**, abajo de la lista de
+  movimientos: fecha + monto + nota opcional, con el historial debajo. Estuvo un rato
+  dentro de la vista "Ingresos" y ahi no se encontraba: quedaba detras de Filtros -> Vista.
+- El campo de monto **arranca con el de la ultima comision** (`ultimaComision()` +
+  `montoParaInput()`): casi siempre acreditan lo mismo, asi que se guarda sin escribir
+  nada, y si cambio se edita. El estado del input es `string | null`, donde null significa
+  "todavia no lo toco" (y por eso vuelve a null despues de guardar).
+- La **calculadora de caja** (`CalculadoraCaja.tsx`) esta **comentada** en
+  `app/admin/gastos/page.tsx` desde el 18/10/2026, a pedido. El componente y sus criterios
+  siguen intactos (son los que replica `lib/finanzas/saldoEsperado.ts`): para volver a
+  mostrarla se descomenta el bloque y su import.
 - En la grilla de ingresos ese acumulador **no se edita ni se borra** (un clic se llevaria
   todas las comisiones): se tocan item por item desde la tarjeta.
 - **En el PDF va una sola fila**: el total y desde cuando ("desde el 12/10/2026,

@@ -14,7 +14,9 @@ import { DollarSign, Plus, TrendingDown, TrendingUp, Scale, Landmark, Filter, Fi
 
 import NotasCaja from "@/components/admin/NotasCaja"
 import { EstimadorInscriptos } from "./EstimadorInscriptos"
-import { CalculadoraCaja } from "./CalculadoraCaja"
+// La calculadora de caja esta comentada mas abajo (en el bloque de abajo de los
+// movimientos); el import vuelve junto con ella.
+// import { CalculadoraCaja } from "./CalculadoraCaja"
 import { MovimientosTable, type FiltroEstado, type FiltroTipo } from "./MovimientosTable"
 import { GastosTable } from "./GastosTable"
 import { IngresosTable } from "./IngresosTable"
@@ -364,19 +366,6 @@ export default function GastosPage() {
           </div>
         </div>
 
-        {/* Comisiones de Naranja X: siempre a la vista, arriba de los
-            movimientos. Estaba dentro de la vista "Ingresos" y quedaba
-            escondida detrás de Filtros → Vista, donde no se encontraba. */}
-        <div className="mb-6 sm:mb-8">
-          <ComisionesNaranja
-            ingresos={ingresos}
-            puedeEditar={esAdmin}
-            userEmail={user?.email || ""}
-            userRole={userRole || ""}
-            onGuardado={recargar}
-          />
-        </div>
-
         {/* Contenido */}
         <Card className="bg-gray-800/50 border-yellow-400/20 py-3 sm:py-6 gap-3 sm:gap-4">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 px-3 sm:px-6">
@@ -600,8 +589,22 @@ export default function GastosPage() {
           </CardContent>
         </Card>
 
-        {/* Calculadora de caja y estimador: al final, colapsados */}
+        {/* Abajo de los movimientos: comisiones, estimador y notas de caja. */}
         <div className="mt-6 sm:mt-8 space-y-4">
+          {/* Comisiones de Naranja X: siempre a la vista. Estaba dentro de la
+              vista "Ingresos" y quedaba detrás de Filtros → Vista, donde no se
+              encontraba. */}
+          <ComisionesNaranja
+            ingresos={ingresos}
+            puedeEditar={esAdmin}
+            userEmail={user?.email || ""}
+            userRole={userRole || ""}
+            onGuardado={recargar}
+          />
+          {/* Calculadora de caja: comentada a pedido (18/10/2026). El
+              componente sigue en CalculadoraCaja.tsx y los criterios de la
+              cuenta no cambiaron, así que para volver a mostrarla alcanza con
+              descomentar este bloque y su import de arriba.
           <CalculadoraCaja
             gastos={gastos}
             ingresos={ingresos}
@@ -611,6 +614,7 @@ export default function GastosPage() {
             desglosePagos={resumen.desglosePagos}
             precioBase={precioBase}
           />
+          */}
           <EstimadorInscriptos
             gastos={gastos}
             precioBase={precioBase}

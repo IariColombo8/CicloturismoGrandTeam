@@ -7,11 +7,13 @@ import {
   esIngresoComision,
   fechaCorta,
   hoyISO,
+  montoParaInput,
   nuevoItemComision,
   ordenarComisiones,
   parsearItemsComision,
   resumenComisiones,
   totalComisiones,
+  ultimaComision,
   type ItemComision,
 } from "@/lib/finanzas/comisiones"
 
@@ -149,6 +151,29 @@ test.describe("item nuevo", () => {
 
   test("dos items seguidos no comparten id", () => {
     expect(nuevoItemComision("2026-10-18", 1).id).not.toBe(nuevoItemComision("2026-10-18", 1).id)
+  })
+})
+
+test.describe("recordar el monto de la ultima", () => {
+  // Casi siempre acreditan lo mismo: el formulario propone ese monto y se edita
+  // si cambió, en vez de escribirlo de nuevo cada vez.
+  test("la ultima es la de fecha mas nueva, no la ultima del array", () => {
+    expect(ultimaComision(COMISIONES)?.fecha).toBe("2026-10-18")
+    expect(ultimaComision(ordenarComisiones(COMISIONES))?.fecha).toBe("2026-10-18")
+  })
+
+  test("sin comisiones no hay nada que proponer", () => {
+    expect(ultimaComision([])).toBeNull()
+  })
+
+  test("el monto se propone con coma decimal, como se escribe a mano", () => {
+    expect(montoParaInput(1200.5)).toBe("1200,5")
+    expect(montoParaInput(300)).toBe("300")
+  })
+
+  test("lo propuesto se vuelve a leer igual", () => {
+    const propuesto = montoParaInput(47.25)
+    expect(Number(propuesto.replace(",", "."))).toBeCloseTo(47.25, 2)
   })
 })
 
