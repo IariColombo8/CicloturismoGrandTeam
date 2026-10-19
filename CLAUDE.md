@@ -40,9 +40,9 @@ npm run test:e2e    # E2E: levanta el dev server en el puerto 3100
 npm run test:e2e:ui # E2E en modo interactivo
 ```
 
-Hay tests con Playwright: 120 unitarios (`e2e/unit/**`, logica pura) y 235 E2E
+Hay tests con Playwright: 219 unitarios (`e2e/unit/**`, logica pura) y 236 E2E
 (`e2e/**`), que incluyen el recorrido completo de la inscripcion en un Pixel 5 y
-en un iPhone 13 (WebKit), y un barrido de 8 paginas publicas en 5 anchos de
+en un iPhone 13 (WebKit), y un barrido de 9 paginas publicas en 5 anchos de
 pantalla. **Correr `npm run test` antes de tocar la inscripcion o el formulario
 de remera.** Detalle en `docs/inscripcion-sin-errores.md`.
 
@@ -159,6 +159,13 @@ public.alojamientos          -> nombre, descripcion, logo_url, website, telefono
                                 direccion, instagram, imagenes TEXT[], activo, orden
   imagenes = galeria de fotos extra (URLs del bucket `sponsors`, carpeta alojamientos/)
   RLS: SELECT publico, ALL solo admin/grandteam
+public.roles_evento          -> participante_id, nombre, clave, pedalea, ayuda, tareas TEXT[],
+                                familiares, familiares_detalle, notas, bloqueado, cargado_por, orden
+  Quien hace que el dia del evento (ver "Roles del dia del evento").
+  clave = nombre sin acentos/mayusculas/espacios de mas, UNICO. Lo calcula un trigger.
+  bloqueado = ficha fijada por el equipo: el formulario publico no la puede pisar.
+  Aca NO van datos de contacto: todo lo de esta tabla es publico.
+  RLS: SELECT publico, ALL solo admin/grandteam. El anon NO tiene INSERT (ver GRANTs).
 ```
 
 ### Vista previa al compartir un link (Open Graph)
@@ -193,6 +200,7 @@ de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual
 /login                       -> Login admin (Supabase Auth / Google OAuth)
 /grand-team                  -> Pagina Grand Team (dashboard publico)
 /sorteos                     -> Pagina unica de los sorteos: premios por jerarquia y ganadores (en vivo)
+/roles                       -> Quien hace que el dia del evento. NO esta en el menu: se llega por el link
 /grand-team/dashboard        -> Stats Grand Team
 ```
 
@@ -213,6 +221,8 @@ de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual
 /admin/sorteos               -> Sorteos: bolillero del evento + configuracion (premios, exclusiones)
 /admin/sponsors              -> CRUD completo de sponsors (oro/plata/bronce) con upload de logo
 /admin/alojamientos          -> CRUD de alojamientos bike friendly (logo + galeria de fotos)
+/admin/roles                 -> Roles del dia del evento: cargar, corregir, ordenar y fijar fichas
+/admin/usuarios              -> Usuarios y permisos del panel (admin/grandteam/remera)
 ```
 
 ### API Routes
@@ -229,6 +239,11 @@ POST /api/alojamientos/upload-imagen -> Sube foto de alojamiento al bucket `spon
 
 Las tres rutas del bucket `sponsors` comparten `lib/api/subirImagen.ts`.
 POST /api/admin/reset-estados    -> Reset masivo: todas las inscripciones y participantes a "pendiente"
+
+POST /api/roles/sumarse          -> Alta publica de la lista de roles del dia del evento.
+  PUBLICA y sin sesion: es la UNICA forma de escribir en `roles_evento` sin ser staff
+  (el anon no tiene INSERT). Upsert por nombre normalizado, 12 envios por IP cada 10 min,
+  y devuelve 409 si la ficha esta fijada (`bloqueado`).
 
 GET  /api/email/estado           -> Diagnostico de la conexion con Gmail (que variables faltan, casilla)
 GET  /api/email/inbox            -> Lista hilos por carpeta (recibidos/no-leidos/enviados/archivados/papelera/todos)
@@ -327,6 +342,50 @@ espacios. Tests: `e2e/unit/cargar-sponsor.spec.ts`.
 3. Landing (`components/home/Alojamientos.tsx`) lista los activos en grilla; la tarjeta **no** linkea al sitio web
 4. Al tocar una tarjeta se abre `components/home/AlojamientoModal.tsx` (dynamic import) con galeria, descripcion, direccion (link a Google Maps), telefono, WhatsApp, Instagram y boton "Ver sitio web"
 5. Tipos y helpers compartidos en `lib/alojamientos.ts`
+
+### Roles del dia del evento (quien hace que)
+
+Dos pantallas sobre la tabla `roles_evento`, y la logica pura en `lib/roles.ts`
+(test: `e2e/unit/roles.spec.ts`).
+
+**En el menu del panel son dos entradas distintas**: **Roles** (`/admin/roles`, quien hace
+que el dia del evento) y **Usuarios** (`/admin/usuarios`, los permisos del panel). Antes
+una sola entrada decia "Usuarios y Roles" y no habia nada de roles del evento: ese menu
+mezclaba dos cosas que no tienen nada que ver.
+
+- **`/roles`** (publica, **no esta en el navbar**: se llega por el link, que es como circula
+  por WhatsApp). La lista la ve cualquiera y **cualquiera puede sumarse a si mismo** con el
+  boton "Sumarme a la lista". Tiene `robots: noindex` porque son nombres de la gente del
+  equipo: el link se comparte, no se publica.
+- **`/admin/roles`** (admin/grandteam). Lo mismo, con las acciones del equipo: cargar a mano
+  (eligiendo un inscripto de `participantes` o escribiendo el nombre), corregir, reordenar,
+  borrar y **fijar** una ficha.
+
+Reglas:
+
+- **Pedalea y ayuda son dos datos, pero en pantalla es UNA pregunta** con cuatro respuestas
+  (`MODOS`: pedaleo / pedaleo y ayudo / ayudo y no pedaleo / no pedaleo). En la base son dos
+  booleanos (`pedalea`, `ayuda`) para poder preguntar "quienes ayudan" sin cuentas raras;
+  `modoDeRol()` y `banderasDeModo()` traducen en los dos sentidos.
+- **Una fila por persona**: `roles_evento.clave` (nombre sin acentos, sin mayusculas y sin
+  espacios de mas) es UNICA y la calcula un **trigger** en la base, nunca la aplicacion.
+  `normalizarNombre()` hace la misma cuenta en TS, solo para poder avisar en pantalla antes
+  de guardar. Sumarse dos veces actualiza la misma ficha (igual que el UPSERT por DNI de la
+  remera), no la duplica.
+- **Editar es del panel; sumarse, de cualquiera.** El `anon` **no tiene INSERT** sobre la
+  tabla: el alta publica pasa por `POST /api/roles/sumarse` (service_role, limite por IP).
+  Sin eso, cualquiera podia borrar la lista entera desde la consola del navegador.
+- **El candado** (`bloqueado`) fija una ficha que ya acomodo el equipo: el formulario publico
+  recibe 409 con el motivo. Es la unica forma de que lo cargado a mano no se pise.
+- **Aca no van datos de contacto.** Todo lo de esta tabla es publico, y el telefono ya vive
+  en `participantes`, que no tiene lectura publica. Si alguna vez hay que mostrarlo, va por
+  una API route autorizada, nunca por una columna de `roles_evento`.
+- **Las tareas** (`TAREAS` en `lib/roles.ts`) son sugerencias, no una lista cerrada: el panel
+  puede escribir cualquier otra y se guarda tal cual (`etiquetaTarea()` devuelve el texto
+  libre sin tocarlo). Agregar una tarea a la lista de siempre es agregar una linea a `TAREAS`.
+- **Se mira desde el celular**: tarjetas en una columna (nunca una tabla de seis columnas),
+  chips de filtro en una fila que se desliza con el dedo, y los botones del formulario de un
+  toque. El modal del panel entra desde abajo en movil y centrado en escritorio.
 
 ### Sorteos (regla importante: tiene que funcionar sin wifi)
 

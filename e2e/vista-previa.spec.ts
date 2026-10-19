@@ -34,6 +34,12 @@ const PAGINAS = [
     imagen: "/og/sorteos.png",
   },
   {
+    ruta: "/roles",
+    titulo: /quién hace qué/i,
+    descripcion: /quién pedalea, quién ayuda/i,
+    imagen: "/og/roles.png",
+  },
+  {
     ruta: "/contacto",
     titulo: /contacto/i,
     descripcion: /escribinos y te respondemos/i,

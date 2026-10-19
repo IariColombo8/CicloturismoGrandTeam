@@ -20,6 +20,7 @@ import {
   Handshake,
   BedDouble,
   UserCog,
+  ListChecks,
   Mail,
   Ticket,
   LucideIcon,
@@ -48,7 +49,10 @@ const navItems: NavItem[] = [
   { href: "/admin/alojamientos", label: "Alojamientos", icon: BedDouble },
   { href: "/admin/sorteos", label: "Sorteos", icon: Ticket },
   { href: "/admin/galeria", label: "Galeria", icon: Images },
-  { href: "/admin/usuarios", label: "Usuarios y Roles", icon: UserCog },
+  // Dos cosas distintas: "Roles" es quien hace que el dia del evento
+  // (roles_evento), "Usuarios" son los permisos del panel (administradores).
+  { href: "/admin/roles", label: "Roles", icon: ListChecks },
+  { href: "/admin/usuarios", label: "Usuarios", icon: UserCog },
   { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
 ]
 

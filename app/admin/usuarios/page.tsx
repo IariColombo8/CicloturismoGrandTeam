@@ -302,7 +302,7 @@ export default function AdminUsuariosPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <h1 className="text-xl sm:text-3xl font-black text-white">
-                <span className="gradient-text">Usuarios y Roles</span>
+                <span className="gradient-text">Usuarios</span>
               </h1>
               <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
                 {usuarios.length} usuario{usuarios.length !== 1 ? "s" : ""} en el sistema

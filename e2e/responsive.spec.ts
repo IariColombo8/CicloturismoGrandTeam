@@ -16,7 +16,17 @@ const ANCHOS = [
   { nombre: "compu (1280)", ancho: 1280, alto: 800 },
 ]
 
-const RUTAS = ["/", "/inscripcion", "/pedir-remera", "/contacto", "/mi-qr", "/grand-team", "/sorteos", "/inscripcion/exito"]
+const RUTAS = [
+  "/",
+  "/inscripcion",
+  "/pedir-remera",
+  "/contacto",
+  "/mi-qr",
+  "/grand-team",
+  "/sorteos",
+  "/roles",
+  "/inscripcion/exito",
+]
 
 /**
  * Elementos que se salen de la pantalla y de verdad molestan.

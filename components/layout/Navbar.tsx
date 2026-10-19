@@ -20,6 +20,7 @@ import {
   BedDouble,
   Images,
   UserCog,
+  ListChecks,
   Settings,
   Mail,
   Ticket,
@@ -195,7 +196,9 @@ export default function Navbar() {
       { href: "/admin/alojamientos", label: "Alojamientos", icon: BedDouble },
       { href: "/admin/sorteos", label: "Sorteos", icon: Ticket },
       { href: "/admin/galeria", label: "Galeria", icon: Images },
-      { href: "/admin/usuarios", label: "Usuarios y Roles", icon: UserCog },
+      // "Roles" = quien hace que el dia del evento; "Usuarios" = permisos del panel.
+      { href: "/admin/roles", label: "Roles", icon: ListChecks },
+      { href: "/admin/usuarios", label: "Usuarios", icon: UserCog },
       { href: "/admin/configuraciones", label: "Configuraciones", icon: Settings },
     ]
   }, [isRemera])

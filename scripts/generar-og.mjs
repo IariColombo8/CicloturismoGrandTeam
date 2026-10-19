@@ -58,6 +58,13 @@ const PAGINAS = [
     imagen: "logo.png",
   },
   {
+    archivo: "roles.png",
+    titulo: "QUIÉN HACE QUÉ",
+    bajada: "La lista del equipo para el día del evento",
+    detalle: "Quién pedalea, quién ayuda y quién lleva familiares",
+    imagen: "logo.png",
+  },
+  {
     archivo: "contacto.png",
     titulo: "CONTACTO",
     bajada: "¿Tenés dudas sobre el cicloturismo?",
