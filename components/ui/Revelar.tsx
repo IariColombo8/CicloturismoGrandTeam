@@ -30,6 +30,15 @@ const EFECTOS = {
 export type EfectoRevelar = keyof typeof EFECTOS
 
 let observador: IntersectionObserver | null = null
+// Bloques observados que todavia no se mostraron.
+const pendientes = new Set<Element>()
+
+function mostrar(nodo: Element) {
+  nodo.classList.add("gt-visible")
+  // Una sola vez: no se vuelve a esconder al subir.
+  observador?.unobserve(nodo)
+  pendientes.delete(nodo)
+}
 
 function obtenerObservador(): IntersectionObserver | null {
   if (typeof IntersectionObserver === "undefined") return null
@@ -38,10 +47,22 @@ function obtenerObservador(): IntersectionObserver | null {
   observador = new IntersectionObserver(
     (entradas) => {
       for (const entrada of entradas) {
-        if (!entrada.isIntersecting) continue
-        entrada.target.classList.add("gt-visible")
-        // Una sola vez: no se vuelve a esconder al subir.
-        observador?.unobserve(entrada.target)
+        // Un bloque que ya quedo arriba de la pantalla tambien se muestra (se
+        // hidrato tarde, con 4G lento, cuando el scroll ya habia pasado).
+        const yaPaso = entrada.boundingClientRect.bottom <= (entrada.rootBounds?.top ?? 0)
+        if (!entrada.isIntersecting && !yaPaso) continue
+        mostrar(entrada.target)
+
+        // El observer avisa solo cuando un bloque CAMBIA de estado: si un
+        // scroll rapido (o un link del menu, como #contacto) lo salta entre
+        // dos cuadros, pasa de "abajo" a "arriba" sin avisar nunca y quedaria
+        // en blanco. Todo lo que esta antes de un bloque que entro ya quedo
+        // arriba de la pantalla, asi que se muestra tambien.
+        for (const otro of pendientes) {
+          if (otro.compareDocumentPosition(entrada.target) & Node.DOCUMENT_POSITION_FOLLOWING) {
+            mostrar(otro)
+          }
+        }
       }
     },
     // -8% abajo: el bloque arranca cuando ya entro de verdad, no al asomar
@@ -85,8 +106,12 @@ export function Revelar({
       return
     }
 
+    pendientes.add(nodo)
     obs.observe(nodo)
-    return () => obs.unobserve(nodo)
+    return () => {
+      obs.unobserve(nodo)
+      pendientes.delete(nodo)
+    }
   }, [])
 
   return (

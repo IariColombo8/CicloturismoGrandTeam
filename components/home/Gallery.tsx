@@ -19,12 +19,12 @@ const FALLBACK_IMAGES: GalleryImage[] = [
   {
     url: "/ciclista-en-monta-a-con-paisaje-argentino.jpg",
     alt: "Ciclismo de montaña",
-    title: "Desafío Extremo",
+    title: "Caminos de Entre Ríos",
   },
   {
     url: "/competencia-ciclismo-llegada-a-meta.jpg",
     alt: "Llegada a la meta",
-    title: "Meta Alcanzada",
+    title: "La llegada",
   },
   {
     url: "/bicicletas-estacionadas-evento-deportivo.jpg",
@@ -34,7 +34,7 @@ const FALLBACK_IMAGES: GalleryImage[] = [
   {
     url: "/ciclistas-celebrando-evento-team.jpg",
     alt: "Celebración del equipo",
-    title: "Momento de Victoria",
+    title: "Festejo del grupo",
   },
   {
     url: "/ruta-ciclismo-paisaje-entre-rios.jpg",

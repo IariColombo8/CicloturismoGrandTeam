@@ -540,8 +540,8 @@ export default function Sponsors() {
                     ?
                   </h3>
                   <p className="text-zinc-400 text-xs sm:text-sm md:text-base lg:text-lg mb-6 sm:mb-8 md:mb-10 text-center max-w-2xl mx-auto leading-relaxed px-2">
-                    Únete a las empresas que apoyan el ciclismo y el deporte en nuestra región. Obtén visibilidad y sé
-                    parte de esta increíble comunidad.
+                    Sumate a las empresas que apoyan el ciclismo en nuestra región. Tu marca llega a cada participante y sos
+                    parte de un evento hecho por y para la comunidad.
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8 md:mb-10">

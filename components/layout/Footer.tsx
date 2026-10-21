@@ -65,7 +65,7 @@ export default function Footer() {
               <span className="text-xl font-bold gradient-text">Grand Team Bike</span>
             </Link>
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
-              La aventura de cicloturismo más desafiante y emocionante del año. Únete a nuestra comunidad de ciclistas apasionados en Concepción del Uruguay.
+              Un cicloturismo por los caminos de Concepción del Uruguay. No es una carrera: se sale juntos, se vuelve juntos y cada uno pedalea a su ritmo.
             </p>
             
             {/* Event date highlight */}
@@ -179,17 +179,17 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="text-white font-bold text-xl md:text-2xl mb-2">
-                ¿Listo para la <span className="gradient-text">Aventura</span>?
+                ¿Venís a <span className="gradient-text">pedalear</span>?
               </h3>
               <p className="text-gray-400 text-sm md:text-base">
-                Asegura tu lugar en el evento de cicloturismo más esperado del año
+                Reservá tu lugar: los cupos son limitados
               </p>
             </div>
             <Link
               href="/inscripcion"
               className="px-8 py-4 bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-500/50 whitespace-nowrap flex items-center gap-2"
             >
-              Inscríbete Ahora
+              Inscribite
               <ExternalLink className="w-4 h-4" />
             </Link>
           </div>

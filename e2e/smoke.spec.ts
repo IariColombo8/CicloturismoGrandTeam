@@ -54,6 +54,18 @@ test.describe("Landing pública", () => {
     const sinRevelar = await page.locator(".gt-revelar:not(.gt-visible)").count()
     expect(sinRevelar).toBe(0)
   })
+
+  test("un salto directo al final no deja bloques en blanco", async ({ page }) => {
+    // Lo que hace un link del menu (#contacto): el observer nunca ve "entrar"
+    // a los bloques del medio, que pasan de abajo a arriba de un cuadro al otro.
+    await page.goto("/")
+    await page.waitForTimeout(1500)
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    await page.waitForTimeout(1200)
+
+    const sinRevelar = await page.locator(".gt-revelar:not(.gt-visible)").count()
+    expect(sinRevelar).toBe(0)
+  })
 })
 
 test.describe("Formulario de inscripción", () => {
