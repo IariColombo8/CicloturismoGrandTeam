@@ -37,8 +37,11 @@ export default function Footer() {
     { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
   ]
 
+  // Sin id="contacto": ese id ya es el de la seccion de contacto
+  // (components/home/CallToAction.tsx) y repetido dejaba dos elementos con el
+  // mismo nombre, asi que "#contacto" caia siempre en el primero.
   return (
-    <footer id="contacto" className="bg-gradient-to-b from-zinc-900 to-black border-t border-yellow-400/20 relative overflow-hidden">
+    <footer className="bg-gradient-to-b from-zinc-900 to-black border-t border-yellow-400/20 relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-20 left-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />

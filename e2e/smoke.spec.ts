@@ -28,8 +28,31 @@ test.describe("Landing pública", () => {
 
   test("navegar a inscripción desde el Hero", async ({ page }) => {
     await page.goto("/")
-    await page.getByRole("link", { name: /inscríbete ahora/i }).first().click()
+    // El botón del hero: "Quiero inscribirme" (el del navbar dice "Inscribirme").
+    await page.getByRole("link", { name: /quiero inscribirme/i }).first().click()
     await expect(page).toHaveURL(/\/inscripcion/)
+  })
+
+  test("el hero aclara que es cicloturismo y no una carrera", async ({ page }) => {
+    await page.goto("/")
+    await expect(page.getByText(/no es una carrera/i).first()).toBeVisible()
+  })
+
+  test("los bloques que aparecen al bajar terminan visibles", async ({ page }) => {
+    // Red de seguridad del efecto de scroll: si el observador de
+    // components/ui/Revelar.tsx dejara de funcionar, media home quedaría en
+    // blanco (los bloques arrancan con opacity 0).
+    await page.goto("/")
+    await page.evaluate(async () => {
+      for (let y = 0; y < document.body.scrollHeight; y += 400) {
+        window.scrollTo(0, y)
+        await new Promise((r) => setTimeout(r, 90))
+      }
+    })
+    await page.waitForTimeout(1200)
+
+    const sinRevelar = await page.locator(".gt-revelar:not(.gt-visible)").count()
+    expect(sinRevelar).toBe(0)
   })
 })
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
+import { srcSetOptimizado, urlOptimizada } from "@/lib/imagenes/optimizarUrl"
 import { EVENTO } from "@/lib/constants"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -20,30 +21,47 @@ const SPONSOR_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURICompone
   </svg>
 `)}`
 
-// Logo nativo: se evita next/image porque los archivos pueden venir de
-// Supabase o Google Drive. En movil se usa carga eager porque algunos
-// navegadores retrasan imagenes lazy dentro de elementos animados.
-function SponsorLogo({ src, alt, className }: { src: string | null | undefined; alt: string; className?: string }) {
-  const resolvedSrc = src?.trim() || SPONSOR_PLACEHOLDER
-  const [currentSrc, setCurrentSrc] = useState(resolvedSrc)
+// Logo nativo: se evita el componente next/image porque la URL es arbitraria
+// (Supabase, Drive o un archivo del repo) y una que no matchee remotePatterns
+// tira un error de runtime. La imagen igual pasa por el optimizador de Next
+// con `urlOptimizada`, que devuelve la original cuando no puede: 52 logos sin
+// comprimir y con `no-cache` eran la mayor parte de los 19 MB de la home.
+//
+// Tres pasos ante un fallo, en este orden: optimizada -> original -> placeholder.
+// Asi un problema del optimizador nunca deja la tarjeta vacia.
+function SponsorLogo({
+  src,
+  alt,
+  className,
+  ancho = 256,
+  prioridad = false,
+}: {
+  src: string | null | undefined
+  alt: string
+  className?: string
+  ancho?: number
+  prioridad?: boolean
+}) {
+  const original = src?.trim() || SPONSOR_PLACEHOLDER
+  const [currentSrc, setCurrentSrc] = useState(() => urlOptimizada(original, ancho) || original)
 
   useEffect(() => {
-    setCurrentSrc(resolvedSrc)
-  }, [resolvedSrc])
+    setCurrentSrc(urlOptimizada(original, ancho) || original)
+  }, [original, ancho])
 
   return (
     <img
       src={currentSrc}
+      srcSet={currentSrc.startsWith("/_next/image") ? srcSetOptimizado(original, ancho) : undefined}
       alt={alt}
       referrerPolicy="no-referrer"
-      loading="eager"
+      loading={prioridad ? "eager" : "lazy"}
       decoding="async"
       draggable={false}
       className={className}
       onError={() => {
-        if (currentSrc !== SPONSOR_PLACEHOLDER) {
-          setCurrentSrc(SPONSOR_PLACEHOLDER)
-        }
+        if (currentSrc.startsWith("/_next/image")) setCurrentSrc(original)
+        else if (currentSrc !== SPONSOR_PLACEHOLDER) setCurrentSrc(SPONSOR_PLACEHOLDER)
       }}
     />
   )
@@ -382,7 +400,7 @@ export default function Sponsors() {
               isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
             }`}
           >
-            <div className="inline-flex items-center justify-center gap-2 mb-3 sm:mb-4 md:mb-6 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gradient-to-r from-yellow-400/20 via-amber-500/20 to-yellow-400/20 border border-yellow-400/40 rounded-full backdrop-blur-sm animate-shimmer bg-[length:200%_100%]">
+            <div className="inline-flex items-center justify-center gap-2 mb-3 sm:mb-4 md:mb-6 px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 bg-gradient-to-r from-yellow-400/20 via-amber-500/20 to-yellow-400/20 border border-yellow-400/40 rounded-full backdrop-blur-sm">
               <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-yellow-400" aria-hidden="true" />
               <span className="text-[10px] sm:text-xs md:text-sm font-bold text-yellow-400 uppercase tracking-widest">
                 Patrocinadores Oficiales
@@ -393,7 +411,7 @@ export default function Sponsors() {
             <h2 className="font-heading text-h2 text-white mb-2 sm:mb-3 md:mb-4 lg:mb-6 px-2">
               Nuestros{" "}
               <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+                <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
                   Aliados
                 </span>
                 <span className="absolute -bottom-0.5 sm:-bottom-1 md:-bottom-2 left-0 right-0 h-0.5 sm:h-0.5 md:h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent" />
@@ -401,7 +419,8 @@ export default function Sponsors() {
             </h2>
 
             <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-zinc-400 max-w-3xl mx-auto leading-relaxed px-4">
-              Gracias a las empresas y organizaciones que hacen posible este gran evento deportivo
+              Comercios y empresas de la zona que hacen posible esta salida. Tocá cada uno para ver qué hacen y cómo
+              contactarlos.
             </p>
           </div>
 
@@ -480,7 +499,10 @@ export default function Sponsors() {
                     <BronzeSponsorCard
                       key={sponsor.name || index}
                       sponsor={sponsor}
-                      delay={(index + 6) * 100}
+                      // Tope de 600 ms: con medio centenar de sponsors, un
+                      // retraso por indice dejaba a los ultimos entrando seis
+                      // segundos despues de que la fila ya estaba a la vista.
+                      delay={Math.min((index + 6) * 60, 600)}
                       isVisible={isVisible}
                       onClick={() => openModal(sponsor)}
                     />
@@ -495,7 +517,7 @@ export default function Sponsors() {
             className={`max-w-4xl mx-auto transition-all duration-1000 delay-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
           >
             <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-400 rounded-xl sm:rounded-2xl opacity-50 group-hover:opacity-100 blur transition-all duration-500 animate-gradient bg-[length:200%_auto]" />
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-400 rounded-xl sm:rounded-2xl opacity-50 group-hover:opacity-100 blur transition-all duration-500" />
 
               <Card className="relative bg-black border-0 rounded-xl sm:rounded-2xl overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 via-transparent to-amber-500/10" />
@@ -565,22 +587,6 @@ export default function Sponsors() {
           </div>
         </div>
 
-        <style jsx>{`
-          @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-          @keyframes gradient {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-          }
-          .animate-shimmer {
-            animation: shimmer 3s ease-in-out infinite;
-          }
-          .animate-gradient {
-            animation: gradient 3s ease infinite;
-          }
-        `}</style>
       </section>
 
       {/* Modal */}
@@ -658,6 +664,7 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }: { sponsor
               <SponsorLogo
                 src={sponsor.logo}
                 alt={`Logo de ${sponsor.name}`}
+                ancho={tier === "gold" ? 640 : 256}
                 className="block w-full h-full object-contain transition-transform duration-500 group-hover:scale-105 sm:group-hover:scale-110"
               />
             </div>
@@ -700,6 +707,7 @@ function BronzeSponsorCard({
               <SponsorLogo
                 src={sponsor.logo}
                 alt={`Logo de ${sponsor.name}`}
+                ancho={128}
                 className="block h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
               />
             </div>
@@ -763,6 +771,8 @@ function SponsorModal({ sponsor, isOpen, onClose }: { sponsor: any; isOpen: bool
               <SponsorLogo
                 src={sponsor.logo}
                 alt={`Logo de ${sponsor.businessName}`}
+                ancho={640}
+                prioridad
                 className="absolute inset-0 w-full h-full object-contain"
               />
             </div>

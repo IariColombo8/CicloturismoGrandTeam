@@ -227,13 +227,17 @@
   }
 }
 
+/* El resplandor late con opacidad, no con box-shadow.
+   Animar box-shadow obliga al navegador a repintar en cada cuadro (eran parte
+   de los "elementos animados no compuestos" que marcaba PageSpeed); la
+   opacidad de una capa la resuelve la GPU. */
 @keyframes glowPulse {
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    opacity: 0.55;
   }
   50% {
-    box-shadow: 0 0 40px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.4);
+    opacity: 1;
   }
 }
 
@@ -341,13 +345,15 @@
   background-clip: text;
 }
 
+/* Gradiente fijo, sin shimmer: animar `background-position` sobre un texto
+   recortado obliga a repintar el texto entero en cada cuadro y era una de las
+   animaciones permanentes que PageSpeed marcaba como no compuestas. El brillo
+   se consigue igual con el gradiente quieto. */
 .gradient-text-intense {
-  background: linear-gradient(135deg, #ffd700 0%, #ffeb3b 50%, #ffd700 100%);
+  background: linear-gradient(120deg, #ffd700 0%, #fff6a8 45%, #ffb300 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  background-size: 200% auto;
-  animation: shimmer 3s linear infinite;
 }
 
 /* Efectos de hover para botones */
@@ -436,7 +442,9 @@
   border-top: 1px solid rgba(255, 215, 0, 0.12);
 }
 
-/* Efectos de líneas dinámicas */
+/* Efectos de líneas dinámicas.
+   El destello viaja con transform (no con `left`), que es lo que el navegador
+   puede resolver sin rehacer el layout en cada cuadro. */
 .dynamic-line {
   position: relative;
   overflow: hidden;
@@ -446,11 +454,227 @@
   content: "";
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 100%;
   height: 2px;
   background: linear-gradient(to right, transparent, #ffd700, transparent);
-  animation: slideInRight 2s infinite;
+  animation: gt-destello 2s linear infinite;
+}
+
+@keyframes gt-destello {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOVIMIENTO
+   ══════════════════════════════════════════════════════════════
+   Reglas de la casa, para que la pagina se mueva sin volverse lenta:
+
+   1. Solo se animan `transform` y `opacity`. Son las dos propiedades que el
+      navegador resuelve en la GPU; animar `width`, `top`, `background-position`
+      o `box-shadow` lo obliga a rehacer el layout en cada cuadro (es lo que
+      PageSpeed reporta como "animaciones no compuestas").
+   2. Nada se mueve por scroll con JavaScript salvo el parallax del hero, que va
+      por requestAnimationFrame y escribe una variable CSS.
+   3. Todo se apaga con "reducir movimiento" activado.
+   ────────────────────────────────────────────────────────────── */
+
+/* ── Aparecer al llegar con el scroll (components/ui/Revelar.tsx) ───── */
+.gt-revelar {
+  opacity: 0;
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
+}
+
+.gt-revelar-subir {
+  transform: translate3d(0, 28px, 0);
+}
+.gt-revelar-bajar {
+  transform: translate3d(0, -28px, 0);
+}
+.gt-revelar-izquierda {
+  transform: translate3d(-36px, 0, 0);
+}
+.gt-revelar-derecha {
+  transform: translate3d(36px, 0, 0);
+}
+.gt-revelar-escala {
+  transform: scale(0.94);
+}
+
+.gt-revelar.gt-visible {
+  opacity: 1;
+  transform: none;
+  /* Terminada la entrada, el elemento deja de pedir una capa propia. */
+  will-change: auto;
+}
+
+/* ── Cinta de palabras (components/ui/CintaPalabras.tsx) ───────────── */
+.gt-cinta {
+  overflow: hidden;
+  /* Se desvanece en los bordes: el corte seco contra el fondo se nota. */
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+.gt-cinta-pista {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  width: max-content;
+  animation: gt-desplazar 40s linear infinite;
+}
+
+.gt-cinta-invertida {
+  animation-direction: reverse;
+}
+
+/* La lista va duplicada: al llegar a la mitad, la segunda copia quedo
+   exactamente donde arranco la primera y el empalme no se ve. */
+@keyframes gt-desplazar {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* ── Parallax del hero ─────────────────────────────────────────────── */
+/* --gt-scroll lo escribe el hero con requestAnimationFrame (0 arriba de todo,
+   1 cuando el hero termino de salir de pantalla). */
+.gt-parallax {
+  transform: translate3d(0, calc(var(--gt-scroll, 0) * 12vh), 0) scale(1.08);
+  will-change: transform;
+}
+
+.gt-parallax-suave {
+  transform: translate3d(0, calc(var(--gt-scroll, 0) * 5vh), 0);
+  will-change: transform;
+}
+
+/* ── Ciclista que cruza la pantalla ────────────────────────────────── */
+@keyframes gt-pedalear {
+  from {
+    transform: translate3d(-10vw, 0, 0);
+  }
+  to {
+    transform: translate3d(110vw, 0, 0);
+  }
+}
+
+.gt-ciclista {
+  animation: gt-pedalear 26s linear infinite;
+}
+
+/* ── Linea dorada que se dibuja (la ruta) ──────────────────────────── */
+/* scaleX en vez de width: misma linea creciendo, sin tocar el layout. */
+.gt-linea {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gt-visible .gt-linea,
+.gt-linea.gt-visible {
+  transform: scaleX(1);
+}
+
+/* ── Brillo que recorre un boton al pasar el mouse ─────────────────── */
+.gt-brillo {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.gt-brillo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: translate3d(-100%, 0, 0);
+  transition: transform 0.8s ease;
+  pointer-events: none;
+}
+
+.gt-brillo:hover::after {
+  transform: translate3d(100%, 0, 0);
+}
+
+/* ── Latido del resplandor dorado ──────────────────────────────────── */
+/* Una capa aparte con opacity animada: el box-shadow no se anima nunca. */
+.gt-aura {
+  position: relative;
+  isolation: isolate;
+}
+
+.gt-aura::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.35), transparent 70%);
+  animation: glowPulse 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Flecha que baja, indicando que hay mas abajo ──────────────────── */
+@keyframes gt-bajar {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(0, 8px, 0);
+    opacity: 1;
+  }
+}
+
+.gt-indicador-scroll {
+  animation: gt-bajar 2s ease-in-out infinite;
+}
+
+/* ── Entrada escalonada de una grilla ──────────────────────────────── */
+/* Se usa con Revelar: cada hijo entra un poquito despues que el anterior, sin
+   tener que calcular el retraso de cada uno en el componente. */
+.gt-escalonar > .gt-revelar:nth-child(1) { transition-delay: 0ms; }
+.gt-escalonar > .gt-revelar:nth-child(2) { transition-delay: 70ms; }
+.gt-escalonar > .gt-revelar:nth-child(3) { transition-delay: 140ms; }
+.gt-escalonar > .gt-revelar:nth-child(4) { transition-delay: 210ms; }
+.gt-escalonar > .gt-revelar:nth-child(5) { transition-delay: 280ms; }
+.gt-escalonar > .gt-revelar:nth-child(6) { transition-delay: 350ms; }
+.gt-escalonar > .gt-revelar:nth-child(n + 7) { transition-delay: 420ms; }
+
+/* ── Quien pidio menos movimiento ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .gt-revelar {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .gt-cinta-pista,
+  .gt-ciclista,
+  .gt-indicador-scroll,
+  .gt-aura::before {
+    animation: none !important;
+  }
+  .gt-parallax,
+  .gt-parallax-suave {
+    transform: none !important;
+  }
+  .gt-linea {
+    transform: scaleX(1) !important;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────

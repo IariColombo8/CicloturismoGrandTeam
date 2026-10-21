@@ -9,24 +9,30 @@ import {
   ALOJAMIENTO_PLACEHOLDER,
   normalizarLogo,
 } from "@/lib/alojamientos"
+import { srcSetOptimizado, urlOptimizada } from "@/lib/imagenes/optimizarUrl"
 
 // El modal solo se descarga cuando el usuario toca una tarjeta.
 const AlojamientoModal = dynamic(() => import("./AlojamientoModal"), { ssr: false })
 
 export type { Alojamiento }
 
+// El logo pasa por el optimizador de Next (ver lib/imagenes/optimizarUrl.ts):
+// sale en AVIF/WebP al ancho de la tarjeta y con cache de un año, en vez del
+// archivo original de Supabase. Si el optimizador falla se prueba la URL
+// original y recien despues el placeholder: la tarjeta nunca queda vacia.
 function AlojamientoLogo({ src, alt }: { src: string | null; alt: string }) {
   const resolved = normalizarLogo(src)
-  const [currentSrc, setCurrentSrc] = useState(resolved)
+  const [currentSrc, setCurrentSrc] = useState(() => urlOptimizada(resolved, 256) || resolved)
 
   useEffect(() => {
-    setCurrentSrc(resolved)
+    setCurrentSrc(urlOptimizada(resolved, 256) || resolved)
   }, [resolved])
 
   return (
     /* eslint-disable-next-line @next/next/no-img-element -- los logos vienen de Supabase o Drive */
     <img
       src={currentSrc}
+      srcSet={currentSrc.startsWith("/_next/image") ? srcSetOptimizado(resolved, 256) : undefined}
       alt={alt}
       referrerPolicy="no-referrer"
       loading="lazy"
@@ -34,7 +40,8 @@ function AlojamientoLogo({ src, alt }: { src: string | null; alt: string }) {
       draggable={false}
       className="block h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
       onError={() => {
-        if (currentSrc !== ALOJAMIENTO_PLACEHOLDER) setCurrentSrc(ALOJAMIENTO_PLACEHOLDER)
+        if (currentSrc.startsWith("/_next/image")) setCurrentSrc(resolved)
+        else if (currentSrc !== ALOJAMIENTO_PLACEHOLDER) setCurrentSrc(ALOJAMIENTO_PLACEHOLDER)
       }}
     />
   )

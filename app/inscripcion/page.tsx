@@ -669,7 +669,7 @@ export default function InscripcionPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
         <Navbar />
-        <div className="container mx-auto flex items-center justify-center px-4 py-24 sm:px-6">
+        <main className="container mx-auto flex items-center justify-center px-4 py-24 sm:px-6">
           <Card className="w-full max-w-xl border-yellow-400/30 bg-black/60 backdrop-blur-sm">
             <CardContent className="p-6 text-center sm:p-10">
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
@@ -718,7 +718,7 @@ export default function InscripcionPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </main>
       </div>
     )
   }
@@ -727,7 +727,9 @@ export default function InscripcionPage() {
     <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-24 sm:px-6 lg:px-8">
+      {/* <main>: la pagina no tenia landmark principal, asi que un lector de
+          pantalla no podia saltar directo al formulario. */}
+      <main className="container mx-auto px-4 py-24 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Aviso de sin conexión: el borrador se sigue guardando localmente */}
           {!isOnline && (
@@ -793,9 +795,15 @@ export default function InscripcionPage() {
 
           <MedallasBanner />
 
-          {/* Progress bar */}
+          {/* Progress bar.
+              aria-label: sin nombre, un lector de pantalla anuncia "barra de
+              progreso" y nada mas (lo marcaba la auditoria de accesibilidad). */}
           <div className="mb-8">
-            <Progress value={progress} className="h-2 mb-6" />
+            <Progress
+              value={progress}
+              aria-label={`Paso ${currentStep} de ${steps.length}`}
+              className="h-2 mb-6"
+            />
             <div className="grid grid-cols-4 gap-2">
               {steps.map((step) => {
                 // Solo los pasos ya completados son clickeables (volver atrás
@@ -917,7 +925,7 @@ export default function InscripcionPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </main>
 
       {/* Qué falta para seguir, con un botón que lleva a cada campo. */}
       <ModalFaltantes

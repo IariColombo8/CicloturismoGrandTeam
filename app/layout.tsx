@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { EVENTO } from "@/lib/constants";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -163,7 +164,10 @@ const eventJsonLd = {
 
   description: "Cicloturismo de 50 km en Concepción del Uruguay, Entre Ríos.",
 
-  startDate: "2026-11-15T08:00:00-03:00",
+  // Sale de lib/constants.ts para que no vuelva a quedar desfasada: estuvo
+  // anunciando el 15 de noviembre mientras el resto del sitio (y la remera)
+  // decia 8 de noviembre.
+  startDate: `${EVENTO.fecha}-03:00`,
 
   eventStatus: "https://schema.org/EventScheduled",
 
@@ -206,6 +210,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
+      <head>
+        {/* Sin JavaScript, los bloques que aparecen al hacer scroll se quedarian
+            invisibles (arrancan con opacity 0 y la clase la pone el observer).
+            Esta regla los muestra tal cual, sin animacion. */}
+        <noscript>
+          <style>{`.gt-revelar{opacity:1!important;transform:none!important}`}</style>
+        </noscript>
+      </head>
       <body
         className={`${geist.variable} ${bebasNeue.variable} font-sans antialiased`}
       >

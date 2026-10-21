@@ -1,9 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import RemeroFormModal from "@/components/remera/RemeroFormModal"
+// El formulario de pedido son 2.400 lineas que solo hacen falta cuando
+// alguien toca "Pedir mi remera". Importandolo asi, su codigo no viaja en la
+// carga inicial de la home ni de /pedir-remera.
+const RemeroFormModal = dynamic(() => import("@/components/remera/RemeroFormModal"), {
+  ssr: false,
+})
 import { supabase } from "@/lib/supabase"
 import { REMERA_CONTENT_DEFAULTS, mergeRemeraContent, type RemeraContentData } from "@/lib/remeraContent"
 import {
@@ -12,6 +18,8 @@ import {
   REMERA_SOLO_ENVIO_AVISO,
 } from "@/lib/remeraDeadline"
 import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
+import { urlOptimizada } from "@/lib/imagenes/optimizarUrl"
+import { Revelar } from "@/components/ui/Revelar"
 import {
   CalendarClock,
   Shirt,
@@ -57,6 +65,7 @@ const FEATURE_ICONS: Record<string, LucideIcon> = {
 export default function RemeraSection() {
   const [contenido, setContenido] = useState<RemeraContentData>(REMERA_CONTENT_DEFAULTS)
   const [modalOpen, setModalOpen] = useState(false)
+  const [montarModal, setMontarModal] = useState(false)
   const [sizeChartOpen, setSizeChartOpen] = useState(false)
   const [imagenActiva, setImagenActiva] = useState(0)
   const pedidosCerrados = useRemeraCerrada()
@@ -81,7 +90,7 @@ export default function RemeraSection() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
         {/* Encabezado */}
-        <div className="text-center mb-14">
+        <Revelar className="text-center mb-14">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-sm font-medium mb-5">
             <Shirt className="w-4 h-4" />
             {contenido.badgeText}
@@ -121,17 +130,22 @@ export default function RemeraSection() {
               )}
             </p>
           </div>
-        </div>
+        </Revelar>
 
         {/* Contenido principal: imagen + info */}
         <div className="grid lg:grid-cols-2 gap-10 items-center">
           {/* Imagen de la remera */}
-          <div className="relative">
+          <Revelar efecto="izquierda" className="relative">
             <div className="relative aspect-square max-w-md mx-auto rounded-3xl bg-gradient-to-b from-zinc-800/60 to-zinc-900/60 border border-white/10 overflow-hidden shadow-2xl">
               {/* eslint-disable-next-line @next/next/no-img-element -- URL arbitraria cargada desde el admin, no un dominio conocido de antemano */}
               <img
-                src={contenido.images[imagenActiva] ?? contenido.images[0]}
+                src={
+                  urlOptimizada(contenido.images[imagenActiva] ?? contenido.images[0], 640, 75) ||
+                  (contenido.images[imagenActiva] ?? contenido.images[0])
+                }
                 alt={contenido.title}
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 w-full h-full object-contain p-6"
               />
               <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-yellow-400 text-black text-xs font-bold shadow-lg">
@@ -154,15 +168,21 @@ export default function RemeraSection() {
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt="" className="w-full h-full object-contain p-1.5 bg-zinc-900" />
+                    <img
+                      src={urlOptimizada(url, 96) || url}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-contain p-1.5 bg-zinc-900"
+                    />
                   </button>
                 ))}
               </div>
             )}
-          </div>
+          </Revelar>
 
           {/* Info + CTA */}
-          <div>
+          <Revelar efecto="derecha">
             {/* Beneficios */}
             <div className="grid sm:grid-cols-2 gap-4 mb-8">
               {contenido.features.map((feat) => {
@@ -214,7 +234,10 @@ export default function RemeraSection() {
             {/* CTA */}
             <div>
               <Button
-                onClick={() => setModalOpen(true)}
+                onClick={() => {
+                  setMontarModal(true)
+                  setModalOpen(true)
+                }}
                 size="lg"
                 disabled={pedidosCerrados}
                 aria-disabled={pedidosCerrados}
@@ -230,11 +253,14 @@ export default function RemeraSection() {
                   : `${REMERA_SOLO_ENVIO_AVISO} Si ya estás inscripto al evento, tus datos se completan automáticamente con tu DNI.`}
               </p>
             </div>
-          </div>
+          </Revelar>
         </div>
       </div>
 
-      <RemeroFormModal open={modalOpen} onOpenChange={setModalOpen} />
+      {/* Se monta recien la primera vez que alguien lo abre (y despues queda
+          montado, para no perder lo cargado si vuelve a abrirlo). Montarlo
+          siempre haria que su codigo se descargue igual, sin diferir nada. */}
+      {montarModal && <RemeroFormModal open={modalOpen} onOpenChange={setModalOpen} />}
 
       <Dialog open={sizeChartOpen} onOpenChange={setSizeChartOpen}>
         <DialogContent className="bg-zinc-900 border-yellow-400/20 max-w-2xl">
@@ -243,7 +269,7 @@ export default function RemeraSection() {
           </DialogHeader>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={contenido.sizeChartImageUrl}
+            src={urlOptimizada(contenido.sizeChartImageUrl, 1080, 75) || contenido.sizeChartImageUrl}
             alt="Tabla de talles"
             className="w-full rounded-lg border border-zinc-700"
           />

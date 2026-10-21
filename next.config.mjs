@@ -81,18 +81,36 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
-      // Imagenes: cache medio
-      {
-        source: '/sponsor/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
-        ],
-      },
       // Paginas: cache corto con revalidacion
       {
         source: '/((?!api|_next/static).*)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' },
+        ],
+      },
+      // Imagenes y fuentes: 30 dias en el navegador.
+      //
+      // Va DESPUES de la regla de paginas a proposito: cuando dos reglas
+      // coinciden, la ultima es la que define el valor final del header. Antes
+      // todo public/ caia en la regla de arriba con max-age=0 y el navegador
+      // volvia a bajar las remeras y los logos en cada visita: eran los
+      // "7350 KiB de tiempos de vida de cache ineficientes" de PageSpeed.
+      //
+      // 30 dias y no un año (ni `immutable`): estas imagenes se reemplazan a
+      // veces sin cambiarles el nombre (la remera salio de diseño tres veces),
+      // y con `immutable` quien ya la tenga veria la vieja durante un año.
+      {
+        source: '/:ruta*.:ext(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=604800' },
+        ],
+      },
+      // Imagenes ya optimizadas por el optimizador de Next: la URL lleva el
+      // ancho y la calidad, asi que un cambio de tamaño genera otra URL.
+      {
+        source: '/_next/image',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=604800' },
         ],
       },
     ]

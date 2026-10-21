@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Camera, X, ZoomIn, ChevronLeft, ChevronRight, ExternalLink, Aperture } from "lucide-react"
 import type { GalleryImage } from "@/lib/teamPhotos"
 import type { Fotografo } from "@/lib/galeria"
+import { Revelar } from "@/components/ui/Revelar"
 
 // Respaldo: si no hay fotos del equipo en public/fotos equipo, se muestran
 // estas imágenes genéricas del evento.
@@ -50,11 +51,6 @@ interface GalleryProps {
 export default function Gallery({ images, fotografos = [] }: GalleryProps) {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    setIsVisible(true)
-  }, [])
 
   const galleryImages = images && images.length > 0 ? images : FALLBACK_IMAGES
 
@@ -102,31 +98,27 @@ export default function Gallery({ images, fotografos = [] }: GalleryProps) {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section header - COMPACTO EN MÓVIL */}
-        <div
-          className={`text-center mb-8 sm:mb-16 transition-all duration-1000 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-          }`}
-        >
+        <Revelar className="text-center mb-8 sm:mb-16">
           <div className="inline-flex items-center justify-center gap-2 mb-3 sm:mb-4 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full backdrop-blur-sm">
             <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" aria-hidden="true" />
             <span className="text-xs sm:text-sm font-semibold text-yellow-400">Galería</span>
           </div>
           <h2 className="font-heading text-h2 text-white mb-2 sm:mb-4">
-            <span className="gradient-text">Momentos</span> Inolvidables
+            <span className="gradient-text">Momentos</span> de la ruta
           </h2>
           <p className="text-xs sm:text-sm md:text-base text-gray-400 max-w-2xl mx-auto leading-relaxed px-2">
-            Revive la emoción de nuestros eventos anteriores
+            Fotos de las salidas anteriores del grupo
           </p>
-        </div>
+        </Revelar>
 
         {/* Fotógrafos del evento - tarjetas con link externo al álbum completo */}
         {fotografos.length > 0 && (
           <div className="mb-8 sm:mb-16 max-w-5xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="gt-escalonar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {fotografos.map((fotografo) => (
-                <div
+                <Revelar
                   key={fotografo.id}
-                  className="group bg-black/60 border border-yellow-400/20 hover:border-yellow-400/50 rounded-xl p-5 transition-all duration-300"
+                  className="group bg-black/60 border border-yellow-400/20 hover:border-yellow-400/50 rounded-xl p-5 transition-all duration-300 hover:-translate-y-1"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Aperture className="w-4 h-4 text-yellow-400 flex-shrink-0" aria-hidden="true" />
@@ -142,22 +134,23 @@ export default function Gallery({ images, fotografos = [] }: GalleryProps) {
                     className="inline-flex items-center gap-2 text-sm font-semibold text-black bg-gradient-to-r from-yellow-400 to-amber-600 px-4 py-2 rounded-lg hover:scale-[1.03] transition-transform"
                   >
                     <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                    Ver Galería Completa
+                    Ver galería completa
                   </a>
-                </div>
+                </Revelar>
               ))}
             </div>
           </div>
         )}
 
         {/* Gallery grid - 2 COLUMNAS EN MÓVIL */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-7xl mx-auto">
+        <div className="gt-escalonar grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-7xl mx-auto">
           {galleryImages.map((image, index) => (
+            <Revelar key={index} efecto="escala">
             <Card
-              key={index}
-              className="group relative overflow-hidden bg-black border border-zinc-800 hover:border-yellow-400/50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-yellow-500/10"
+              // p-0 y gap-0: la Card trae su propio padding vertical y la foto
+              // quedaba con dos franjas negras arriba y abajo.
+              className="group relative overflow-hidden gap-0 p-0 bg-black border border-zinc-800 hover:border-yellow-400/50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-yellow-500/10"
               onClick={() => openImage(image, index)}
-              style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="aspect-[4/3] overflow-hidden relative">
                 <Image
@@ -165,7 +158,9 @@ export default function Gallery({ images, fotografos = [] }: GalleryProps) {
                   alt={image.alt}
                   fill
                   className="object-cover object-center group-hover:scale-110 transition-transform duration-500"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  quality={65}
+                  loading="lazy"
                 />
                 
                 {/* Overlay - SIMPLIFICADO EN MÓVIL */}
@@ -182,17 +177,18 @@ export default function Gallery({ images, fotografos = [] }: GalleryProps) {
                 </div>
               </div>
             </Card>
+            </Revelar>
           ))}
         </div>
 
         {/* CTA después de la galería - COMPACTO EN MÓVIL */}
         <div className="mt-8 sm:mt-16 text-center">
-          <p className="text-gray-400 text-xs sm:text-base mb-3 sm:mb-4">¿Listo para crear tus propios momentos?</p>
+          <p className="text-gray-400 text-xs sm:text-base mb-3 sm:mb-4">¿Querés estar en las próximas?</p>
           <a
             href="/inscripcion"
-            className="inline-block px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg sm:rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-500/50"
+            className="gt-brillo inline-block px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black font-bold rounded-lg sm:rounded-xl hover:scale-105 transition-transform duration-300 shadow-lg"
           >
-            Inscríbete Ahora
+            Inscribirme
           </a>
         </div>
       </div>

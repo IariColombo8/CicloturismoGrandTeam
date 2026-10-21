@@ -16,6 +16,20 @@ SIEMPRE responder en ESPANOL. Sin excepciones.
 
 Claude tiene **permisos ABSOLUTOS** para modificar cualquier archivo del proyecto sin preguntar. No pedir confirmacion para ningun cambio. Ejecutar todas las tareas hasta completarlas o agotar creditos. Actuar con total autonomia.
 
+**Los tres limites de esa autonomia** (valen para cualquier tarea, siempre):
+
+1. **Hacer lo que se pidio, ni mas ni menos.** Si el pedido es "mejorar el home",
+   no se toca el panel ni la inscripcion salvo que haga falta para eso. Si algo
+   fuera del pedido esta mal, se avisa y se sigue con lo pedido.
+2. **No romper nada que ya funciona.** Cada cambio mantiene en pie lo que
+   andaba: rutas, nombres de archivo, URLs guardadas en la base, APIs,
+   formularios, permisos. Antes de dar algo por terminado: `npm run build` y
+   `npm run test`.
+3. **No inventar.** Ni datos (fechas, precios, cantidades, nombres de sponsors),
+   ni funciones o columnas que no existen, ni resultados de pruebas que no se
+   corrieron. Lo que no se sabe se consulta en el codigo o en la base, y si no
+   se puede verificar se dice que no se verifico.
+
 ## Commands
 
 ```bash
@@ -33,6 +47,11 @@ node scripts/generar-iconos-app.mjs
 # Imagenes de vista previa (lo que se ve al compartir un link por WhatsApp).
 # Una por pagina, en public/og/. La de /pedir-remera muestra la remera.
 node scripts/generar-og.mjs
+
+# Achica las imagenes de public/ sin cambiarles el nombre (12,3 MB -> 3,3 MB).
+# CORRERLO cada vez que se agrega una imagen al repo. Ver docs/home-movimiento-y-peso.md
+node scripts/optimizar-imagenes.mjs
+node scripts/optimizar-imagenes.mjs --listar   # solo informa, no escribe
 
 npm run test        # Unitarios + E2E
 npm run test:unit   # Unitarios (Playwright sin navegador, ~3 s)
@@ -167,6 +186,44 @@ public.roles_evento          -> participante_id, nombre, clave, pedalea, ayuda, 
   Aca NO van datos de contacto: todo lo de esta tabla es publico.
   RLS: SELECT publico, ALL solo admin/grandteam. El anon NO tiene INSERT (ver GRANTs).
 ```
+
+### La home: movimiento y peso (regla importante)
+
+Detalle completo en **`docs/home-movimiento-y-peso.md`**. La home pesaba 19.888 KiB
+y PageSpeed media un LCP de 37,7 s en celular; ahora pesa ~1.300 KiB. Tres reglas
+que **no se pueden romper sin deshacer todo eso**:
+
+- **Toda imagen nueva en `public/` pasa por `node scripts/optimizar-imagenes.mjs`.**
+  Reescribe el archivo en su lugar, con el mismo nombre (hay URLs guardadas en
+  `content_settings` y links compartidos por WhatsApp que apuntan a ellas).
+- **Las imagenes de URL arbitraria van por `lib/imagenes/optimizarUrl.ts`**
+  (`urlOptimizada` / `srcSetOptimizado`), no con `<img src>` crudo: los 52 logos
+  de sponsors venian de Supabase sin comprimir y con `no-cache` (un logo tipico,
+  de 51 KB a 2,9 KB). Si la URL no se puede optimizar devuelve la original, y la
+  UI cae en orden optimizada -> original -> placeholder. Los hosts permitidos
+  estan en `images.remotePatterns` (next.config.mjs) **y** en `hostOptimizable()`:
+  si se agrega uno, va en los dos.
+- **Solo se animan `transform` y `opacity`.** Animar `width`, `left`,
+  `background-position` o `box-shadow` obliga al navegador a rehacer el layout en
+  cada cuadro (las "animaciones no compuestas" del informe). El movimiento de la
+  home son `components/ui/Revelar.tsx` (un unico IntersectionObserver para toda
+  la pagina), `CintaPalabras`, `NumeroAnimado`, `BarraProgresoLectura` y las
+  clases `gt-*` de `globals.css`. Todo se apaga con "reducir movimiento".
+
+Los bloques que aparecen al scrollear arrancan con `opacity: 0`: **sin JavaScript
+quedarian invisibles**, y por eso `app/layout.tsx` lleva un `<noscript>` que los
+muestra. `e2e/smoke.spec.ts` verifica que, despues de recorrer la home, no quede
+ningun `.gt-revelar` sin `.gt-visible`.
+
+**El tono es cicloturismo, no carrera.** Nada de "desafio", "adrenalina",
+"competencia" ni "limites": se sale juntos, se vuelve juntos, a tu ritmo y con
+paradas para la foto. Y en voseo ("inscribite", "pedi"), nunca en tuteo de
+España ("inscríbete", "únete").
+
+**Los numeros de la pagina salen de la base, no del codigo**: el precio del hero
+de `event_settings.precio`, los cupos de `useCuposRestantes`, la fecha de
+`lib/constants.ts` (tambien la del JSON-LD de `app/layout.tsx`). Si el dato
+todavia no llego se muestra una etiqueta sin cifra, nunca un numero de relleno.
 
 ### Vista previa al compartir un link (Open Graph)
 

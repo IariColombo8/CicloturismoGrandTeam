@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic"
 import Hero from "@/components/home/HeroSection"
 import Navbar from "@/components/layout/Navbar"
+import { BarraProgresoLectura } from "@/components/ui/BarraProgresoLectura"
 import { getGaleriaFotos, getGaleriaFotografos } from "@/lib/galeria"
 
 // Componentes below-the-fold: carga diferida para no bloquear el render inicial
@@ -25,6 +26,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen">
+      <BarraProgresoLectura />
       <Navbar />
       <Hero />
       <AboutTeam />
