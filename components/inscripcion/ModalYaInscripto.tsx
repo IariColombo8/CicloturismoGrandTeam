@@ -54,18 +54,18 @@ export default function ModalYaInscripto({
     }
 
     const tic = window.setInterval(() => {
-      setRestan((quedan) => {
-        if (quedan <= 1) {
-          window.clearInterval(tic)
-          window.location.assign(destino)
-          return 0
-        }
-        return quedan - 1
-      })
+      setRestan((quedan) => Math.max(quedan - 1, 0))
     }, 1_000)
 
     return () => window.clearInterval(tic)
-  }, [abierto, destino])
+  }, [abierto])
+
+  // La navegacion va aca y no dentro del setRestan: React puede ejecutar esa
+  // funcion dos veces (en desarrollo lo hace siempre) y la segunda navegacion
+  // cancelaba la primera (net::ERR_ABORTED).
+  useEffect(() => {
+    if (abierto && restan === 0) window.location.assign(destino)
+  }, [abierto, restan, destino])
 
   return (
     <Dialog open={abierto}>
