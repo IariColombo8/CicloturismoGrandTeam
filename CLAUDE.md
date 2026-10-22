@@ -16,6 +16,12 @@ SIEMPRE responder en ESPANOL. Sin excepciones.
 
 Claude tiene **permisos ABSOLUTOS** para modificar cualquier archivo del proyecto sin preguntar. No pedir confirmacion para ningun cambio. Ejecutar todas las tareas hasta completarlas o agotar creditos. Actuar con total autonomia.
 
+**No preguntar "¿lo hago?" ni "¿si o no?"** (pedido explicito del usuario, 21/10/2026).
+Se hace y despues se cuenta que se hizo: archivos, git (descartar cambios viejos, pull,
+commit, push), dependencias de lo pedido, builds y tests. **La unica excepcion es la base
+de datos**: antes de borrar datos o de tocar la base (SQL directo, migraciones que se
+aplican, `DELETE`/`UPDATE` en produccion, borrar archivos del Storage) se pregunta.
+
 **Los tres limites de esa autonomia** (valen para cualquier tarea, siempre):
 
 1. **Hacer lo que se pidio, ni mas ni menos.** Si el pedido es "mejorar el home",
@@ -210,6 +216,13 @@ que **no se pueden romper sin deshacer todo eso**:
   la pagina), `CintaPalabras`, `NumeroAnimado`, `BarraProgresoLectura` y las
   clases `gt-*` de `globals.css`. Todo se apaga con "reducir movimiento".
 
+**El hero entra en una sola pantalla** (menu, titulo, datos, botones, lo incluido y la cinta),
+desde un iPhone SE con Safari (375x553) hasta Full HD. Los espacios y el titulo dependen del
+**alto** (`svh`), no solo del ancho. Su entrada es CSS (`.gt-entrar`), no un estado de React: con
+el estado, en un celular lento el hero quedaba en blanco hasta hidratar. En celular no hay
+parallax, ni manchas con blur, ni backdrop-blur detras de la cinta. "Ver el recorrido" es un link
+de texto, no un boton.
+
 Los bloques que aparecen al scrollear arrancan con `opacity: 0`: **sin JavaScript
 quedarian invisibles**, y por eso `app/layout.tsx` lleva un `<noscript>` que los
 muestra. `e2e/smoke.spec.ts` verifica que, despues de recorrer la home, no quede
@@ -325,7 +338,8 @@ Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam
 ### Flujo "Pedir Remera"
 
 1. Usuario va a `/pedir-remera` -> `RemeraSection` component
-2. Click "Pedir mi remera" -> abre `RemeroFormModal`
+2. Click "Pedir mi remera" -> primero la ventana "Antes de pedir tu remera" (`REMERA_AVISO_DOMICILIO`:
+   va a domicilio, tiene costo de envio y llega despues del evento) -> "Entendido" abre `RemeroFormModal`
 3. Ingresa DNI (7-8 digitos) -> auto-busca via `GET /api/remera/lookup`
 4. Precarga nombre/telefono del participante si esta inscripto
 5. Usuario selecciona talles (XS a 5XL) + cantidades + metodo entrega + comprobante
@@ -333,6 +347,13 @@ Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam
 7. Admin ve el pedido en `/admin/remera` y puede cambiar estado a "entregado"
 
 ### Flujo de Inscripcion (4 pasos)
+
+0. **Ventana "Antes de inscribirte"** (`components/inscripcion/ModalAvisosEvento.tsx`): se abre
+   **siempre** al entrar. Si llueve se pasa al `EVENTO.fechaSiLlueve`, los acompañantes pagan
+   `EVENTO.entradaCampingAcompanante` para entrar al camping (los dos en `lib/constants.ts`) y,
+   solo cuando `useMedallasRestantes` da 0, "Ya no hay mas medallas". Los E2E la cierran con
+   `cerrarAvisosDelEvento()` (`e2e/helpers.ts`); un test nuevo que entre a `/inscripcion` tiene que
+   llamarlo o usar `abrirInscripcion()`.
 
 1. **PersonalInfoStep** -> datos personales, DNI, contacto emergencia. La fecha
    de nacimiento es `CampoFecha.tsx` (dia / mes / año), **no** un

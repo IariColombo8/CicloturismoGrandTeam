@@ -644,6 +644,37 @@
   animation: gt-bajar 2s ease-in-out infinite;
 }
 
+/* ── Entrada del hero ──────────────────────────────────────────────── */
+/* Animacion CSS y no un estado de React: arranca con el primer pintado del
+   HTML del servidor. Con el estado, en un celular con 4G lento el hero quedaba
+   en blanco hasta que bajaba e hidrataba el JavaScript (varios segundos). El
+   retraso de cada bloque va por `animation-delay` en el style. */
+@keyframes gt-entrar {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.25rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gt-entrar {
+  animation: gt-entrar 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* La flecha de "Segui bajando" solo cuando sobra alto: en una pantalla justa
+   se montaba sobre los botones. */
+.gt-indicador-alto {
+  display: none;
+}
+@media (min-width: 768px) and (min-height: 860px) {
+  .gt-indicador-alto {
+    display: flex;
+  }
+}
+
 /* ── Entrada escalonada de una grilla ──────────────────────────────── */
 /* Se usa con Revelar: cada hijo entra un poquito despues que el anterior, sin
    tener que calcular el retraso de cada uno en el componente. */
@@ -663,6 +694,7 @@
     transition: none !important;
   }
   .gt-cinta-pista,
+  .gt-entrar,
   .gt-ciclista,
   .gt-indicador-scroll,
   .gt-aura::before {

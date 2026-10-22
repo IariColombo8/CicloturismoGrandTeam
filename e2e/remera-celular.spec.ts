@@ -33,6 +33,11 @@ async function abrirModal(page: Page) {
   await expect(boton).toBeVisible()
   await boton.click()
 
+  // Antes del formulario, el aviso de que es a domicilio y llega despues.
+  const aviso = page.getByRole("dialog", { name: "Antes de pedir tu remera" })
+  await expect(aviso.getByText(/llega después del evento/)).toBeVisible()
+  await aviso.getByRole("button", { name: /entendido/i }).click()
+
   const dni = page.getByPlaceholder("12345678")
   await expect(dni).toBeVisible({ timeout: 30_000 })
 

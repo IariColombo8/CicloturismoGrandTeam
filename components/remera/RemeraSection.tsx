@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 // El formulario de pedido son 2.400 lineas que solo hacen falta cuando
 // alguien toca "Pedir mi remera". Importandolo asi, su codigo no viaja en la
 // carga inicial de la home ni de /pedir-remera.
@@ -13,6 +13,7 @@ const RemeroFormModal = dynamic(() => import("@/components/remera/RemeroFormModa
 import { supabase } from "@/lib/supabase"
 import { REMERA_CONTENT_DEFAULTS, mergeRemeraContent, type RemeraContentData } from "@/lib/remeraContent"
 import {
+  REMERA_AVISO_DOMICILIO,
   REMERA_AVISO_PEDIDOS,
   REMERA_CERRADA_MENSAJE,
   REMERA_SOLO_ENVIO_AVISO,
@@ -67,6 +68,9 @@ export default function RemeraSection() {
   const [modalOpen, setModalOpen] = useState(false)
   const [montarModal, setMontarModal] = useState(false)
   const [sizeChartOpen, setSizeChartOpen] = useState(false)
+  // "Es a domicilio, tiene costo de envio y llega despues del evento": se ve
+  // cada vez que se toca "Pedir mi remera", antes del formulario.
+  const [avisoOpen, setAvisoOpen] = useState(false)
   const [imagenActiva, setImagenActiva] = useState(0)
   const pedidosCerrados = useRemeraCerrada()
 
@@ -235,8 +239,9 @@ export default function RemeraSection() {
             <div>
               <Button
                 onClick={() => {
+                  // El formulario empieza a bajar mientras se lee el aviso.
                   setMontarModal(true)
-                  setModalOpen(true)
+                  setAvisoOpen(true)
                 }}
                 size="lg"
                 disabled={pedidosCerrados}
@@ -261,6 +266,39 @@ export default function RemeraSection() {
           montado, para no perder lo cargado si vuelve a abrirlo). Montarlo
           siempre haria que su codigo se descargue igual, sin diferir nada. */}
       {montarModal && <RemeroFormModal open={modalOpen} onOpenChange={setModalOpen} />}
+
+      <Dialog open={avisoOpen} onOpenChange={setAvisoOpen}>
+        <DialogContent className="bg-zinc-900 border-yellow-400/30 max-w-md text-white">
+          <DialogHeader>
+            <DialogTitle className="text-left text-xl text-white">Antes de pedir tu remera</DialogTitle>
+            <DialogDescription className="sr-only">Cómo se entrega la remera</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-start gap-3 rounded-lg border border-yellow-400/30 bg-yellow-400/10 p-3">
+            <Truck className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" aria-hidden="true" />
+            <p className="text-sm text-gray-200">{REMERA_AVISO_DOMICILIO}</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              onClick={() => {
+                setAvisoOpen(false)
+                setModalOpen(true)
+              }}
+              className="w-full bg-yellow-400 text-black hover:bg-yellow-500 font-bold"
+            >
+              Entendido, pedir mi remera
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAvisoOpen(false)}
+              className="w-full border-zinc-700 bg-transparent text-gray-300 hover:bg-zinc-800 hover:text-white"
+            >
+              Ahora no
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={sizeChartOpen} onOpenChange={setSizeChartOpen}>
         <DialogContent className="bg-zinc-900 border-yellow-400/20 max-w-2xl">

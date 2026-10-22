@@ -16,6 +16,10 @@ export const REMERA_SOLO_ENVIO = true
 export const REMERA_SOLO_ENVIO_AVISO =
   "Las remeras no van a estar listas para el evento, solamente serán enviadas a domicilio."
 
+// Ventana que se ve al tocar "Pedir mi remera", antes del formulario.
+export const REMERA_AVISO_DOMICILIO =
+  "La remera se envía a domicilio: tiene un costo adicional de envío y llega después del evento."
+
 // Aviso general de pedidos abiertos.
 export const REMERA_AVISO_PEDIDOS = `Pedidos reabiertos solo con envío a domicilio dentro de Argentina. ${REMERA_SOLO_ENVIO_AVISO}`
 

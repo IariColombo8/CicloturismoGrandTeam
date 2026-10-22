@@ -1,4 +1,5 @@
 import { test, expect, devices, type Page } from "@playwright/test"
+import { cerrarAvisosDelEvento } from "./helpers"
 
 // El sitio tiene que abrir sin internet, y las notificaciones push tienen que
 // seguir funcionando: las dos cosas viven en el mismo Service Worker
@@ -6,6 +7,10 @@ import { test, expect, devices, type Page } from "@playwright/test"
 
 test.use({ ...devices["Pixel 5"] })
 test.setTimeout(180_000)
+
+test.beforeEach(async ({ page }) => {
+  await cerrarAvisosDelEvento(page)
+})
 
 /**
  * Espera a que el Service Worker esté activo y controlando la página.

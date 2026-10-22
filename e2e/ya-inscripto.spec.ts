@@ -1,5 +1,5 @@
 import { test, expect, devices, type Page } from "@playwright/test"
-import { silenciarAvisoDeVersion } from "./helpers"
+import { cerrarAvisosDelEvento, silenciarAvisoDeVersion } from "./helpers"
 
 // Quien ya está inscripto en esta edición no tiene que volver a llenar el
 // formulario: se le dice cómo está su inscripción y se lo lleva a /mi-qr.
@@ -63,6 +63,7 @@ async function stubDeOtraEdicion(page: Page) {
 
 async function abrir(page: Page) {
   await silenciarAvisoDeVersion(page)
+  await cerrarAvisosDelEvento(page)
   await page.goto("/inscripcion")
   await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
   await expect(async () => {

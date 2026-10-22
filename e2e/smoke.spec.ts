@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { silenciarAvisoDeVersion } from "./helpers"
+import { cerrarAvisosDelEvento, silenciarAvisoDeVersion } from "./helpers"
 
 // Smoke tests: verifican que las páginas públicas clave cargan y renderizan
 // sus elementos principales. No dependen de datos de Supabase ni de auth, así
@@ -69,6 +69,10 @@ test.describe("Landing pública", () => {
 })
 
 test.describe("Formulario de inscripción", () => {
+  test.beforeEach(async ({ page }) => {
+    await cerrarAvisosDelEvento(page)
+  })
+
   test("renderiza el encabezado y los pasos", async ({ page }) => {
     await page.goto("/inscripcion")
     await expect(page.getByRole("heading", { name: /formulario de/i })).toBeVisible()

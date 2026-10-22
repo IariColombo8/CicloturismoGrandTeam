@@ -19,8 +19,23 @@ export async function silenciarAvisoDeVersion(page: Page) {
   await page.route("**/api/version", (route) => route.fulfill({ status: 503, body: "" }))
 }
 
+/**
+ * Cierra solo la ventana "Antes de inscribirte" (lluvia, acompañantes,
+ * medallas) cada vez que aparece, tambien despues de un reload.
+ *
+ * Se abre siempre al entrar a /inscripcion y tapa el formulario: los tests que
+ * no la prueban la dan por leida. La prueba propia esta en inscripcion.spec.ts.
+ */
+export async function cerrarAvisosDelEvento(page: Page) {
+  const aviso = page.getByRole("dialog", { name: "Antes de inscribirte" })
+  await page.addLocatorHandler(aviso, async () => {
+    await aviso.getByRole("button", { name: "Entendido" }).click()
+  })
+}
+
 export async function abrirInscripcion(page: Page) {
   await silenciarAvisoDeVersion(page)
+  await cerrarAvisosDelEvento(page)
   await page.goto("/inscripcion")
   await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
 

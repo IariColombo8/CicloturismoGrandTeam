@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -44,14 +44,6 @@ export default function HeroSection() {
   const remeraCerrada = useRemeraCerrada()
   const seccionRef = useRef<HTMLElement>(null)
 
-  // Entrada del hero: se dispara apenas monta, asi el contenido entra en vez
-  // de aparecer de golpe. Es la unica animacion que no espera al scroll.
-  const [entro, setEntro] = useState(false)
-  useEffect(() => {
-    const cuadro = requestAnimationFrame(() => setEntro(true))
-    return () => cancelAnimationFrame(cuadro)
-  }, [])
-
   // Parallax: el fondo se mueve mas despacio que el contenido.
   //
   // Se escribe una variable CSS (--gt-scroll, de 0 a 1) sobre la seccion y el
@@ -62,6 +54,9 @@ export default function HeroSection() {
     const nodo = seccionRef.current
     if (!nodo) return
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    // En celular no: el scroll tactil corre fuera del hilo de JavaScript y el
+    // fondo llegaba un cuadro tarde, a los saltos. Ahi queda quieto.
+    if (window.matchMedia("(max-width: 767px), (pointer: coarse)").matches) return
 
     let pendiente = false
 
@@ -82,14 +77,14 @@ export default function HeroSection() {
     return () => window.removeEventListener("scroll", alScrollear)
   }, [])
 
-  // Cada bloque entra un poco despues que el anterior. El retraso va por
-  // `style` y no por una clase de Tailwind: Tailwind lee el codigo como texto
-  // y una clase armada con una variable nunca llega a generarse.
+  // Cada bloque entra un poco despues que el anterior. Es una animacion CSS
+  // (.gt-entrar en globals.css), no un estado de React: arranca con el HTML del
+  // servidor y no espera a que el JavaScript cargue. El retraso va por `style`
+  // y no por una clase de Tailwind: Tailwind lee el codigo como texto y una
+  // clase armada con una variable nunca llega a generarse.
   const entrada = (retraso: number, extra = "") => ({
-    className: `transition-all duration-700 ease-out ${
-      entro ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-    } ${extra}`,
-    style: { transitionDelay: `${retraso}ms` },
+    className: `gt-entrar ${extra}`,
+    style: { animationDelay: `${retraso}ms` },
   })
 
   // El precio sale de event_settings (el mismo que cobra la inscripcion). Si
@@ -118,14 +113,22 @@ export default function HeroSection() {
     { icon: Droplet, text: "Hidratación en ruta" },
   ]
 
-  const claseBoton =
-    "gt-brillo w-full sm:w-auto group px-4 sm:px-8 py-3 sm:py-6 text-sm sm:text-lg font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black hover:scale-105 transition-transform duration-300 rounded-lg sm:rounded-xl shadow-lg shadow-yellow-500/25"
+  // Alto de los botones: chicos en celular (tienen que entrar con todo lo demas
+  // en una sola pantalla) y mas generosos desde tablet.
+  const tamanoBoton = "h-11 [@media(max-height:620px)]:h-10 sm:h-auto px-3 sm:px-7 py-0 sm:py-4 lg:py-5 text-sm sm:text-base lg:text-lg rounded-lg sm:rounded-xl"
+
+  const claseBoton = `gt-brillo w-full sm:w-auto group ${tamanoBoton} font-bold bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-600 text-black hover:scale-105 transition-transform duration-300 shadow-lg shadow-yellow-500/25`
 
   return (
+    // Todo el primer pantallazo (menu, titulo, datos, botones, lo incluido y la
+    // cinta) entra en el alto de la pantalla, desde un celular chico hasta una
+    // notebook. Los espacios y el titulo se achican con el ALTO (svh), no solo
+    // con el ancho: una notebook de 768 px de alto es ancha pero baja.
+    // pt-20 = alto del menu fijo, que se apoya encima del hero.
     <section
       ref={seccionRef}
       id="inicio"
-      className="relative min-h-[100svh] flex flex-col items-center justify-center overflow-hidden bg-black"
+      className="relative min-h-[100svh] flex flex-col overflow-hidden bg-black pt-20"
     >
       {/* Fondo */}
       <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-900 to-yellow-900/30" aria-hidden="true">
@@ -133,8 +136,9 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,193,7,0.1),transparent_50%)]" />
       </div>
 
-      {/* Manchas doradas que flotan */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Manchas doradas que flotan. En celular no: son capas enormes con blur
+          que el telefono tiene que volver a pintar en cada cuadro. */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
         <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-500/10 rounded-full blur-3xl animate-float-slow" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl animate-float-slow-delayed" />
       </div>
@@ -170,17 +174,24 @@ export default function HeroSection() {
       </div>
 
       {/* Contenido */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="max-w-5xl mx-auto text-center">
+      <div className="relative z-10 flex flex-1 items-center w-full">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-[clamp(0.5rem,2.5svh,2rem)] [@media(max-height:600px)]:py-1">
+        {/* Un solo `gap` que depende del alto de la pantalla reemplaza los
+            margenes de cada bloque: en una pantalla baja se juntan todos parejo. */}
+        <div className="max-w-5xl mx-auto text-center flex flex-col items-center gap-[clamp(0.375rem,1.8svh,1.5rem)]">
           {/* Etiqueta: lo primero que aclara de que se trata */}
-          <div {...entrada(0, "flex justify-center mb-4 sm:mb-6")}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400 backdrop-blur-sm">
+          <div {...entrada(0, "flex justify-center")}>
+            <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
               <Bike className="h-3.5 w-3.5" aria-hidden="true" />
               Cicloturismo · no es una carrera
             </span>
           </div>
 
-          <h1 className="font-heading text-hero mb-3 sm:mb-6 leading-none">
+          {/* El titulo toma el menor entre el tamaño de siempre (--text-hero),
+              el que hace entrar "1er CICLOTURISMO" en UNA linea (8.2vw; antes
+              en celular eran cuatro renglones) y un 10% del alto, para que en
+              una notebook baja no se coma la pantalla. */}
+          <h1 className="font-heading text-[length:min(var(--text-hero),8.2vw,10svh)] leading-[0.95]">
             <span {...entrada(80, "block text-white")}>1er CICLOTURISMO</span>
             <span {...entrada(180, "block text-yellow-400 text-[0.72em] mt-1")}>
               RUINAS DEL VIEJO MOLINO
@@ -190,7 +201,7 @@ export default function HeroSection() {
           <p
             {...entrada(
               280,
-              "text-sm sm:text-base md:text-lg lg:text-xl text-gray-100 mb-3 sm:mb-5 max-w-2xl mx-auto leading-relaxed px-2",
+              "text-sm [@media(max-height:620px)]:text-[13px] sm:text-base md:text-lg lg:text-xl text-gray-100 max-w-2xl mx-auto leading-snug sm:leading-relaxed px-2",
             )}
           >
             <span className="text-yellow-400 font-semibold">{EVENTO.distancia} de ripio</span> por los caminos de
@@ -198,8 +209,8 @@ export default function HeroSection() {
           </p>
 
           {/* Precio: visible pero deliberadamente discreto dentro del hero */}
-          <div {...entrada(340, "mb-4 sm:mb-6 flex justify-center")}>
-            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-black/35 px-3 py-1.5 text-xs sm:text-sm text-zinc-300 backdrop-blur-sm">
+          <div {...entrada(340, "flex justify-center")}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-black/50 px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-zinc-300">
               <BadgeDollarSign className="h-4 w-4 text-yellow-400" aria-hidden="true" />
               <span>Inscripción</span>
               <span className="font-bold text-yellow-400">{precioTexto ?? "—"}</span>
@@ -207,17 +218,17 @@ export default function HeroSection() {
           </div>
 
           {/* Datos rapidos */}
-          <div {...entrada(400, "grid grid-cols-3 gap-1.5 sm:gap-4 mb-4 sm:mb-8 max-w-3xl mx-auto")}>
+          <div {...entrada(400, "grid grid-cols-3 gap-1.5 sm:gap-4 w-full max-w-3xl mx-auto")}>
             {datosRapidos.map((dato) => {
               const Icono = dato.icon
               return (
                 <div
                   key={dato.label}
-                  className="glass p-1.5 sm:p-4 rounded-md sm:rounded-xl transition-transform duration-300 hover:-translate-y-1 hover:bg-yellow-400/5"
+                  className="glass p-1.5 sm:p-3 lg:p-4 rounded-md sm:rounded-xl transition-transform duration-300 hover:-translate-y-1 hover:bg-yellow-400/5"
                 >
-                  <Icono className="w-3.5 h-3.5 sm:w-6 sm:h-6 text-yellow-400 mx-auto mb-0.5 sm:mb-2" aria-hidden="true" />
+                  <Icono className="w-3.5 h-3.5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-yellow-400 mx-auto mb-0.5 sm:mb-1.5" aria-hidden="true" />
                   <p className="text-[11px] sm:text-sm text-gray-300 leading-tight">{dato.label}</p>
-                  <p className="text-xs sm:text-base text-white font-bold leading-tight">
+                  <p className="text-[11px] min-[400px]:text-xs sm:text-base text-white font-bold leading-tight">
                     {dato.numero != null ? (
                       <>
                         <NumeroAnimado valor={dato.numero} duracion={1200} /> {dato.texto}
@@ -231,14 +242,16 @@ export default function HeroSection() {
             })}
           </div>
 
-          {/* Botones */}
+          {/* Botones. En celular: "Quiero inscribirme" a todo el ancho y abajo
+              la remera con el link al recorrido lado a lado (apilados eran tres
+              filas y empujaban lo incluido y la cinta fuera de la pantalla). */}
           <div
             {...entrada(
               470,
-              "flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center items-center mb-4 sm:mb-0",
+              "grid grid-cols-2 gap-2 w-full max-w-md sm:max-w-none sm:flex sm:flex-row sm:gap-4 sm:justify-center sm:items-center",
             )}
           >
-            <Link href="/inscripcion" className="w-full sm:w-auto">
+            <Link href="/inscripcion" className="col-span-2 w-full sm:w-auto">
               <Button size="lg" className={claseBoton}>
                 Quiero inscribirme
                 <ChevronRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
@@ -251,42 +264,46 @@ export default function HeroSection() {
                 disabled
                 aria-disabled
                 title={REMERA_CERRADA_MENSAJE}
-                className="w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-6 text-sm sm:text-lg font-bold bg-zinc-700 text-zinc-300 rounded-lg sm:rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                className={`w-full sm:w-auto ${tamanoBoton} font-bold bg-zinc-700 text-zinc-300 disabled:opacity-60 disabled:cursor-not-allowed`}
               >
-                Pedidos de remera cerrados
-                <Shirt className="ml-2 w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+                {/* En media pantalla de celular el texto largo no entra */}
+                <span className="sm:hidden">Remera cerrada</span>
+                <span className="hidden sm:inline">Pedidos de remera cerrados</span>
+                <Shirt className="ml-1.5 sm:ml-2 w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
               </Button>
             ) : (
               <Link href="/pedir-remera" className="w-full sm:w-auto">
                 <Button size="lg" className={claseBoton}>
                   Pedir remera
-                  <Shirt className="ml-2 w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+                  <Shirt className="ml-1.5 sm:ml-2 w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                 </Button>
               </Link>
             )}
 
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-6 text-sm sm:text-lg font-semibold border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition-colors duration-300 rounded-lg sm:rounded-xl bg-transparent"
-              asChild
+            {/* Link de texto, no boton: los botones quedan para inscribirse y
+                pedir la remera. En celular ocupa la media fila al lado de la
+                remera, asi no suma alto. */}
+            <a
+              href="#detalles"
+              className="group inline-flex items-center justify-center gap-1 h-11 [@media(max-height:620px)]:h-10 sm:h-auto px-2 text-sm sm:text-base lg:text-lg font-semibold text-yellow-400 underline-offset-4 hover:underline"
             >
-              <a href="#detalles">Ver el recorrido</a>
-            </Button>
+              Ver el recorrido
+              <ArrowDown className="w-4 h-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
+            </a>
           </div>
 
           {/* Lo que esta incluido */}
           <div
             {...entrada(
               540,
-              "mt-8 sm:mt-14 flex flex-wrap justify-center items-center gap-3 sm:gap-6 lg:gap-8 text-gray-300 text-xs sm:text-sm",
+              "flex flex-wrap justify-center items-center gap-x-3 gap-y-1 sm:gap-6 lg:gap-8 text-gray-300 text-[11px] sm:text-sm",
             )}
           >
             {incluido.map((item) => {
               const Icono = item.icon
               return (
                 <div key={item.text} className="flex items-center gap-1 sm:gap-2 hover:text-yellow-400 transition-colors">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-yellow-400/20 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 sm:w-7 sm:h-7 bg-yellow-400/20 rounded-full flex items-center justify-center">
                     <Icono className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400" aria-hidden="true" />
                   </div>
                   <span className="whitespace-nowrap">{item.text}</span>
@@ -295,13 +312,15 @@ export default function HeroSection() {
             })}
           </div>
         </div>
+        </div>
       </div>
 
-      {/* Cinta de palabras al pie del hero */}
+      {/* Cinta de palabras al pie del hero. Sin backdrop-blur en celular: la
+          cinta se mueve sin parar y el desenfoque se recalculaba cada cuadro. */}
       <div
         {...entrada(
           620,
-          "relative z-10 w-full border-y border-yellow-400/15 bg-black/40 py-2.5 backdrop-blur-sm",
+          "relative z-10 w-full border-y border-yellow-400/15 bg-black/70 sm:bg-black/40 sm:backdrop-blur-sm py-2 sm:py-2.5",
         )}
       >
         <CintaPalabras
@@ -311,10 +330,10 @@ export default function HeroSection() {
         />
       </div>
 
-      {/* Indicador de scroll */}
+      {/* Indicador de scroll: solo si sobra alto (.gt-indicador-alto) */}
       <a
         href="#nosotros"
-        className="absolute bottom-20 left-1/2 -translate-x-1/2 cursor-pointer hidden md:flex flex-col items-center gap-1 text-yellow-400/70 hover:text-yellow-400 transition-colors"
+        className="gt-indicador-alto absolute bottom-16 left-1/2 -translate-x-1/2 cursor-pointer flex-col items-center gap-1 text-yellow-400/70 hover:text-yellow-400 transition-colors"
         aria-label="Ver el resto de la página"
       >
         <span className="text-[10px] uppercase tracking-[0.2em]">Seguí bajando</span>

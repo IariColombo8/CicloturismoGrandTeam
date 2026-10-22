@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
-import { cargarFechaNacimiento, silenciarAvisoDeVersion } from "./helpers"
+import { cargarFechaNacimiento, cerrarAvisosDelEvento, silenciarAvisoDeVersion } from "./helpers"
 
 // E2E del flujo de inscripción. No toca Supabase real: interceptamos las
 // llamadas de red (lookup por DNI y submit) para que los tests sean
@@ -21,6 +21,7 @@ const datosPaso1 = {
 // depende de datos existentes en la base.
 async function stubLookup(page: Page) {
   await silenciarAvisoDeVersion(page)
+  await cerrarAvisosDelEvento(page)
   await page.route("**/api/lookup-participant**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ found: false }) })
   )
@@ -37,6 +38,36 @@ async function completarPaso1(page: Page) {
   await page.fill("#nombreEmergencia", datosPaso1.nombreEmergencia)
   await page.fill("#telefonoEmergencia", datosPaso1.telefonoEmergencia)
 }
+
+test.describe("Inscripción · avisos al entrar", () => {
+  test("avisa la fecha si llueve y lo que pagan los acompañantes, y se cierra", async ({ page }) => {
+    await silenciarAvisoDeVersion(page)
+    await page.goto("/inscripcion")
+
+    const aviso = page.getByRole("dialog", { name: "Antes de inscribirte" })
+    await expect(aviso).toBeVisible()
+    await expect(aviso.getByText(/11 de abril/)).toBeVisible()
+    await expect(aviso.getByText(/\$10\.000/).first()).toBeVisible()
+
+    await aviso.getByRole("button", { name: "Entendido" }).click()
+    await expect(aviso).toBeHidden()
+    await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
+  })
+
+  test("si no quedan medallas, también lo dice", async ({ page }) => {
+    await silenciarAvisoDeVersion(page)
+    // El conteo de inscriptos llega por el header content-range de Supabase.
+    await page.route("**/rest/v1/participantes**", (route) =>
+      route.request().method() === "HEAD"
+        ? route.fulfill({ status: 200, headers: { "content-range": "*/500" }, body: "" })
+        : route.continue(),
+    )
+    await page.goto("/inscripcion")
+
+    const aviso = page.getByRole("dialog", { name: "Antes de inscribirte" })
+    await expect(aviso.getByText("Ya no hay más medallas")).toBeVisible()
+  })
+})
 
 test.describe("Inscripción · paso 1", () => {
   test.beforeEach(async ({ page }) => {

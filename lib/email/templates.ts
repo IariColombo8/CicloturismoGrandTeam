@@ -8,6 +8,8 @@
 // - Se usa el dominio de Vercel a proposito: grandteambike.com.ar todavia no
 //   resuelve.
 
+import { EVENTO, LIMITE_MEDALLAS } from "@/lib/constants"
+
 /** Dominio publico desde el que se sirven las imagenes del email. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://grand-team.vercel.app").replace(
   /\/$/,
@@ -184,15 +186,19 @@ export interface DatosConfirmacion {
 const PEDIR_REMERA_URL = `${SITE_URL}/pedir-remera`
 const REMERA_IMG_URL = `${SITE_URL}/remerab.png`
 
-/** Bloque de remera: cambia segun si la pidio y como la recibe. */
+// Las remeras no llegan a estar listas para el evento: se mandan todas a
+// domicilio despues, con costo de envio. Por eso ya no se distingue "retiro"
+// (un pedido viejo con retiro tampoco se entrega en el evento).
+const REMERA_ENTREGA = "Es a domicilio, tiene un costo adicional de envío y llega después del evento."
+const REMERA_ENTREGA_HTML =
+  "Es a domicilio, tiene un <strong>costo adicional de env&iacute;o</strong> y llega <strong>despu&eacute;s del evento</strong>."
+
+/** Bloque de remera: cambia segun si ya la pidio o no. */
 function bloqueRemera(remera: EstadoRemera | undefined): string {
   if (!remera) return ""
 
   if (remera.pedida) {
-    const aDomicilio = remera.envioTipo === "envio"
-    const detalle = aDomicilio
-      ? "Recorda que es a domicilio y te llegara despues del evento."
-      : "Recibiras tu remera en el evento."
+    const detalle = REMERA_ENTREGA_HTML
 
     return `          <tr>
             <td style="padding:0 40px 36px;">
@@ -200,9 +206,7 @@ function bloqueRemera(remera: EstadoRemera | undefined): string {
                 <tr>
                   <td style="padding:25px;text-align:center;">
                     <h2 style="margin:0 0 8px;color:#111827;font-size:20px;">Est&aacute; incluida tu remera</h2>
-                    <p style="margin:0;color:#4b5563;font-size:14px;line-height:1.6;">${escaparHtml(
-                      detalle
-                    )}</p>
+                    <p style="margin:0;color:#4b5563;font-size:14px;line-height:1.6;">${detalle}</p>
                   </td>
                 </tr>
               </table>
@@ -219,7 +223,7 @@ function bloqueRemera(remera: EstadoRemera | undefined): string {
                     <a href="${PEDIR_REMERA_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
                       <img src="${REMERA_IMG_URL}" alt="Remera del evento" width="260" style="display:block;width:100%;max-width:260px;height:auto;margin:16px auto;border:0;border-radius:10px;outline:none;text-decoration:none;">
                     </a>
-                    <p style="margin:0 0 18px;color:#4b5563;font-size:14px;line-height:1.6;">Solo se env&iacute;a a domicilio y llega <strong>despu&eacute;s del evento</strong>.</p>
+                    <p style="margin:0 0 18px;color:#4b5563;font-size:14px;line-height:1.6;">${REMERA_ENTREGA_HTML}</p>
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
                       <tr>
                         <td bgcolor="#111827" style="border-radius:8px;">
@@ -239,21 +243,52 @@ function textoRemera(remera: EstadoRemera | undefined): string[] {
   if (!remera) return []
 
   if (remera.pedida) {
-    return [
-      "",
-      "Esta incluida tu remera.",
-      remera.envioTipo === "envio"
-        ? "Recorda que es a domicilio y te llegara despues del evento."
-        : "Recibiras tu remera en el evento.",
-    ]
+    return ["", "Esta incluida tu remera.", REMERA_ENTREGA]
   }
 
+  return ["", "Recorda que podes pedir tu remera del evento.", REMERA_ENTREGA, `Pedila en: ${PEDIR_REMERA_URL}`]
+}
+
+/**
+ * "Para tener en cuenta": lluvia, acompañantes y, si su numero quedo despues
+ * del limite, que la inscripcion no tiene medalla. Lo mismo que la ventana que
+ * se ve al entrar a /inscripcion, para que nadie diga despues que no sabia.
+ */
+function avisosEvento(numeroInscripcion: string | number | null | undefined): string[] {
+  const entrada = `$${EVENTO.entradaCampingAcompanante.toLocaleString("es-AR")}`
+  const numero = Number(numeroInscripcion)
+  // Solo con un numero real: sin numero no se puede saber y no se avisa nada.
+  const sinMedalla = Number.isInteger(numero) && numero > LIMITE_MEDALLAS
+
   return [
-    "",
-    "Recorda que podes pedir tu remera del evento.",
-    "Solo se envia a domicilio y llega despues del evento.",
-    `Pedila en: ${PEDIR_REMERA_URL}`,
+    `Si llueve, el evento se suspende y pasa al ${EVENTO.fechaSiLlueve}.`,
+    `Los acompañantes pagan ${entrada} para entrar al camping.`,
+    ...(sinMedalla
+      ? [`Ya no hay más medallas: se entregaron las ${LIMITE_MEDALLAS} y tu inscripción no incluye medalla.`]
+      : []),
   ]
+}
+
+function bloqueAvisos(avisos: string[]): string {
+  const items = avisos
+    .map(
+      (aviso) =>
+        `                    <p style="margin:0 0 8px;color:#4b5563;font-size:14px;line-height:1.6;">&bull; ${escaparHtml(aviso)}</p>`
+    )
+    .join("\n")
+
+  return `          <tr>
+            <td style="padding:0 40px 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:14px;">
+                <tr>
+                  <td style="padding:25px;text-align:left;">
+                    <h2 style="margin:0 0 12px;color:#111827;font-size:20px;text-align:center;">Para tener en cuenta</h2>
+${items}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
 }
 
 export function templateConfirmacion(datos: DatosConfirmacion): EmailRenderizado {
@@ -269,6 +304,7 @@ export function templateConfirmacion(datos: DatosConfirmacion): EmailRenderizado
   const fechaEvento = datos.fechaEvento || FECHA_EVENTO_DEFAULT
   const ubicacion = datos.ubicacion || UBICACION_DEFAULT
   const numero = datos.numeroInscripcion ? String(datos.numeroInscripcion) : ""
+  const avisos = avisosEvento(datos.numeroInscripcion)
 
   const contenido = `          <tr>
             <td style="padding:36px 40px 20px;">
@@ -317,6 +353,8 @@ ${fila(
             </td>
           </tr>
 
+${bloqueAvisos(avisos)}
+
 ${bloqueRemera(datos.remera)}
 
           <tr>
@@ -359,6 +397,9 @@ ${bloqueRemera(datos.remera)}
     qrUrl ? "" : null,
     qrUrl ? `Tu codigo QR de acceso: ${qrUrl}` : null,
     qrUrl ? "Presentalo el dia del evento. Es personal, no lo compartas." : null,
+    "",
+    "Para tener en cuenta:",
+    ...avisos.map((aviso) => `- ${aviso}`),
     ...textoRemera(datos.remera),
     "",
     `Grupo de WhatsApp del evento: ${WHATSAPP_URL}`,

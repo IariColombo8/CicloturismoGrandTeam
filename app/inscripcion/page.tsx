@@ -17,6 +17,7 @@ import ReviewStep from "@/components/inscripcion/ReviewStep"
 import MedallasBanner from "@/components/inscripcion/MedallasBanner"
 import ModalFaltantes from "@/components/inscripcion/ModalFaltantes"
 import ModalYaInscripto from "@/components/inscripcion/ModalYaInscripto"
+import ModalAvisosEvento from "@/components/inscripcion/ModalAvisosEvento"
 import { irAlCampo, limpiarResaltados, type CampoFaltante } from "@/lib/foco"
 import Navbar from "@/components/layout/Navbar"
 import { DATOS_TRANSFERENCIA_VACIOS, datosDesdeEvento } from "@/lib/transferencia"
@@ -926,6 +927,9 @@ export default function InscripcionPage() {
           </Card>
         </div>
       </main>
+
+      {/* Lluvia, acompañantes y medallas: se ve siempre al entrar. */}
+      <ModalAvisosEvento />
 
       {/* Qué falta para seguir, con un botón que lleva a cada campo. */}
       <ModalFaltantes

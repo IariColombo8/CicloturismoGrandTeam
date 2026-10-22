@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { LIMITE_MEDALLAS } from "@/lib/constants"
 
 interface MedallasRestantes {
   /** Cantidad de medallas garantizadas para esta edicion. */
@@ -18,8 +19,9 @@ interface MedallasRestantes {
 // El contador publico es de la edicion actual: siempre filtramos por anio.
 const EDICION_ACTUAL = 2026
 
-/** Solo las primeras 220 inscripciones de la edicion tienen medalla garantizada. */
-export const LIMITE_MEDALLAS = 220
+// El limite vive en lib/constants (lo usa tambien el mail de confirmacion); se
+// reexporta para no cambiar los imports que ya lo traen de aca.
+export { LIMITE_MEDALLAS }
 
 /**
  * Medallas disponibles en tiempo real.

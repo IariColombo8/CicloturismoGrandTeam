@@ -1,5 +1,5 @@
 import { test, expect, devices, type Page } from "@playwright/test"
-import { cargarFechaNacimiento, comprobanteDePrueba, silenciarAvisoDeVersion } from "./helpers"
+import { cargarFechaNacimiento, cerrarAvisosDelEvento, comprobanteDePrueba, silenciarAvisoDeVersion } from "./helpers"
 
 // Los mismos pasos, pero en Safari de iPhone (WebKit). No es por repetir: las
 // cosas que se rompen en el celular casi siempre se rompen primero acá —
@@ -37,6 +37,7 @@ async function stubRed(page: Page) {
 
 /** En WebKit la hidratación tarda más: esperamos a que el DNI filtre letras. */
 async function abrir(page: Page) {
+  await cerrarAvisosDelEvento(page)
   await page.goto("/inscripcion")
   await expect(page.getByRole("heading", { name: "Información Personal" })).toBeVisible()
   await expect(async () => {
