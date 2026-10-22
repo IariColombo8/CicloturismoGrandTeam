@@ -278,10 +278,14 @@ export default function Navbar() {
 
   return (
     <>
+      {/* En celular el menu es opaco (bg-black debajo del gradiente) y sin
+          backdrop-blur: un menu fijo con desenfoque obliga al telefono a
+          rehacer el blur de la pagina en cada cuadro del scroll, y ese era el
+          tiron que se sentia al bajar. El desenfoque queda desde tablet. */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-[background-color,box-shadow] duration-300 ${
           isScrolled
-            ? "bg-gradient-to-r from-black via-zinc-900 to-yellow-900/20 backdrop-blur-lg shadow-lg shadow-yellow-500/10"
+            ? "bg-black md:bg-transparent bg-gradient-to-r from-black via-zinc-900 to-yellow-900/20 md:backdrop-blur-lg shadow-lg shadow-yellow-500/10"
             : "bg-transparent"
         }`}
       >

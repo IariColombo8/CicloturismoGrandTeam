@@ -91,7 +91,9 @@ export default function Gallery({ images, fotografos = [] }: GalleryProps) {
   return (
     <section id="galeria" className="py-12 sm:py-20 bg-gradient-to-b from-zinc-900 via-black to-zinc-900 relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Solo desde tablet: en celular son capas enormes con blur que el
+          telefono vuelve a pintar al scrollear (igual que en el hero). */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
         <div className="absolute top-40 left-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-10 w-80 h-80 bg-yellow-400/5 rounded-full blur-3xl" />
       </div>

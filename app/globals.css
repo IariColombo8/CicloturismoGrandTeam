@@ -370,6 +370,17 @@
   border: 1px solid rgba(255, 215, 0, 0.1);
 }
 
+/* En celular, sin desenfoque: el telefono rehace el blur de todo lo que hay
+   detras en cada cuadro del scroll, y era una de las cosas que hacian que la
+   pagina se "trabara" al bajar. Sobre el fondo negro casi no se nota: el fondo
+   queda un poco mas opaco y listo. */
+@media (max-width: 767px), (pointer: coarse) {
+  .glass {
+    background: rgba(20, 20, 20, 0.88);
+    backdrop-filter: none;
+  }
+}
+
 /* ── Utilidades de tipografía y ritmo (tokens de diseño) ──────────────── */
 @layer utilities {
   /* Fuente display atlética para titulos. Bebas Neue es condensada y en
@@ -490,7 +501,10 @@
   transition:
     opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform, opacity;
+  /* Sin will-change: la home tiene mas de 50 bloques revelables y pedirle una
+     capa propia a cada uno desde la carga llenaba la memoria de la GPU del
+     celular (y ahi es cuando el scroll empieza a saltar). La transicion de
+     transform/opacity ya sube el bloque a la GPU solo mientras se mueve. */
 }
 
 .gt-revelar-subir {
@@ -512,8 +526,6 @@
 .gt-revelar.gt-visible {
   opacity: 1;
   transform: none;
-  /* Terminada la entrada, el elemento deja de pedir una capa propia. */
-  will-change: auto;
 }
 
 /* ── Cinta de palabras (components/ui/CintaPalabras.tsx) ───────────── */
@@ -527,9 +539,15 @@
 .gt-cinta-pista {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
   width: max-content;
   animation: gt-desplazar 40s linear infinite;
+}
+
+/* El espacio va como margen de cada pieza y no como `gap`: con gap, entre las
+   dos copias queda un hueco menos que piezas, el -50% no caia justo en el
+   empalme y la cinta pegaba un saltito al terminar cada vuelta. */
+.gt-cinta-pista > * {
+  margin-inline-end: 1.25rem;
 }
 
 .gt-cinta-invertida {
@@ -552,12 +570,20 @@
    1 cuando el hero termino de salir de pantalla). */
 .gt-parallax {
   transform: translate3d(0, calc(var(--gt-scroll, 0) * 12vh), 0) scale(1.08);
-  will-change: transform;
 }
 
 .gt-parallax-suave {
   transform: translate3d(0, calc(var(--gt-scroll, 0) * 5vh), 0);
-  will-change: transform;
+}
+
+/* La capa propia solo donde el parallax se mueve de verdad (compu con mouse).
+   En celular el fondo queda quieto, y una capa de pantalla completa reservada
+   para nada le quitaba memoria al scroll. */
+@media (min-width: 768px) and (pointer: fine) {
+  .gt-parallax,
+  .gt-parallax-suave {
+    will-change: transform;
+  }
 }
 
 /* ── Ciclista que cruza la pantalla ────────────────────────────────── */

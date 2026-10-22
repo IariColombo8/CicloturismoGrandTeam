@@ -1,12 +1,21 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Bike, Heart, Users, Shield, Clock, Calendar, Camera, Coffee } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { EVENTO } from "@/lib/constants"
 import { Revelar } from "@/components/ui/Revelar"
 
-export default function AboutTeam() {
+/**
+ * Los cuatro numeros de la cuenta regresiva.
+ *
+ * Es un componente aparte a proposito: antes el estado vivia en AboutTeam y
+ * cada segundo se volvia a renderizar la seccion entera. Ademas el reloj solo
+ * corre mientras se ve (en pantalla y con la pestaña visible): un intervalo
+ * que repinta cuatro tarjetas cada segundo mientras se scrollea otra parte de
+ * la home es justo el tipo de trabajo que hace saltar el scroll en un celular.
+ */
+function CuentaRegresiva() {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -14,6 +23,7 @@ export default function AboutTeam() {
     seconds: 0,
   })
   const [isClient, setIsClient] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
   const eventDate = new Date(EVENTO.fecha).getTime()
 
@@ -36,12 +46,73 @@ export default function AboutTeam() {
       }
     }
 
-    calculateTimeLeft()
-    const interval = setInterval(calculateTimeLeft, 1000)
+    let interval: ReturnType<typeof setInterval> | null = null
+    let enPantalla = typeof IntersectionObserver === "undefined"
 
-    return () => clearInterval(interval)
+    const sincronizar = () => {
+      const correr = enPantalla && document.visibilityState === "visible"
+      if (correr && !interval) {
+        calculateTimeLeft()
+        interval = setInterval(calculateTimeLeft, 1000)
+      } else if (!correr && interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
+
+    calculateTimeLeft()
+
+    const obs =
+      typeof IntersectionObserver !== "undefined" && ref.current
+        ? new IntersectionObserver(([entrada]) => {
+            enPantalla = entrada.isIntersecting
+            sincronizar()
+          })
+        : null
+    if (obs && ref.current) obs.observe(ref.current)
+
+    document.addEventListener("visibilitychange", sincronizar)
+    sincronizar()
+
+    return () => {
+      obs?.disconnect()
+      document.removeEventListener("visibilitychange", sincronizar)
+      if (interval) clearInterval(interval)
+    }
   }, [eventDate])
 
+  const countdownItems = [
+    { value: timeLeft.days, label: "Días" },
+    { value: timeLeft.hours, label: "Horas" },
+    { value: timeLeft.minutes, label: "Minutos" },
+    { value: timeLeft.seconds, label: "Segundos" },
+  ]
+
+  return (
+    <div ref={ref} className="gt-escalonar grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-6xl mx-auto">
+      {countdownItems.map((item) => (
+        <Revelar key={item.label} efecto="escala">
+          <div className="glass relative overflow-visible rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-6 md:p-8 transition-[transform,border-color] duration-300 hover:-translate-y-1 group border border-yellow-400/20 hover:border-yellow-400/50">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl sm:rounded-2xl md:rounded-3xl" />
+            <div className="relative z-10 flex flex-col items-center">
+              <div
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black gradient-text mb-1 sm:mb-2 tabular-nums leading-none w-full text-center"
+                suppressHydrationWarning
+              >
+                {isClient ? String(item.value).padStart(2, "0") : "00"}
+              </div>
+              <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 uppercase tracking-wider font-semibold text-center">
+                {item.label}
+              </div>
+            </div>
+          </div>
+        </Revelar>
+      ))}
+    </div>
+  )
+}
+
+export default function AboutTeam() {
   // Que es esto, en cuatro ideas. Es cicloturismo: nadie corre contra nadie,
   // asi que no se habla de desafio ni de limites.
   const values = [
@@ -79,20 +150,15 @@ export default function AboutTeam() {
     },
   ]
 
-  const countdownItems = [
-    { value: timeLeft.days, label: "Días" },
-    { value: timeLeft.hours, label: "Horas" },
-    { value: timeLeft.minutes, label: "Minutos" },
-    { value: timeLeft.seconds, label: "Segundos" },
-  ]
-
   return (
     <section
       id="nosotros"
       className="py-section bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden section-divider-top"
     >
       {/* Manchas de fondo */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Solo desde tablet: en celular son capas enormes con blur que el
+          telefono vuelve a pintar al scrollear (igual que en el hero). */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
         <div className="absolute top-40 right-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-yellow-400/5 rounded-full blur-3xl" />
       </div>
@@ -153,26 +219,7 @@ export default function AboutTeam() {
             </p>
           </Revelar>
 
-          <div className="gt-escalonar grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 md:gap-6 max-w-6xl mx-auto">
-            {countdownItems.map((item) => (
-              <Revelar key={item.label} efecto="escala">
-                <div className="glass relative overflow-visible rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-6 md:p-8 transition-all duration-300 hover:-translate-y-1 group border border-yellow-400/20 hover:border-yellow-400/50">
-                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl sm:rounded-2xl md:rounded-3xl" />
-                  <div className="relative z-10 flex flex-col items-center">
-                    <div
-                      className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black gradient-text mb-1 sm:mb-2 tabular-nums leading-none w-full text-center"
-                      suppressHydrationWarning
-                    >
-                      {isClient ? String(item.value).padStart(2, "0") : "00"}
-                    </div>
-                    <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 uppercase tracking-wider font-semibold text-center">
-                      {item.label}
-                    </div>
-                  </div>
-                </div>
-              </Revelar>
-            ))}
-          </div>
+          <CuentaRegresiva />
         </div>
 
         {/* Cierre: una linea que baja la ansiedad de quien nunca fue */}

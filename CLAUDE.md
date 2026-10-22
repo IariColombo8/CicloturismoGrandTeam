@@ -215,6 +215,11 @@ que **no se pueden romper sin deshacer todo eso**:
   home son `components/ui/Revelar.tsx` (un unico IntersectionObserver para toda
   la pagina), `CintaPalabras`, `NumeroAnimado`, `BarraProgresoLectura` y las
   clases `gt-*` de `globals.css`. Todo se apaga con "reducir movimiento".
+- **En celular, nada con `backdrop-filter` ni `blur-*` grande que quede en
+  pantalla mientras se scrollea** (menu fijo, `.glass`, manchas de fondo): el
+  telefono rehace el desenfoque en cada cuadro y el scroll pega tirones. Tampoco
+  `will-change` en bloques que no se mueven todo el tiempo. Detalle en la tabla
+  "Que no se trabe en el celular" del doc.
 
 **El hero entra en una sola pantalla** (menu, titulo, datos, botones, lo incluido y la cinta),
 desde un iPhone SE con Safari (375x553) hasta Full HD. Los espacios y el titulo dependen del
@@ -587,6 +592,10 @@ de datos:
   puede subir (un PDF enorme, un HEIC que no decodifica) no frena nada: la
   inscripcion entra y el motivo queda en `participantes.comprobante_nota`, que el
   panel muestra como "Falta comprobante".
+- **El mail de confirmacion puede fallar** (p. ej. el refresh token de Gmail
+  vencido): `sendConfirmationEmail` no lanza, devuelve `{ success, error }`, y
+  quien lo llame **tiene que mirar el resultado** y avisar el motivo. Cada intento
+  queda en `emails_enviados` (`exito`, `detalle`).
 - **Sin internet / servidor caido**: `lib/inscripcion/envio.ts` guarda la
   inscripcion en IndexedDB y la reintenta sola (al volver la conexion, al abrir
   el sitio y cada 30 s). El alta es un UPSERT por DNI: reintentar no duplica. La

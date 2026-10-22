@@ -118,6 +118,25 @@ Hay un test que lo cuida (`e2e/smoke.spec.ts`): después de recorrer la home, no
 puede quedar **ningún** `.gt-revelar` sin `.gt-visible`. Si el observador se
 rompiera, media home quedaría en blanco y el test lo caza.
 
+### Que no se trabe en el celular (22/10/2026)
+
+En el celular el scroll "pegaba tirones". No era una animación en particular:
+era trabajo de pintado que el teléfono tenía que rehacer en cada cuadro.
+
+| Qué | Por qué trababa | Ahora |
+|---|---|---|
+| Menú fijo con `backdrop-blur-lg` | Rehacer el desenfoque de la página en cada cuadro del scroll | En celular es opaco (`bg-black` debajo del gradiente); el blur queda desde `md` |
+| `.glass` (datos del hero, cuenta regresiva, cierre) | Lo mismo, en varias tarjetas | Sin `backdrop-filter` en celular / pantalla táctil |
+| Manchas `blur-3xl` de fondo (Quiénes somos, Recorrido, Galería, Footer) | Capas enormes con blur | `hidden sm:block`, igual que ya hacía el hero |
+| `will-change` en los 50+ `.gt-revelar` | Una capa de GPU por bloque desde la carga | Sin `will-change`: la transición sube el bloque a la GPU solo mientras se mueve |
+| `will-change` del fondo del hero | Capa de pantalla completa reservada aunque en celular no se mueve | Solo en `(min-width: 768px) and (pointer: fine)` |
+| Cinta de palabras | El `gap` hacía que el -50% no cayera en el empalme: saltito en cada vuelta | El espacio va como margen de cada pieza |
+| Cuenta regresiva | Re-renderizaba la sección entera cada segundo, siempre | Componente propio, y el reloj corre solo si está en pantalla y la pestaña visible |
+| 52 tarjetas de sponsors con `backdrop-blur-sm` y `transition-all` | Blur por tarjeta | Sin blur (el fondo ya es opaco) y transición solo de transform/borde/sombra |
+
+**Regla:** nada con `backdrop-filter` ni `blur-*` grande que quede en pantalla
+mientras se scrollea en celular. En un modal (contenido quieto) no molesta.
+
 ## 3. Lo que dice la página
 
 Es **cicloturismo**, no una carrera. Los textos decían "la aventura más

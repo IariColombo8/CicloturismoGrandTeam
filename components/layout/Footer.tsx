@@ -43,7 +43,9 @@ export default function Footer() {
   return (
     <footer className="bg-gradient-to-b from-zinc-900 to-black border-t border-yellow-400/20 relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Solo desde tablet: en celular son capas enormes con blur que el
+          telefono vuelve a pintar al scrollear (igual que en el hero). */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
         <div className="absolute top-20 left-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-10 w-80 h-80 bg-yellow-400/5 rounded-full blur-3xl" />
       </div>

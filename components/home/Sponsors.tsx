@@ -638,7 +638,7 @@ function SponsorCard({ sponsor, tier, delay = 0, isVisible, onClick }: { sponsor
         aria-label={`Ver información de ${sponsor.name}`}
       >
         <Card
-          className={`group relative overflow-hidden ${styles.card} backdrop-blur-sm hover:scale-[1.02] sm:hover:scale-105 transition-all duration-500 ${styles.glow} cursor-pointer`}
+          className={`group relative overflow-hidden ${styles.card} hover:scale-[1.02] sm:hover:scale-105 transition-[transform,border-color,box-shadow] duration-500 ${styles.glow} cursor-pointer`}
         >
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

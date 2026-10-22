@@ -51,7 +51,9 @@ export default function RouteMap() {
   return (
     <section id="detalles" className="py-section bg-gradient-to-b from-black via-zinc-900 to-black relative overflow-hidden">
       {/* Manchas de fondo */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Solo desde tablet: en celular son capas enormes con blur que el
+          telefono vuelve a pintar al scrollear (igual que en el hero). */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
         <div className="absolute top-40 right-10 w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-blue-400/5 rounded-full blur-3xl" />
       </div>
@@ -161,7 +163,7 @@ export default function RouteMap() {
                   </div>
 
                   {/* Fondo decorativo */}
-                  <div className="absolute inset-0 opacity-10" aria-hidden="true">
+                  <div className="absolute inset-0 opacity-10 hidden sm:block" aria-hidden="true">
                     <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-yellow-400 rounded-full blur-3xl animate-float" />
                     <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-amber-500 rounded-full blur-3xl animate-float-delayed" />
                   </div>

@@ -1178,9 +1178,15 @@ export default function RegistroInscripciones() {
       // Enviar email de confirmacion con QR recien acá, al aprobar.
       // Evita reenviarlo si ya estaba confirmada (edicion de nota, etc) y lo
       // omite por completo si se confirmo con "Confirmar sin enviar email".
+      //
+      // sendConfirmationEmail no lanza: devuelve { success, error }. Antes el
+      // resultado se ignoraba y, con el token de Gmail vencido (20/10/2026),
+      // se confirmaron inscripciones durante dos dias sin que saliera un solo
+      // mail y sin que nadie se enterara. Ahora el motivo se avisa.
+      let avisoEmail: string | null = null
       if (enviarEmail && newStatus === "confirmada" && selectedInscripcion.estado !== "confirmada") {
         try {
-          await emailService.sendConfirmationEmail({
+          const envio = await emailService.sendConfirmationEmail({
             email: selectedInscripcion.email,
             nombreCompleto: `${selectedInscripcion.nombres} ${selectedInscripcion.apellidos}`,
             numeroInscripcion: String(numeroInscripcion),
@@ -1189,8 +1195,10 @@ export default function RegistroInscripciones() {
             // Con el DNI el servidor resuelve el bloque de remera del mail.
             dni: selectedInscripcion.dni,
           })
+          if (!envio.success) avisoEmail = envio.error || "Error desconocido al enviar el email."
         } catch (emailError) {
           console.error("Error enviando email de confirmación:", emailError)
+          avisoEmail = emailError instanceof Error ? emailError.message : "Error desconocido al enviar el email."
         }
       }
 
@@ -1216,6 +1224,14 @@ export default function RegistroInscripciones() {
       )
       fetchStats()
       closeDetailsModal()
+
+      if (avisoEmail) {
+        alert(
+          `La inscripción quedó confirmada (N° ${numeroInscripcion ?? "—"}), pero el mail de confirmación NO salió.\n\n` +
+            `Motivo: ${avisoEmail}\n\n` +
+            'Cuando esté resuelto, mandalo desde el detalle con "Reenviar confirmación".'
+        )
+      }
     } catch (err: any) {
       console.error("Error updating registration:", err)
       alert("Error al actualizar el estado: " + (err?.message || ""))
