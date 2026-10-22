@@ -33,3 +33,6 @@ sponsor/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Sesion de Vercel CLI solo para este proyecto (no se sube)
+.vercel-sesion

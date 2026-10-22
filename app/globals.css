@@ -586,6 +586,30 @@
   }
 }
 
+/* Parallax del hero en celular, atado al scroll por CSS.
+   Con JavaScript llegaba un cuadro tarde y saltaba. animation-timeline lo
+   resuelve el navegador junto con el scroll, en el hilo del compositor: va
+   pegado al dedo. Donde no esta soportado (navegadores viejos), el fondo queda
+   quieto como antes. */
+@keyframes gt-parallax-scroll {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.08);
+  }
+  to {
+    transform: translate3d(0, 12vh, 0) scale(1.08);
+  }
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+  @supports (animation-timeline: scroll()) {
+    .gt-parallax {
+      animation: gt-parallax-scroll linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100svh;
+    }
+  }
+}
+
 /* ── Ciclista que cruza la pantalla ────────────────────────────────── */
 @keyframes gt-pedalear {
   from {
@@ -714,10 +738,13 @@
 
 /* ── Quien pidio menos movimiento ──────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+  /* Sin desplazamiento, pero con un fundido suave: muchos celulares activan
+     "quitar animaciones" solos con el ahorro de bateria, y ahi la pagina
+     quedaba completamente quieta. Un cambio de opacidad no es "movimiento"
+     para quien lo pidio (lo que marea es que las cosas se desplacen). */
   .gt-revelar {
-    opacity: 1 !important;
     transform: none !important;
-    transition: none !important;
+    transition: opacity 0.5s ease !important;
   }
   .gt-cinta-pista,
   .gt-entrar,
@@ -729,6 +756,7 @@
   .gt-parallax,
   .gt-parallax-suave {
     transform: none !important;
+    animation: none !important;
   }
   .gt-linea {
     transform: scaleX(1) !important;

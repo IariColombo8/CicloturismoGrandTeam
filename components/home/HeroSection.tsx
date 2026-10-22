@@ -55,7 +55,8 @@ export default function HeroSection() {
     if (!nodo) return
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
     // En celular no: el scroll tactil corre fuera del hilo de JavaScript y el
-    // fondo llegaba un cuadro tarde, a los saltos. Ahi queda quieto.
+    // fondo llegaba un cuadro tarde, a los saltos. Ahi el parallax lo hace el
+    // CSS con animation-timeline (globals.css), que corre junto con el scroll.
     if (window.matchMedia("(max-width: 767px), (pointer: coarse)").matches) return
 
     let pendiente = false
@@ -143,6 +144,14 @@ export default function HeroSection() {
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl animate-float-slow-delayed" />
       </div>
 
+      {/* En celular, las mismas manchas pero sin blur: un degradado radial se
+          pinta una sola vez y despues solo se mueve con transform, que el
+          telefono resuelve en la GPU sin rehacer nada al scrollear. */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none sm:hidden" aria-hidden="true">
+        <div className="absolute -top-10 -left-16 w-72 h-72 rounded-full bg-[radial-gradient(circle,rgba(255,215,0,0.16),transparent_68%)] animate-float-slow" />
+        <div className="absolute bottom-24 -right-20 w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(255,193,7,0.12),transparent_68%)] animate-float-slow-delayed" />
+      </div>
+
       {/* Foto de fondo con parallax. Es la imagen mas grande del primer
           pantallazo: va con `priority` para que el navegador la pida antes
           que al resto. */}
@@ -165,9 +174,10 @@ export default function HeroSection() {
         aria-hidden="true"
       />
 
-      {/* Silueta que cruza el hero, despacio, una y otra vez. */}
+      {/* Silueta que cruza el hero, despacio, una y otra vez. Tambien en
+          celular: es un icono chico que solo se mueve con transform. */}
       <div
-        className="pointer-events-none absolute bottom-[18%] left-0 right-0 hidden sm:block opacity-[0.16]"
+        className="pointer-events-none absolute bottom-[14%] sm:bottom-[18%] left-0 right-0 opacity-[0.16]"
         aria-hidden="true"
       >
         <Bike className="gt-ciclista w-10 h-10 text-yellow-400" />
