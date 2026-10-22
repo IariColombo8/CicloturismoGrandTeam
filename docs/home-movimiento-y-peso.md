@@ -93,8 +93,13 @@ reveals al scrollear, cintas de texto, contadores, parallax suave.
 2. **Nada se mueve por scroll con JavaScript** salvo el parallax del hero y la
    barra de progreso, y los dos escriben una sola propiedad desde
    `requestAnimationFrame`, sin un render de React por cuadro.
-3. **Todo se apaga** con "reducir movimiento" activado (bloque al final de
-   `globals.css`).
+3. **Con "reducir movimiento" se suaviza, no se apaga** (bloque al final de
+   `globals.css`): muchos celulares lo prenden solos con el ahorro de batería y
+   la home quedaba quieta. Quedan el aparecer (12 px, lento), la cinta a media
+   velocidad y las manchas flotando; se apagan el parallax y el ciclista que
+   cruza. En el hero de celular, si el navegador no soporta
+   `animation-timeline` (Safari de iPhone), el parallax lo hace el mismo
+   listener con `requestAnimationFrame` de la compu.
 
 ### Las piezas
 

@@ -737,17 +737,37 @@
 .gt-escalonar > .gt-revelar:nth-child(n + 7) { transition-delay: 420ms; }
 
 /* ── Quien pidio menos movimiento ──────────────────────────────────── */
+/* Muchos celulares prenden "quitar animaciones" solos con el ahorro de
+   bateria, y con la regla general de arriba (todas las animaciones a 0,01 ms)
+   la home quedaba completamente quieta. Asi que aca no se apaga todo: queda
+   un movimiento corto y lento (aparecer subiendo poco, la cinta a media
+   velocidad, las manchas flotando), y se apaga lo que marea de verdad: el
+   fondo que se desplaza con el scroll y el ciclista que cruza la pantalla.
+   Va dentro de @layer base, igual que la regla general: con !important, una
+   capa le gana a lo que esta fuera de capas, y ahi esto perdia siempre. Dentro
+   de la misma capa, un selector con clase le gana al "*". */
+@layer base {
 @media (prefers-reduced-motion: reduce) {
-  /* Sin desplazamiento, pero con un fundido suave: muchos celulares activan
-     "quitar animaciones" solos con el ahorro de bateria, y ahi la pagina
-     quedaba completamente quieta. Un cambio de opacidad no es "movimiento"
-     para quien lo pidio (lo que marea es que las cosas se desplacen). */
   .gt-revelar {
-    transform: none !important;
-    transition: opacity 0.5s ease !important;
+    transition:
+      opacity 0.6s ease,
+      transform 0.6s ease !important;
   }
-  .gt-cinta-pista,
-  .gt-entrar,
+  .gt-revelar:not(.gt-visible) {
+    transform: translate3d(0, 12px, 0) !important;
+  }
+  .gt-cinta-pista {
+    animation-duration: 80s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .animate-float-slow,
+  .animate-float-slow-delayed {
+    animation-duration: 9s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .gt-entrar {
+    animation-duration: 0.6s !important;
+  }
   .gt-ciclista,
   .gt-indicador-scroll,
   .gt-aura::before {
@@ -761,6 +781,7 @@
   .gt-linea {
     transform: scaleX(1) !important;
   }
+}
 }
 
 /* ──────────────────────────────────────────────────────────────

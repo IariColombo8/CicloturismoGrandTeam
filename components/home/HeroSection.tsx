@@ -15,6 +15,7 @@ import {
   BadgeDollarSign,
   Bike,
   ArrowDown,
+  QrCode,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EVENTO } from "@/lib/constants"
@@ -54,10 +55,14 @@ export default function HeroSection() {
     const nodo = seccionRef.current
     if (!nodo) return
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
-    // En celular no: el scroll tactil corre fuera del hilo de JavaScript y el
-    // fondo llegaba un cuadro tarde, a los saltos. Ahi el parallax lo hace el
-    // CSS con animation-timeline (globals.css), que corre junto con el scroll.
-    if (window.matchMedia("(max-width: 767px), (pointer: coarse)").matches) return
+    // En celular, si el navegador lo soporta, el parallax lo hace el CSS con
+    // animation-timeline (globals.css), que corre junto con el scroll y va
+    // pegado al dedo. Donde no (Safari de iPhone, Android viejos) queda este
+    // camino: un cuadro mas tarde, pero sobre un fondo al 20% no se nota, y sin
+    // el el fondo quedaba completamente quieto.
+    const celular = window.matchMedia("(max-width: 767px), (pointer: coarse)").matches
+    const cssLoHace = typeof CSS !== "undefined" && CSS.supports("animation-timeline: scroll()")
+    if (celular && cssLoHace) return
 
     let pendiente = false
 
@@ -292,14 +297,15 @@ export default function HeroSection() {
 
             {/* Link de texto, no boton: los botones quedan para inscribirse y
                 pedir la remera. En celular ocupa la media fila al lado de la
-                remera, asi no suma alto. */}
-            <a
-              href="#detalles"
-              className="group inline-flex items-center justify-center gap-1 h-11 [@media(max-height:620px)]:h-10 sm:h-auto px-2 text-sm sm:text-base lg:text-lg font-semibold text-yellow-400 underline-offset-4 hover:underline"
+                remera, asi no suma alto. Lleva a "Mi QR": el que ya se
+                inscribio vuelve a la pagina a buscar su QR. */}
+            <Link
+              href="/mi-qr"
+              className="group inline-flex items-center justify-center gap-1.5 h-11 [@media(max-height:620px)]:h-10 sm:h-auto px-2 text-sm sm:text-base lg:text-lg font-semibold text-yellow-400 underline-offset-4 hover:underline"
             >
-              Ver el recorrido
-              <ArrowDown className="w-4 h-4 transition-transform group-hover:translate-y-0.5" aria-hidden="true" />
-            </a>
+              <QrCode className="w-4 h-4 transition-transform group-hover:scale-110" aria-hidden="true" />
+              Mi QR
+            </Link>
           </div>
 
           {/* Lo que esta incluido */}

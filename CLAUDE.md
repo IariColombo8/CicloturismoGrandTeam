@@ -214,7 +214,9 @@ que **no se pueden romper sin deshacer todo eso**:
   cada cuadro (las "animaciones no compuestas" del informe). El movimiento de la
   home son `components/ui/Revelar.tsx` (un unico IntersectionObserver para toda
   la pagina), `CintaPalabras`, `NumeroAnimado`, `BarraProgresoLectura` y las
-  clases `gt-*` de `globals.css`. Todo se apaga con "reducir movimiento".
+  clases `gt-*` de `globals.css`. Con "reducir movimiento" se suaviza (no se
+  apaga: el ahorro de bateria lo prende solo y la home quedaba quieta); solo se
+  apagan el parallax y el ciclista que cruza.
 - **En celular, nada con `backdrop-filter` ni `blur-*` grande que quede en
   pantalla mientras se scrollea** (menu fijo, `.glass`, manchas de fondo): el
   telefono rehace el desenfoque en cada cuadro y el scroll pega tirones. Tampoco
@@ -225,8 +227,9 @@ que **no se pueden romper sin deshacer todo eso**:
 desde un iPhone SE con Safari (375x553) hasta Full HD. Los espacios y el titulo dependen del
 **alto** (`svh`), no solo del ancho. Su entrada es CSS (`.gt-entrar`), no un estado de React: con
 el estado, en un celular lento el hero quedaba en blanco hasta hidratar. En celular no hay
-parallax, ni manchas con blur, ni backdrop-blur detras de la cinta. "Ver el recorrido" es un link
-de texto, no un boton.
+manchas con blur ni backdrop-blur detras de la cinta; el parallax va por `animation-timeline`
+(o por JS donde no esta, como en iPhone). "Mi QR" (a `/mi-qr`) es un link de texto, no un
+boton.
 
 Los bloques que aparecen al scrollear arrancan con `opacity: 0`: **sin JavaScript
 quedarian invisibles**, y por eso `app/layout.tsx` lleva un `<noscript>` que los
