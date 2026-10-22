@@ -216,7 +216,7 @@ que **no se pueden romper sin deshacer todo eso**:
   la pagina), `CintaPalabras`, `NumeroAnimado`, `BarraProgresoLectura` y las
   clases `gt-*` de `globals.css`. Con "reducir movimiento" se suaviza (no se
   apaga: el ahorro de bateria lo prende solo y la home quedaba quieta); solo se
-  apagan el parallax y el ciclista que cruza.
+  apaga el parallax (la bici sigue cruzando, mas despacio).
 - **En celular, nada con `backdrop-filter` ni `blur-*` grande que quede en
   pantalla mientras se scrollea** (menu fijo, `.glass`, manchas de fondo): el
   telefono rehace el desenfoque en cada cuadro y el scroll pega tirones. Tampoco

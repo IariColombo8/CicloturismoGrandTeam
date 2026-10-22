@@ -741,8 +741,8 @@
    bateria, y con la regla general de arriba (todas las animaciones a 0,01 ms)
    la home quedaba completamente quieta. Asi que aca no se apaga todo: queda
    un movimiento corto y lento (aparecer subiendo poco, la cinta a media
-   velocidad, las manchas flotando), y se apaga lo que marea de verdad: el
-   fondo que se desplaza con el scroll y el ciclista que cruza la pantalla.
+   velocidad, las manchas flotando, la bici cruzando mas despacio), y se apaga
+   lo que marea de verdad: el fondo que se desplaza con el scroll.
    Va dentro de @layer base, igual que la regla general: con !important, una
    capa le gana a lo que esta fuera de capas, y ahi esto perdia siempre. Dentro
    de la misma capa, un selector con clase le gana al "*". */
@@ -768,7 +768,10 @@
   .gt-entrar {
     animation-duration: 0.6s !important;
   }
-  .gt-ciclista,
+  .gt-ciclista {
+    animation-duration: 40s !important;
+    animation-iteration-count: infinite !important;
+  }
   .gt-indicador-scroll,
   .gt-aura::before {
     animation: none !important;

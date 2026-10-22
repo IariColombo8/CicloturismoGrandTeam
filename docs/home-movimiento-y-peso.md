@@ -96,8 +96,8 @@ reveals al scrollear, cintas de texto, contadores, parallax suave.
 3. **Con "reducir movimiento" se suaviza, no se apaga** (bloque al final de
    `globals.css`): muchos celulares lo prenden solos con el ahorro de batería y
    la home quedaba quieta. Quedan el aparecer (12 px, lento), la cinta a media
-   velocidad y las manchas flotando; se apagan el parallax y el ciclista que
-   cruza. En el hero de celular, si el navegador no soporta
+   velocidad, las manchas flotando y la bici cruzando más despacio; se apaga
+   solo el parallax. En el hero de celular, si el navegador no soporta
    `animation-timeline` (Safari de iPhone), el parallax lo hace el mismo
    listener con `requestAnimationFrame` de la compu.
 
