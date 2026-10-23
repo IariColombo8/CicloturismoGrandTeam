@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button"
 import { EVENTO } from "@/lib/constants"
 import { useCuposRestantes } from "@/hooks/useCuposRestantes"
 import { useRemeraCerrada } from "@/hooks/use-remera-cerrada"
+import { useInscripcionesCerradas } from "@/hooks/use-inscripciones-cerradas"
+import { CIERRE_INSCRIPCIONES_CORTO } from "@/lib/inscripcion/cierre"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { REMERA_CERRADA_MENSAJE } from "@/lib/remeraDeadline"
 import { NumeroAnimado } from "@/components/ui/NumeroAnimado"
@@ -43,6 +45,7 @@ export default function HeroSection() {
   const { disponibles, hayDatos } = useCuposRestantes()
   const { eventSettings } = useSupabaseContext()
   const remeraCerrada = useRemeraCerrada()
+  const inscripcionesCerradas = useInscripcionesCerradas()
   const seccionRef = useRef<HTMLElement>(null)
 
   // Parallax: el fondo se mueve mas despacio que el contenido.
@@ -223,12 +226,21 @@ export default function HeroSection() {
             Concepción del Uruguay. Se sale juntos, se vuelve juntos y se para a sacar fotos.
           </p>
 
-          {/* Precio: visible pero deliberadamente discreto dentro del hero */}
+          {/* Precio y cierre de inscripciones: visible pero deliberadamente
+              discreto. Van en la misma pastilla para no sumar alto al hero. */}
           <div {...entrada(340, "flex justify-center")}>
             <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-black/50 px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-zinc-300">
               <BadgeDollarSign className="h-4 w-4 text-yellow-400" aria-hidden="true" />
-              <span>Inscripción</span>
-              <span className="font-bold text-yellow-400">{precioTexto ?? "—"}</span>
+              {inscripcionesCerradas ? (
+                <span className="font-bold text-yellow-400">Inscripciones cerradas</span>
+              ) : (
+                <>
+                  <span>Inscripción</span>
+                  <span className="font-bold text-yellow-400">{precioTexto ?? "—"}</span>
+                  <span className="text-zinc-500" aria-hidden="true">·</span>
+                  <span>{CIERRE_INSCRIPCIONES_CORTO}</span>
+                </>
+              )}
             </div>
           </div>
 

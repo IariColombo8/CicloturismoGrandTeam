@@ -12,6 +12,9 @@ export const CIERRE_INSCRIPCIONES = "2026-11-05T08:00:00-03:00"
 export const CIERRE_INSCRIPCIONES_AVISO =
   "Hay tiempo hasta el 5 de noviembre hasta las 8 de la mañana. Después de esa hora no se aceptan más inscripciones."
 
+// Version corta para la pastilla del precio en el hero de la home.
+export const CIERRE_INSCRIPCIONES_CORTO = "hasta el 5/11, 8 h"
+
 export const INSCRIPCIONES_CERRADAS_MENSAJE =
   "Las inscripciones cerraron el 5 de noviembre a las 8 de la mañana. Ya no se aceptan más inscripciones."
 
