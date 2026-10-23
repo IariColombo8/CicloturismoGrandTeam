@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import Image from "next/image"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import {
@@ -253,15 +254,25 @@ export default function Alojamientos() {
                     key={c.id}
                     type="button"
                     onClick={() => setCategoriaId(c.id)}
-                    className={`group flex min-w-0 items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-3 text-left transition-[opacity,transform,border-color] duration-300 hover:-translate-y-0.5 hover:border-yellow-400/60 sm:p-4 ${
+                    className={`group flex min-w-0 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80 text-left transition-[opacity,transform,border-color] duration-300 hover:-translate-y-0.5 hover:border-yellow-400/60 ${
                       isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
                     }`}
                     style={{ transitionDelay: isVisible ? `${index * 60}ms` : undefined }}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/15 sm:h-11 sm:w-11">
-                      <Icono className="h-5 w-5 text-yellow-400 sm:h-6 sm:w-6" aria-hidden="true" />
+                    {/* Foto ilustrativa del tipo, con el icono encima */}
+                    <span className="relative block aspect-[16/10] w-full overflow-hidden bg-zinc-800">
+                      <Image
+                        src={c.foto}
+                        alt=""
+                        fill
+                        sizes="(min-width: 1152px) 370px, (min-width: 768px) 33vw, 50vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <span className="absolute bottom-2 left-2 flex h-8 w-8 items-center justify-center rounded-lg bg-black/70 sm:h-9 sm:w-9">
+                        <Icono className="h-4 w-4 text-yellow-400 sm:h-5 sm:w-5" aria-hidden="true" />
+                      </span>
                     </span>
-                    <span className="min-w-0">
+                    <span className="min-w-0 p-3 sm:p-4">
                       <span className="block text-sm font-bold leading-tight text-white group-hover:text-yellow-400 sm:text-base">
                         {c.nombre}
                       </span>
@@ -277,6 +288,9 @@ export default function Alojamientos() {
                 )
               })}
             </div>
+            <p className="mt-3 text-center text-[10px] text-zinc-600">
+              Fotos ilustrativas de Wikimedia Commons: no son de los alojamientos de la lista.
+            </p>
           </div>
         )}
       </div>

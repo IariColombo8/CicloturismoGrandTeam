@@ -234,6 +234,9 @@ export default function AlojamientosCategoriaModal({
             Fuente: Dirección de Turismo de Concepción del Uruguay, septiembre 2026. Establecimientos habilitados y
             homologados. Tel. (3442) 425820.
           </p>
+          <p className="mt-1 text-[11px] text-zinc-600">
+            Foto ilustrativa de la tarjeta: {categoria.credito}, vía Wikimedia Commons.
+          </p>
         </div>
       </div>
     </div>

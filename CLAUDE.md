@@ -445,7 +445,9 @@ Amanecer) son las tarjetas grandes de arriba, como siempre. Debajo va una tarjet
 lista entera **de mas estrellas a menos** (agrupada por estrellas), telefonos con `tel:` y WhatsApp
 (`telefonosDe()`: solo los celulares, el "15"), filtro de mascotas y el aviso de que los precios se
 consultan con cada alojamiento. Si una ficha de la lista tiene logo, fotos o web, aparece "Ver fotos y
-más" y abre el `AlojamientoModal` de siempre.
+más" y abre el `AlojamientoModal` de siempre. Cada tarjeta de tipo lleva una foto **ilustrativa**
+(`public/alojamientos/categorias/<tipo>.jpg`, de Wikimedia Commons, creditos en
+`docs/fotos-alojamientos.md` y en el modal: varias licencias exigen atribucion).
 
 Los 67 del listado de la Direccion de Turismo (septiembre 2026) salen de
 `alojamientos-concepcion-del-uruguay.md` con `node scripts/alojamientos-md-a-sql.mjs`, que genera la

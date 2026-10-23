@@ -29,16 +29,74 @@ export interface Alojamiento {
 // en que se muestran, el mismo de la fuente.
 // ──────────────────────────────────────────────────────────────
 
+// `foto`: imagen ILUSTRATIVA del tipo (no es de ningun alojamiento de la
+// lista), de Wikimedia Commons. `credito` es la atribucion que piden sus
+// licencias: se muestra en el modal de la categoria. Para cambiar una foto se
+// reemplaza el archivo en public/alojamientos/categorias/ (800x500) y su credito.
 export const CATEGORIAS_ALOJAMIENTO = [
-  { id: "hotel", nombre: "Hoteles", detalle: "Hoteles y hoteles boutique" },
-  { id: "apart", nombre: "Apart hotel", detalle: "Departamentos con servicio de hotel" },
-  { id: "hosteria", nombre: "Hosterías y hostels", detalle: "Hosterías, hostels y casas de huéspedes" },
-  { id: "complejo", nombre: "Complejos", detalle: "Complejos con pileta y parque" },
-  { id: "bungalow", nombre: "Bungalows", detalle: "Bungalows con parque y parrilla" },
-  { id: "cabana", nombre: "Cabañas", detalle: "Cabañas equipadas" },
-  { id: "campo", nombre: "Casa de campo y estancia", detalle: "En el campo, fuera de la ciudad" },
-  { id: "casa", nombre: "Casas de alquiler turístico", detalle: "Casas equipadas" },
-  { id: "departamento", nombre: "Departamentos de alquiler turístico", detalle: "Departamentos equipados" },
+  {
+    id: "hotel",
+    nombre: "Hoteles",
+    detalle: "Hoteles y hoteles boutique",
+    foto: "/alojamientos/categorias/hotel.jpg",
+    credito: "Basile Morin, CC BY-SA 4.0",
+  },
+  {
+    id: "apart",
+    nombre: "Apart hotel",
+    detalle: "Departamentos con servicio de hotel",
+    foto: "/alojamientos/categorias/apart.jpg",
+    credito: "Malcolmxl5, CC0",
+  },
+  {
+    id: "hosteria",
+    nombre: "Hosterías y hostels",
+    detalle: "Hosterías, hostels y casas de huéspedes",
+    foto: "/alojamientos/categorias/hosteria.jpg",
+    credito: "Sgroey, CC BY 4.0",
+  },
+  {
+    id: "complejo",
+    nombre: "Complejos",
+    detalle: "Complejos con pileta y parque",
+    foto: "/alojamientos/categorias/complejo.jpg",
+    credito: "Lebu Ayiga, CC BY-SA 4.0",
+  },
+  {
+    id: "bungalow",
+    nombre: "Bungalows",
+    detalle: "Bungalows con parque y parrilla",
+    foto: "/alojamientos/categorias/bungalow.jpg",
+    credito: "Sionk, CC BY-SA 4.0",
+  },
+  {
+    id: "cabana",
+    nombre: "Cabañas",
+    detalle: "Cabañas equipadas",
+    foto: "/alojamientos/categorias/cabana.jpg",
+    credito: "Scott Robinson, CC BY-SA 2.0",
+  },
+  {
+    id: "campo",
+    nombre: "Casa de campo y estancia",
+    detalle: "En el campo, fuera de la ciudad",
+    foto: "/alojamientos/categorias/campo.jpg",
+    credito: "Jarrigorria, CC BY-SA 3.0",
+  },
+  {
+    id: "casa",
+    nombre: "Casas de alquiler turístico",
+    detalle: "Casas equipadas",
+    foto: "/alojamientos/categorias/casa.jpg",
+    credito: "Villa Vigla, CC BY-SA 4.0",
+  },
+  {
+    id: "departamento",
+    nombre: "Departamentos de alquiler turístico",
+    detalle: "Departamentos equipados",
+    foto: "/alojamientos/categorias/departamento.jpg",
+    credito: "Shixart1985, CC BY 2.0",
+  },
 ] as const
 
 export type CategoriaAlojamiento = (typeof CATEGORIAS_ALOJAMIENTO)[number]["id"]
