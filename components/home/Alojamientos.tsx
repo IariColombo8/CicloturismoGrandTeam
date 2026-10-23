@@ -50,19 +50,19 @@ export type { Alojamiento }
 // sale en AVIF/WebP al ancho de la tarjeta y con cache de un año, en vez del
 // archivo original de Supabase. Si el optimizador falla se prueba la URL
 // original y recien despues el placeholder: la tarjeta nunca queda vacia.
-function AlojamientoLogo({ src, alt }: { src: string | null; alt: string }) {
+function AlojamientoLogo({ src, alt, ancho = 256 }: { src: string | null; alt: string; ancho?: number }) {
   const resolved = normalizarLogo(src)
-  const [currentSrc, setCurrentSrc] = useState(() => urlOptimizada(resolved, 256) || resolved)
+  const [currentSrc, setCurrentSrc] = useState(() => urlOptimizada(resolved, ancho) || resolved)
 
   useEffect(() => {
-    setCurrentSrc(urlOptimizada(resolved, 256) || resolved)
-  }, [resolved])
+    setCurrentSrc(urlOptimizada(resolved, ancho) || resolved)
+  }, [resolved, ancho])
 
   return (
     /* eslint-disable-next-line @next/next/no-img-element -- los logos vienen de Supabase o Drive */
     <img
       src={currentSrc}
-      srcSet={currentSrc.startsWith("/_next/image") ? srcSetOptimizado(resolved, 256) : undefined}
+      srcSet={currentSrc.startsWith("/_next/image") ? srcSetOptimizado(resolved, ancho) : undefined}
       alt={alt}
       referrerPolicy="no-referrer"
       loading="lazy"
@@ -134,6 +134,7 @@ export default function Alojamientos() {
   if (alojamientos.length === 0) return null
 
   const esUnico = destacados.length === 1
+  const pocos = destacados.length <= 3
 
   return (
     <section
@@ -174,13 +175,20 @@ export default function Alojamientos() {
           </p>
         </div>
 
-        {/* Grilla: 3 por fila en celular, hasta 6 en escritorio.
-            Con un solo alojamiento se centra la tarjeta. */}
+        {/* Con pocos destacados (hasta 3) las tarjetas son grandes y llenan la
+            fila: en la grilla de 6 columnas dos solos quedaban chiquitos.
+            Con mas, 3 por fila en celular y hasta 6 en escritorio. */}
         {destacados.length > 0 && (
         <div
           className={
-            esUnico
-              ? "flex justify-center"
+            pocos
+              ? `grid gap-3 sm:gap-6 mx-auto ${
+                  esUnico
+                    ? "max-w-md"
+                    : destacados.length === 2
+                      ? "grid-cols-2 max-w-4xl"
+                      : "grid-cols-2 md:grid-cols-3 max-w-6xl"
+                }`
               : "grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6 max-w-6xl mx-auto"
           }
         >
@@ -193,13 +201,21 @@ export default function Alojamientos() {
                 type="button"
                 onClick={() => setSeleccionado(alojamiento)}
                 aria-label={`Ver información de ${alojamiento.nombre}`}
-                className={`group block min-w-0 cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/80 p-2 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-yellow-400/60 hover:shadow-[0_0_20px_rgba(250,204,21,0.18)] sm:p-3 ${
-                  esUnico ? "w-40 sm:w-56" : "w-full"
+                className={`group block w-full min-w-0 cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/80 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-yellow-400/60 hover:shadow-[0_0_20px_rgba(250,204,21,0.18)] ${
+                  pocos ? "p-2.5 sm:p-4" : "p-2 sm:p-3"
                 } ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
                 style={{ transitionDelay: `${index * 80}ms` }}
               >
-                <div className="relative aspect-square w-full overflow-hidden rounded-lg sm:rounded-xl bg-white p-2 sm:p-3">
-                  <AlojamientoLogo src={alojamiento.logo_url} alt={`Logo de ${alojamiento.nombre}`} />
+                <div
+                  className={`relative w-full overflow-hidden rounded-lg sm:rounded-xl bg-white ${
+                    pocos ? "aspect-[4/3] p-3 sm:p-6" : "aspect-square p-2 sm:p-3"
+                  }`}
+                >
+                  <AlojamientoLogo
+                    src={alojamiento.logo_url}
+                    alt={`Logo de ${alojamiento.nombre}`}
+                    ancho={pocos ? 640 : 256}
+                  />
 
                   {cantidadFotos > 0 && (
                     <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-yellow-400">
@@ -213,12 +229,20 @@ export default function Alojamientos() {
                   </span>
                 </div>
 
-                <p className="mt-2 line-clamp-2 text-center text-[10px] font-semibold leading-tight text-zinc-200 transition-colors group-hover:text-yellow-400 sm:text-sm">
+                <p
+                  className={`mt-2 line-clamp-2 text-center font-semibold leading-tight text-zinc-200 transition-colors group-hover:text-yellow-400 ${
+                    pocos ? "text-sm sm:mt-3 sm:text-xl" : "text-[10px] sm:text-sm"
+                  }`}
+                >
                   {alojamiento.nombre}
                 </p>
 
                 {alojamiento.direccion && (
-                  <p className="mt-1 flex items-center justify-center gap-1 text-center text-[9px] leading-tight text-zinc-500 sm:text-xs">
+                  <p
+                    className={`mt-1 flex items-center justify-center gap-1 text-center leading-tight text-zinc-500 ${
+                      pocos ? "text-[11px] sm:text-sm" : "text-[9px] sm:text-xs"
+                    }`}
+                  >
                     <MapPin className="w-3 h-3 shrink-0 text-yellow-400/70" aria-hidden="true" />
                     <span className="line-clamp-1">{alojamiento.direccion}</span>
                   </p>
