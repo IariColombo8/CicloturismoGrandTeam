@@ -32,6 +32,14 @@ import {
 import BannerBorrador, { fechaBorrador } from "@/components/admin/BannerBorrador"
 import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
 import { prepararImagen } from "@/lib/imagenes/prepararImagen"
+import { explicarError } from "@/lib/errores"
+import {
+  CATEGORIAS_ALOJAMIENTO,
+  MASCOTAS_ETIQUETA,
+  type CategoriaAlojamiento,
+  type Mascotas,
+  nombreCategoria,
+} from "@/lib/alojamientos"
 
 interface Alojamiento {
   id: string
@@ -46,9 +54,21 @@ interface Alojamiento {
   imagenes: string[] | null
   activo: boolean
   orden: number
+  /** null = destacado bike friendly (tarjeta grande arriba de todo). */
+  categoria: CategoriaAlojamiento | null
+  estrellas: number | null
+  clasificacion: string | null
+  mascotas: Mascotas | null
 }
 
+// Filtro de la lista: todos, solo destacados o una categoria.
+type Filtro = "todos" | "destacados" | CategoriaAlojamiento
+
 const ALOJAMIENTO_VACIO: Omit<Alojamiento, "id"> = {
+  categoria: null,
+  estrellas: null,
+  clasificacion: "",
+  mascotas: null,
   nombre: "",
   descripcion: "",
   logo_url: "",
@@ -75,6 +95,22 @@ export default function AdminAlojamientosPage() {
   const [subiendoLogo, setSubiendoLogo] = useState(false)
   const [subiendoImagenes, setSubiendoImagenes] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [filtro, setFiltro] = useState<Filtro>("todos")
+  // La tabla ya tiene las columnas de tipo/estrellas (migracion 20261023).
+  // Con la tabla vacia no se puede saber: se asume que si.
+  const tieneCategorias = alojamientos.length === 0 || "categoria" in alojamientos[0]
+
+  const visibles = useMemo(
+    () =>
+      alojamientos.filter((a) =>
+        filtro === "todos" ? true : filtro === "destacados" ? !a.categoria : a.categoria === filtro,
+      ),
+    [alojamientos, filtro],
+  )
+  const cantidadPor = (f: Filtro) =>
+    f === "todos"
+      ? alojamientos.length
+      : alojamientos.filter((a) => (f === "destacados" ? !a.categoria : a.categoria === f)).length
 
   // Borradores: una ficha con fotos lleva su tiempo, no se pierde al cerrar.
   const [confirmarSalida, setConfirmarSalida] = useState(false)
@@ -137,7 +173,9 @@ export default function AdminAlojamientosPage() {
 
   const abrirNuevo = () => {
     const maxOrden = alojamientos.reduce((max, a) => Math.max(max, a.orden ?? 0), -1)
-    const inicial = { ...ALOJAMIENTO_VACIO, orden: maxOrden + 1 }
+    // Si la lista esta filtrada por una categoria, el nuevo arranca en esa.
+    const categoria = filtro === "todos" || filtro === "destacados" ? null : filtro
+    const inicial = { ...ALOJAMIENTO_VACIO, categoria, orden: maxOrden + 1 }
     referenciaRef.current = JSON.stringify(inicial)
     setEditando(inicial)
     setEsNuevo(true)
@@ -324,6 +362,16 @@ export default function AdminAlojamientosPage() {
       imagenes: editando.imagenes ?? [],
       activo: editando.activo ?? true,
       orden: editando.orden ?? 0,
+      // Sin la migracion 20261023 estas columnas no existen y el guardado
+      // fallaria entero: se mandan solo si la tabla ya las tiene.
+      ...(tieneCategorias
+        ? {
+            categoria: editando.categoria || null,
+            estrellas: editando.estrellas || null,
+            clasificacion: editando.clasificacion?.trim() || null,
+            mascotas: editando.mascotas || null,
+          }
+        : {}),
     }
 
     const { error: dbError } = esNuevo
@@ -334,11 +382,15 @@ export default function AdminAlojamientosPage() {
 
     if (dbError) {
       console.error("Error guardando alojamiento:", dbError)
-      // La galeria necesita la columna "imagenes" (migracion 20261012_alojamientos_imagenes.sql).
+      // La galeria necesita la columna "imagenes" (migracion 20261012_alojamientos_imagenes.sql)
+      // y el tipo/estrellas las de 20261023_alojamientos_categorias.sql.
+      const mensaje = dbError.message ?? ""
       setError(
-        dbError.message?.includes("imagenes")
+        mensaje.includes("imagenes")
           ? "Falta la columna 'imagenes' en la tabla alojamientos. Corre la migracion 20261012_alojamientos_imagenes.sql en Supabase."
-          : "No se pudo guardar el alojamiento.",
+          : /categoria|estrellas|clasificacion|mascotas/.test(mensaje)
+            ? "Faltan las columnas de tipo y estrellas. Corre la migracion 20261023_alojamientos_categorias.sql en Supabase."
+            : `No se pudo guardar el alojamiento: ${explicarError(dbError)}`,
       )
       return
     }
@@ -394,7 +446,8 @@ export default function AdminAlojamientosPage() {
             Alojamientos
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Alojamientos bike friendly que se muestran en la landing, debajo de los sponsors.
+            Se muestran en la landing, debajo de los sponsors: los destacados (bike friendly) arriba con su logo, y el
+            resto por tipo, cada tipo en su lista ordenada por estrellas.
           </p>
         </div>
         <Button onClick={abrirNuevo} className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold">
@@ -427,15 +480,44 @@ export default function AdminAlojamientosPage() {
         </div>
       )}
 
-      {alojamientos.length === 0 ? (
+      {/* Filtro por tipo: chips que se deslizan con el dedo en el celular */}
+      {alojamientos.length > 0 && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          {(
+            [
+              { id: "todos", nombre: "Todos" },
+              { id: "destacados", nombre: "Destacados" },
+              ...CATEGORIAS_ALOJAMIENTO,
+            ] as { id: Filtro; nombre: string }[]
+          ).map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFiltro(f.id)}
+              aria-pressed={filtro === f.id}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                filtro === f.id
+                  ? "border-yellow-400 bg-yellow-400 text-black"
+                  : "border-zinc-700 text-zinc-300 hover:border-yellow-400/60"
+              }`}
+            >
+              {f.nombre} ({cantidadPor(f.id)})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {visibles.length === 0 ? (
         <Card className="bg-zinc-900/60 border-zinc-800">
           <CardContent className="py-12 text-center text-zinc-400">
-            Todavía no cargaste ningún alojamiento.
+            {alojamientos.length === 0
+              ? "Todavía no cargaste ningún alojamiento."
+              : "No hay alojamientos de este tipo. Tocá \"Nuevo alojamiento\" para agregar uno."}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {alojamientos.map((alojamiento) => (
+          {visibles.map((alojamiento) => (
             <Card key={alojamiento.id} className="bg-zinc-900/60 border-zinc-800">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white flex items-center justify-between gap-2">
@@ -459,6 +541,18 @@ export default function AdminAlojamientosPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                <p className="flex flex-wrap items-center justify-center gap-1.5 text-[11px]">
+                  <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-yellow-300">
+                    {nombreCategoria(alojamiento.categoria) ?? "Destacado"}
+                  </span>
+                  {alojamiento.estrellas ? (
+                    <span className="text-yellow-400">{"★".repeat(alojamiento.estrellas)}</span>
+                  ) : null}
+                  {alojamiento.clasificacion && <span className="text-zinc-500">{alojamiento.clasificacion}</span>}
+                </p>
+
+                {/* El logo solo importa en los destacados: los de las listas se muestran sin imagen. */}
+                {(!alojamiento.categoria || alojamiento.logo_url) && (
                 <div className="aspect-square w-full max-w-[140px] mx-auto rounded-lg bg-white p-2">
                   {alojamiento.logo_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -473,6 +567,11 @@ export default function AdminAlojamientosPage() {
                     </div>
                   )}
                 </div>
+                )}
+
+                {alojamiento.telefono && (
+                  <p className="text-xs text-zinc-400 text-center">{alojamiento.telefono}</p>
+                )}
 
                 {alojamiento.direccion && (
                   <p className="text-xs text-zinc-400 text-center">{alojamiento.direccion}</p>
@@ -567,6 +666,73 @@ export default function AdminAlojamientosPage() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="categoria">Tipo</Label>
+                  <select
+                    id="categoria"
+                    value={editando.categoria ?? ""}
+                    onChange={(e) =>
+                      setEditando({ ...editando, categoria: (e.target.value || null) as CategoriaAlojamiento | null })
+                    }
+                    className="mt-1 h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm text-white [&>option]:bg-zinc-900"
+                  >
+                    <option value="">Destacado (bike friendly)</option>
+                    {CATEGORIAS_ALOJAMIENTO.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="estrellas">Estrellas</Label>
+                  <select
+                    id="estrellas"
+                    value={editando.estrellas ?? ""}
+                    onChange={(e) =>
+                      setEditando({ ...editando, estrellas: e.target.value ? Number(e.target.value) : null })
+                    }
+                    className="mt-1 h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm text-white [&>option]:bg-zinc-900"
+                  >
+                    <option value="">Sin estrellas</option>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {"★".repeat(n)} ({n})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="clasificacion">Clasificación</Label>
+                  <Input
+                    id="clasificacion"
+                    value={editando.clasificacion || ""}
+                    onChange={(e) => setEditando({ ...editando, clasificacion: e.target.value })}
+                    placeholder="Hotel boutique, Hostel..."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mascotas">Mascotas</Label>
+                  <select
+                    id="mascotas"
+                    value={editando.mascotas ?? ""}
+                    onChange={(e) => setEditando({ ...editando, mascotas: (e.target.value || null) as Mascotas | null })}
+                    className="mt-1 h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm text-white [&>option]:bg-zinc-900"
+                  >
+                    <option value="">No informa</option>
+                    {(Object.keys(MASCOTAS_ETIQUETA) as Mascotas[]).map((m) => (
+                      <option key={m} value={m}>
+                        {MASCOTAS_ETIQUETA[m]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="website">Sitio web</Label>
                 <Input
@@ -588,7 +754,7 @@ export default function AdminAlojamientosPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="telefono">Teléfono</Label>
+                  <Label htmlFor="telefono">Teléfono(s)</Label>
                   <Input
                     id="telefono"
                     value={editando.telefono || ""}

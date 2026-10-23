@@ -11,7 +11,7 @@ import {
   Phone,
   X,
 } from "lucide-react"
-import { type Alojamiento, normalizarLogo, normalizarWebsite } from "@/lib/alojamientos"
+import { type Alojamiento, nombreCategoria, normalizarLogo, normalizarWebsite } from "@/lib/alojamientos"
 
 // Deja solo digitos para armar los links de tel: y wa.me
 function soloDigitos(valor: string | null): string | null {
@@ -180,7 +180,7 @@ export default function AlojamientoModal({
         <div className="space-y-4 p-5 sm:p-6">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-yellow-400">
-              Bike Friendly
+              {nombreCategoria(alojamiento.categoria) ?? "Bike Friendly"}
             </span>
             <h3 className="mt-1 text-xl sm:text-2xl font-black text-white">{alojamiento.nombre}</h3>
           </div>

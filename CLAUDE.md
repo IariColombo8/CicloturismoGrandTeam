@@ -183,6 +183,9 @@ public.sorteo_resultados     -> sorteo_id, premio_id, premio_nombre, orden, slot
 public.alojamientos          -> nombre, descripcion, logo_url, website, telefono, whatsapp,
                                 direccion, instagram, imagenes TEXT[], activo, orden
   imagenes = galeria de fotos extra (URLs del bucket `sponsors`, carpeta alojamientos/)
+  categoria, estrellas, clasificacion, mascotas (20261023_alojamientos_categorias.sql):
+    categoria NULL = destacado bike friendly; si no, hotel|apart|hosteria|complejo|bungalow|
+    cabana|campo|casa|departamento. mascotas: si|pequenas|medianas|no (NULL = no informa)
   RLS: SELECT publico, ALL solo admin/grandteam
 public.roles_evento          -> participante_id, nombre, clave, pedalea, ayuda, tareas TEXT[],
                                 familiares, familiares_detalle, notas, bloqueado, cargado_por, orden
@@ -434,7 +437,20 @@ espacios. Tests: `e2e/unit/cargar-sponsor.spec.ts`.
 2. Las fotos se suben via `POST /api/alojamientos/upload-imagen` y se guardan como URLs en `alojamientos.imagenes` (TEXT[]), reordenables con flechas
 3. Landing (`components/home/Alojamientos.tsx`) lista los activos en grilla; la tarjeta **no** linkea al sitio web
 4. Al tocar una tarjeta se abre `components/home/AlojamientoModal.tsx` (dynamic import) con galeria, descripcion, direccion (link a Google Maps), telefono, WhatsApp, Instagram y boton "Ver sitio web"
-5. Tipos y helpers compartidos en `lib/alojamientos.ts`
+5. Tipos y helpers compartidos en `lib/alojamientos.ts` (test: `e2e/unit/alojamientos.spec.ts`)
+
+**Destacados y listado por tipo.** Los que tienen `categoria` NULL (El Viejo Molino, Cabañas Dulce
+Amanecer) son las tarjetas grandes de arriba, como siempre. Debajo va una tarjeta por tipo
+(`CATEGORIAS_ALOJAMIENTO`, en el orden de la fuente) que abre `AlojamientosCategoriaModal.tsx` con la
+lista entera **de mas estrellas a menos** (agrupada por estrellas), telefonos con `tel:` y WhatsApp
+(`telefonosDe()`: solo los celulares, el "15"), filtro de mascotas y el aviso de que los precios se
+consultan con cada alojamiento. Si una ficha de la lista tiene logo, fotos o web, aparece "Ver fotos y
+más" y abre el `AlojamientoModal` de siempre.
+
+Los 67 del listado de la Direccion de Turismo (septiembre 2026) salen de
+`alojamientos-concepcion-del-uruguay.md` con `node scripts/alojamientos-md-a-sql.mjs`, que genera la
+migracion (idempotente: no duplica ni pisa lo corregido en el panel). En `/admin/alojamientos` se
+editan y se agregan, con filtro por tipo y los campos Tipo, Estrellas, Clasificacion y Mascotas.
 
 ### Roles del dia del evento (quien hace que)
 

@@ -3,16 +3,45 @@
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { BedDouble, Images, Info, MapPin } from "lucide-react"
+import {
+  BedDouble,
+  Building,
+  Building2,
+  Home,
+  Hotel,
+  Images,
+  Info,
+  type LucideIcon,
+  MapPin,
+  Tent,
+  TreePine,
+  Trees,
+  Warehouse,
+} from "lucide-react"
 import {
   type Alojamiento,
+  type CategoriaAlojamiento,
   ALOJAMIENTO_PLACEHOLDER,
+  CATEGORIAS_ALOJAMIENTO,
   normalizarLogo,
 } from "@/lib/alojamientos"
 import { srcSetOptimizado, urlOptimizada } from "@/lib/imagenes/optimizarUrl"
 
-// El modal solo se descarga cuando el usuario toca una tarjeta.
+// Los modales solo se descargan cuando el usuario toca una tarjeta.
 const AlojamientoModal = dynamic(() => import("./AlojamientoModal"), { ssr: false })
+const AlojamientosCategoriaModal = dynamic(() => import("./AlojamientosCategoriaModal"), { ssr: false })
+
+const ICONO_CATEGORIA: Record<CategoriaAlojamiento, LucideIcon> = {
+  hotel: Hotel,
+  apart: Building2,
+  hosteria: BedDouble,
+  complejo: Trees,
+  bungalow: Tent,
+  cabana: TreePine,
+  campo: Warehouse,
+  casa: Home,
+  departamento: Building,
+}
 
 export type { Alojamiento }
 
@@ -47,13 +76,15 @@ function AlojamientoLogo({ src, alt }: { src: string | null; alt: string }) {
   )
 }
 
-// Seccion publica "Alojamientos": lista los alojamientos bike friendly
-// recomendados. Hasta 6 por fila en escritorio y 3 por fila en celular;
-// si hay uno solo se muestra centrado. Al tocar una tarjeta se abre un modal
-// con toda la informacion cargada desde el admin (fotos, contacto, etc.).
+// Seccion publica "Alojamientos". Arriba, los destacados bike friendly
+// (categoria NULL): hasta 6 por fila en escritorio y 3 en celular; si hay uno
+// solo se muestra centrado, y al tocarlo se abre su ficha con fotos.
+// Abajo, todos los de la ciudad agrupados por tipo (Hoteles, Cabañas...):
+// cada tarjeta abre la lista completa, ordenada por estrellas.
 export default function Alojamientos() {
   const [alojamientos, setAlojamientos] = useState<Alojamiento[]>([])
   const [seleccionado, setSeleccionado] = useState<Alojamiento | null>(null)
+  const [categoriaId, setCategoriaId] = useState<string | null>(null)
   const [isVisible, setIsVisible] = useState(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
 
@@ -88,10 +119,20 @@ export default function Alojamientos() {
       })
   }, [])
 
+  // Sin categoria = destacado (tarjeta grande con logo). El resto se agrupa por
+  // categoria y se abre en un modal con la lista entera.
+  const destacados = alojamientos.filter((a) => !a.categoria)
+  const categorias = CATEGORIAS_ALOJAMIENTO.map((c) => ({
+    ...c,
+    items: alojamientos.filter((a) => a.categoria === c.id),
+  })).filter((c) => c.items.length > 0)
+  const totalListado = categorias.reduce((n, c) => n + c.items.length, 0)
+  const categoriaAbierta = categorias.find((c) => c.id === categoriaId) ?? null
+
   // Sin datos cargados no se muestra la seccion para no dejar un hueco vacio.
   if (alojamientos.length === 0) return null
 
-  const esUnico = alojamientos.length === 1
+  const esUnico = destacados.length === 1
 
   return (
     <section
@@ -134,6 +175,7 @@ export default function Alojamientos() {
 
         {/* Grilla: 3 por fila en celular, hasta 6 en escritorio.
             Con un solo alojamiento se centra la tarjeta. */}
+        {destacados.length > 0 && (
         <div
           className={
             esUnico
@@ -141,7 +183,7 @@ export default function Alojamientos() {
               : "grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6 max-w-6xl mx-auto"
           }
         >
-          {alojamientos.map((alojamiento, index) => {
+          {destacados.map((alojamiento, index) => {
             const cantidadFotos = (alojamiento.imagenes ?? []).length
 
             return (
@@ -184,7 +226,70 @@ export default function Alojamientos() {
             )
           })}
         </div>
+        )}
+
+        {/* Todos los de la ciudad, por tipo. Cada tarjeta abre la lista entera. */}
+        {categorias.length > 0 && (
+          <div className={`max-w-6xl mx-auto ${destacados.length > 0 ? "mt-12 sm:mt-16" : ""}`}>
+            <div
+              className={`text-center mb-6 sm:mb-8 transition-[opacity,transform] duration-1000 ${
+                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+              }`}
+            >
+              <h3 className="text-lg sm:text-2xl font-black text-white">
+                Todos los alojamientos de Concepción del Uruguay
+              </h3>
+              <p className="mt-1 text-xs sm:text-sm text-zinc-400">
+                {totalListado} alojamientos habilitados por la Dirección de Turismo. Tocá un tipo para ver la lista.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+              {categorias.map((c, index) => {
+                const Icono = ICONO_CATEGORIA[c.id]
+                const maxEstrellas = Math.max(0, ...c.items.map((a) => a.estrellas ?? 0))
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCategoriaId(c.id)}
+                    className={`group flex min-w-0 items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-3 text-left transition-[opacity,transform,border-color] duration-300 hover:-translate-y-0.5 hover:border-yellow-400/60 sm:p-4 ${
+                      isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+                    }`}
+                    style={{ transitionDelay: isVisible ? `${index * 60}ms` : undefined }}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/15 sm:h-11 sm:w-11">
+                      <Icono className="h-5 w-5 text-yellow-400 sm:h-6 sm:w-6" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold leading-tight text-white group-hover:text-yellow-400 sm:text-base">
+                        {c.nombre}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-zinc-400 sm:text-xs">
+                        {c.items.length} {c.items.length === 1 ? "lugar" : "lugares"}
+                        {maxEstrellas > 0 && (
+                          <span className="text-yellow-400"> · hasta {"★".repeat(maxEstrellas)}</span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 hidden text-[11px] text-zinc-500 sm:block">{c.detalle}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
+
+      {categoriaAbierta && (
+        <AlojamientosCategoriaModal
+          categoria={categoriaAbierta}
+          alojamientos={categoriaAbierta.items}
+          onClose={() => setCategoriaId(null)}
+          onVerFicha={setSeleccionado}
+          pausado={seleccionado !== null}
+        />
+      )}
 
       {seleccionado && (
         <AlojamientoModal alojamiento={seleccionado} onClose={() => setSeleccionado(null)} />
