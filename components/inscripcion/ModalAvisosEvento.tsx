@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { CloudRain, Medal, Tent } from "lucide-react"
+import { Clock, CloudRain, Medal, Tent } from "lucide-react"
 import { EVENTO } from "@/lib/constants"
+import { CIERRE_INSCRIPCIONES_AVISO } from "@/lib/inscripcion/cierre"
 import { useMedallasRestantes } from "@/hooks/useMedallasRestantes"
 
 /**
  * Lo que hay que saber antes de inscribirse, en una ventana que aparece apenas
- * se entra a /inscripcion: que pasa si llueve, cuanto pagan los acompañantes y,
+ * se entra a /inscripcion: hasta cuando hay tiempo, que pasa si llueve, cuanto pagan los acompañantes y,
  * cuando ya no quedan, que no hay mas medallas.
  *
  * Aparece SIEMPRE al entrar (no se recuerda que ya se vio): es la forma de que
@@ -30,6 +31,11 @@ export default function ModalAvisosEvento() {
   const entrada = `$${EVENTO.entradaCampingAcompanante.toLocaleString("es-AR")}`
 
   const avisos = [
+    {
+      icono: Clock,
+      titulo: "Cierre de inscripciones",
+      texto: CIERRE_INSCRIPCIONES_AVISO,
+    },
     {
       icono: CloudRain,
       titulo: "Si llueve, se suspende",

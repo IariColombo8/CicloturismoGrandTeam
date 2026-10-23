@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw, WifiOff } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, RotateCcw, WifiOff } from "lucide-react"
+import { useInscripcionesCerradas } from "@/hooks/use-inscripciones-cerradas"
+import { INSCRIPCIONES_CERRADAS_MENSAJE } from "@/lib/inscripcion/cierre"
 import PersonalInfoStep from "@/components/inscripcion/PersonalInfoStep"
 import CategoryStep from "@/components/inscripcion/CategoryStep"
 import PaymentStep from "@/components/inscripcion/PaymentStep"
@@ -185,6 +187,9 @@ export default function InscripcionPage() {
   // mostraría su propio error), así que se confirma acá mismo.
   const [guardadaSinEnviar, setGuardadaSinEnviar] = useState(false)
   const [yaSeEnvio, setYaSeEnvio] = useState(false)
+  // Cerro por la hora (en este navegador) o porque el servidor lo rechazo.
+  const cerroPorHora = useInscripcionesCerradas()
+  const [rechazadaPorCierre, setRechazadaPorCierre] = useState(false)
 
   const elegirComprobante = (file: File | null) => {
     if (!file) {
@@ -601,6 +606,12 @@ export default function InscripcionPage() {
           : "",
       })
 
+      // Llego despues del cierre: no se guarda nada ni se reintenta.
+      if (resultado === "cerrada") {
+        setRechazadaPorCierre(true)
+        return
+      }
+
       // Datos para la pantalla final.
       try {
         sessionStorage.setItem(
@@ -713,6 +724,49 @@ export default function InscripcionPage() {
                   type="button"
                   onClick={() => window.location.assign("/")}
                   className="w-full bg-gradient-to-r from-yellow-400 to-amber-600 text-black sm:w-auto"
+                >
+                  Volver al inicio
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
+  }
+
+  // Pasada la hora del cierre no se muestra el formulario: el servidor tampoco
+  // lo aceptaria.
+  if (cerroPorHora || rechazadaPorCierre) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-black via-zinc-900 to-black">
+        <Navbar />
+        <main className="container mx-auto flex items-center justify-center px-4 py-24 sm:px-6">
+          <Card className="w-full max-w-xl border-yellow-400/30 bg-black/60">
+            <CardContent className="p-6 text-center sm:p-10">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-400/15">
+                <Clock className="h-9 w-9 text-yellow-400" aria-hidden="true" />
+              </div>
+              <h1 className="mb-3 text-2xl font-black text-white sm:text-3xl">
+                Inscripciones <span className="gradient-text">cerradas</span>
+              </h1>
+              <p className="text-base leading-relaxed text-gray-300">{INSCRIPCIONES_CERRADAS_MENSAJE}</p>
+              <p className="mt-4 text-sm text-gray-400">
+                Si ya te inscribiste, en &quot;Mi QR&quot; podés ver tu inscripción y descargar el código.
+              </p>
+              <div className="mt-7 flex flex-col gap-3 border-t border-yellow-400/20 pt-6 sm:flex-row sm:justify-center">
+                <Button
+                  type="button"
+                  onClick={() => window.location.assign("/mi-qr")}
+                  className="w-full bg-gradient-to-r from-yellow-400 to-amber-600 text-black sm:w-auto"
+                >
+                  Ver mi QR
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.location.assign("/")}
+                  className="w-full border-yellow-400/40 text-white sm:w-auto"
                 >
                   Volver al inicio
                 </Button>

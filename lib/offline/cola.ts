@@ -37,7 +37,14 @@ export interface PendienteOffline {
   ultimoError: string
 }
 
-export type ResultadoEnvio = "enviada" | "en-cola"
+/**
+ * "cerrada": el servidor contesto que las inscripciones ya cerraron
+ * (`cerrada: true` en la respuesta). Reintentar no sirve, asi que no se encola.
+ */
+export type ResultadoEnvio = "enviada" | "en-cola" | "cerrada"
+
+/** El servidor rechazo porque se paso la hora de cierre. */
+const esCierre = (data: Record<string, unknown>) => data.cerrada === true
 
 // ──────────────────────────────────────────────────────────────
 // Guardado local: IndexedDB y, si no está disponible (Safari en
@@ -232,6 +239,7 @@ export async function enviarConCola(envio: {
       }
       return { resultado: "enviada", respuesta: intento.data }
     }
+    if (esCierre(intento.data)) return { resultado: "cerrada", respuesta: intento.data }
     ultimoError = intento.error
     // Si el navegador sabe que está sin internet, no gastamos más intentos.
     if (typeof navigator !== "undefined" && navigator.onLine === false) break
@@ -271,6 +279,12 @@ export async function reintentarPendientes(tipo?: TipoPendiente): Promise<number
       }
       await borrarPendiente(p.id)
       enviados += 1
+      continue
+    }
+    // Las inscripciones cerraron: no va a entrar nunca, reintentarla cada 30 s
+    // no tiene sentido.
+    if (esCierre(intento.data)) {
+      await borrarPendiente(p.id)
       continue
     }
     // Un rechazo por datos no se arregla reintentando, pero tampoco se borra

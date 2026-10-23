@@ -8,6 +8,7 @@ import {
   submitSchema,
 } from "@/lib/inscripcion-schema"
 import { notificarInscripcionNueva } from "@/lib/push/inscripcion"
+import { INSCRIPCIONES_CERRADAS_MENSAJE, inscripcionesCerradas } from "@/lib/inscripcion/cierre"
 
 const BUCKET = "comprobantes"
 
@@ -36,6 +37,13 @@ async function guardarGrupoNuevoSiCorresponde(
 }
 
 export async function POST(req: NextRequest) {
+  // Pasada la hora del cierre no entra ninguna inscripcion, ni siquiera las
+  // que quedaron en la cola del telefono. `cerrada` le avisa al cliente que no
+  // tiene sentido reintentar.
+  if (inscripcionesCerradas()) {
+    return NextResponse.json({ error: INSCRIPCIONES_CERRADAS_MENSAJE, cerrada: true }, { status: 403 })
+  }
+
   const cuerpo = await req.json().catch(() => null)
   const parsed = submitSchema.safeParse(cuerpo)
   if (!parsed.success) {
