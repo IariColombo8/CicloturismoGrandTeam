@@ -7,7 +7,7 @@ export const EVENTO = {
   distancia: "50 km",
   duracion: "3-4 hrs",
   // Si llueve el evento se suspende y pasa a esta fecha (aviso de /inscripcion).
-  fechaSiLlueve: "11 de abril",
+  fechaSiLlueve: "domingo 28 de marzo",
   // Lo que paga cada acompañante para entrar al camping (en pesos).
   entradaCampingAcompanante: 10000,
   contacto: {

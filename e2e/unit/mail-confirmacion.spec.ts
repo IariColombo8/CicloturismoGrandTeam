@@ -11,7 +11,7 @@ test.describe("Mail de confirmacion · avisos", () => {
   test("siempre avisa la fecha si llueve y lo que pagan los acompañantes", () => {
     const { html, texto } = templateConfirmacion({ ...base, numeroInscripcion: 10 })
     for (const salida of [html, texto]) {
-      expect(salida).toContain("11 de abril")
+      expect(salida).toContain("domingo 28 de marzo")
       expect(salida).toContain("$10.000")
     }
   })

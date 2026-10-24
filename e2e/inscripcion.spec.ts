@@ -46,7 +46,7 @@ test.describe("Inscripción · avisos al entrar", () => {
 
     const aviso = page.getByRole("dialog", { name: "Antes de inscribirte" })
     await expect(aviso).toBeVisible()
-    await expect(aviso.getByText(/11 de abril/)).toBeVisible()
+    await expect(aviso.getByText(/domingo 28 de marzo/)).toBeVisible()
     await expect(aviso.getByText(/\$10\.000/).first()).toBeVisible()
 
     await aviso.getByRole("button", { name: "Entendido" }).click()
