@@ -22,8 +22,10 @@ import FormularioRol, {
   datosDeValores,
   type ValoresRol,
 } from "@/components/roles/FormularioRol"
+import { useAjustesRoles } from "@/hooks/useAjustesRoles"
 import {
   COLUMNAS_ROL,
+  catalogoDeTareas,
   filtrarRoles,
   ordenarRoles,
   resumirRoles,
@@ -83,9 +85,11 @@ export default function RolesPage() {
     }
   }, [cargar])
 
+  const { ajustes } = useAjustesRoles()
+  const catalogo = useMemo(() => catalogoDeTareas(ajustes, roles), [ajustes, roles])
   const ordenados = useMemo(() => ordenarRoles(roles), [roles])
-  const resumen = useMemo(() => resumirRoles(roles), [roles])
-  const visibles = useMemo(() => filtrarRoles(ordenados, filtro), [ordenados, filtro])
+  const resumen = useMemo(() => resumirRoles(roles, catalogo), [roles, catalogo])
+  const visibles = useMemo(() => filtrarRoles(ordenados, filtro, catalogo), [ordenados, filtro, catalogo])
   const nombres = useMemo(() => roles.map((r) => r.nombre), [roles])
 
   const sumarme = async () => {
@@ -169,7 +173,10 @@ export default function RolesPage() {
             </div>
           ) : (
             <>
-              <ResumenRoles resumen={resumen} />
+              <ResumenRoles
+                resumen={resumen}
+                onElegirTarea={(tarea) => setFiltro((f) => ({ ...f, tarea }))}
+              />
 
               {error && (
                 <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
@@ -182,6 +189,7 @@ export default function RolesPage() {
                   filtro={filtro}
                   onChange={setFiltro}
                   tareasConGente={resumen.porTarea.map((t) => t.id)}
+                  catalogo={catalogo}
                 />
               )}
 
@@ -202,7 +210,7 @@ export default function RolesPage() {
                   </p>
                   <div className="space-y-2.5">
                     {visibles.map((rol) => (
-                      <TarjetaRol key={rol.id} rol={rol} />
+                      <TarjetaRol key={rol.id} rol={rol} catalogo={catalogo} />
                     ))}
                   </div>
                 </>
@@ -221,7 +229,13 @@ export default function RolesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <FormularioRol valores={valores} onChange={setValores} nombresExistentes={nombres} />
+          <FormularioRol
+            valores={valores}
+            onChange={setValores}
+            nombresExistentes={nombres}
+            tareas={catalogo}
+            cupos={resumen.cupos}
+          />
 
           <div className="flex flex-col gap-2 pt-2 sm:flex-row-reverse">
             <Button

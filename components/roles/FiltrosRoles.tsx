@@ -2,13 +2,15 @@
 
 import { Input } from "@/components/ui/input"
 import { Search, Users } from "lucide-react"
-import { MODOS, TAREAS, type FiltroRoles, type ModoRol } from "@/lib/roles"
+import { MODOS, TAREAS, type FiltroRoles, type ModoRol, type TareaConCupo } from "@/lib/roles"
 
 interface Props {
   filtro: FiltroRoles
   onChange: (filtro: FiltroRoles) => void
   /** Tareas que tienen al menos una persona: no se ofrece filtrar por vacias. */
   tareasConGente: string[]
+  /** Catalogo de tareas (con las escritas a mano). Sin esto, la lista de siempre. */
+  catalogo?: TareaConCupo[]
 }
 
 const CHIP = "whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
@@ -20,10 +22,10 @@ const CHIP_OFF = "border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:border-zinc
  * el dedo (`overflow-x-auto`) en vez de envolverse en cuatro renglones: en el
  * celular la lista tiene que quedar a la vista sin scrollear media pantalla.
  */
-export default function FiltrosRoles({ filtro, onChange, tareasConGente }: Props) {
+export default function FiltrosRoles({ filtro, onChange, tareasConGente, catalogo }: Props) {
   const modo = filtro.modo ?? "todos"
   const tarea = filtro.tarea ?? "todas"
-  const tareas = TAREAS.filter((t) => tareasConGente.includes(t.id))
+  const tareas = (catalogo ?? TAREAS).filter((t) => tareasConGente.includes(t.id))
 
   return (
     <div className="space-y-2">

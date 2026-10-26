@@ -3,12 +3,14 @@
 import type { ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Lock, Users } from "lucide-react"
-import { etiquetaTarea, infoModo, inicialesDe, modoDeRol, type RolEvento } from "@/lib/roles"
+import { etiquetaTarea, infoModo, inicialesDe, modoDeRol, type RolEvento, type TareaConCupo } from "@/lib/roles"
 
 interface Props {
   rol: RolEvento
   /** Botones del panel (editar, borrar, fijar). En /roles no va ninguno. */
   acciones?: ReactNode
+  /** Para mostrar el nombre que el equipo le puso a cada tarea. */
+  catalogo?: TareaConCupo[]
 }
 
 /**
@@ -16,7 +18,7 @@ interface Props {
  * proposito: esto se mira desde el celular el dia del evento, y una tabla de
  * seis columnas en 360 px no se lee.
  */
-export default function TarjetaRol({ rol, acciones }: Props) {
+export default function TarjetaRol({ rol, acciones, catalogo }: Props) {
   const modo = infoModo(modoDeRol(rol))
 
   return (
@@ -51,7 +53,7 @@ export default function TarjetaRol({ rol, acciones }: Props) {
                   key={tarea}
                   className="rounded-full border border-zinc-700 bg-zinc-800/80 px-2 py-0.5 text-[11px] text-zinc-300"
                 >
-                  {etiquetaTarea(tarea)}
+                  {etiquetaTarea(tarea, catalogo)}
                 </li>
               ))}
             </ul>

@@ -1,6 +1,12 @@
 import { test, expect } from "@playwright/test"
 import {
+  MODOS,
   TAREAS,
+  catalogoDeTareas,
+  cuposDeTareas,
+  infoModo,
+  leerAjustesRoles,
+  textoFalta,
   banderasDeModo,
   esTareaConocida,
   etiquetaTarea,
@@ -202,5 +208,63 @@ test.describe("lo que llega del formulario", () => {
     expect(normalizarDatosRol({ nombre: "A", familiares: 2.7 })!.familiares).toBe(2)
     expect(normalizarDatosRol({ nombre: "A", familiares: 999 })!.familiares).toBe(20)
     expect(normalizarDatosRol({ nombre: "A", familiares: Number.NaN })!.familiares).toBe(0)
+  })
+})
+
+test.describe("cupos por tarea", () => {
+  const catalogo = [
+    { id: "acreditacion", etiqueta: "Acreditación", necesarios: 3 },
+    { id: "Desayuno", etiqueta: "Desayuno", necesarios: 2 },
+    { id: "fotos", etiqueta: "Fotos y video", necesarios: 1 },
+    { id: "mecanica", etiqueta: "Mecánica", necesarios: 0 },
+  ]
+  const lista = [
+    rol("A", { tareas: ["acreditacion", "fotos"] }),
+    rol("B", { tareas: ["acreditacion", "Cierre de pelotón"] }),
+    rol("C", { tareas: ["Desayuno"] }),
+  ]
+
+  test("dice cuantos faltan y deja lo cubierto abajo de todo", () => {
+    const cupos = cuposDeTareas(lista, catalogo)
+    const ids = cupos.map((c) => c.id)
+
+    expect(cupos[0]).toMatchObject({ id: "acreditacion", tenemos: 2, necesarios: 3, faltan: 1, estado: "falta" })
+    expect(cupos.find((c) => c.id === "Desayuno")).toMatchObject({ faltan: 1, estado: "falta" })
+    expect(ids[ids.length - 1]).toBe("fotos")
+    expect(cupos.find((c) => c.id === "fotos")!.estado).toBe("cubierta")
+    expect(textoFalta(cupos[0])).toBe("Falta 1 de Acreditación")
+    expect(textoFalta({ faltan: 3, etiqueta: "Desayuno" })).toBe("Faltan 3 de Desayuno")
+  })
+
+  test("una tarea escrita a mano en una ficha se puede elegir (entra al catalogo)", () => {
+    const todas = catalogoDeTareas({ tareas: catalogo }, lista)
+    expect(todas.some((t) => t.id === "Cierre de pelotón")).toBe(true)
+    expect(cuposDeTareas(lista, catalogo).find((c) => c.id === "Cierre de pelotón")).toMatchObject({
+      tenemos: 1,
+      estado: "sin-cupo",
+    })
+  })
+
+  test("el total de faltantes suma solo las tareas con cupo", () => {
+    expect(resumirRoles(lista, catalogo).faltanEnTotal).toBe(2)
+  })
+
+  test("pasarse del cupo no da faltantes negativos", () => {
+    const cupos = cuposDeTareas([rol("A", { tareas: ["fotos"] }), rol("B", { tareas: ["fotos"] })], catalogo)
+    expect(cupos.find((c) => c.id === "fotos")).toMatchObject({ tenemos: 2, faltan: 0, estado: "cubierta" })
+  })
+
+  test("sin fila guardada se usa la lista de siempre; una fila rota no rompe", () => {
+    expect(leerAjustesRoles(null).tareas).toHaveLength(TAREAS.length)
+    expect(leerAjustesRoles({ tareas: "x" }).tareas).toHaveLength(TAREAS.length)
+    const leidas = leerAjustesRoles({
+      tareas: [{ etiqueta: "Desayuno", necesarios: -4 }, { id: "", etiqueta: "" }, { etiqueta: "Desayuno" }],
+    }).tareas
+    expect(leidas).toEqual([{ id: "Desayuno", etiqueta: "Desayuno", necesarios: 0 }])
+  })
+
+  test("'No pedaleo, acompaño' ya no se ofrece, pero las fichas viejas se siguen viendo", () => {
+    expect(MODOS.some((m) => m.modo === "acompana")).toBe(false)
+    expect(infoModo(modoDeRol(rol("Viejo"))).etiqueta).toBe("Acompaña")
   })
 })

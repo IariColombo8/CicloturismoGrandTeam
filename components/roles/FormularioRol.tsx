@@ -10,10 +10,11 @@ import {
   TAREAS,
   banderasDeModo,
   etiquetaTarea,
-  esTareaConocida,
   normalizarNombre,
+  type CupoTarea,
   type DatosRol,
   type ModoRol,
+  type TareaConCupo,
 } from "@/lib/roles"
 
 /** Lo que el formulario tiene en pantalla (el modo es una sola pregunta). */
@@ -62,6 +63,13 @@ interface Props {
    * descubre despues que piso lo que habia cargado otro.
    */
   nombresExistentes?: string[]
+  /**
+   * Las tareas para elegir: el catalogo del equipo mas las que alguien ya
+   * escribio a mano. Sin esto se ofrece la lista de siempre.
+   */
+  tareas?: TareaConCupo[]
+  /** Como esta cada tarea, para avisar en el chip cuantos faltan. */
+  cupos?: CupoTarea[]
 }
 
 /**
@@ -72,7 +80,7 @@ interface Props {
  * Pensado para el celular: todo de un toque (botones grandes, nada de selects
  * anidados) y una sola columna hasta sm.
  */
-export default function FormularioRol({ valores, onChange, inscriptos, nombresExistentes }: Props) {
+export default function FormularioRol({ valores, onChange, inscriptos, nombresExistentes, tareas, cupos }: Props) {
   const idNombre = useId()
   const idLista = useId()
 
@@ -85,9 +93,14 @@ export default function FormularioRol({ valores, onChange, inscriptos, nombresEx
       valores.tareas.includes(id) ? valores.tareas.filter((t) => t !== id) : [...valores.tareas, id],
     )
 
-  // Tareas que el admin escribio a mano y no estan en la lista: se muestran
-  // igual, para poder sacarlas con un toque.
-  const tareasLibres = useMemo(() => valores.tareas.filter((t) => !esTareaConocida(t)), [valores.tareas])
+  const opciones = useMemo(() => tareas ?? TAREAS.map((t) => ({ ...t, necesarios: 0 })), [tareas])
+  // Tareas de la ficha que no estan en las opciones (recien escritas a mano):
+  // se muestran igual, para poder sacarlas con un toque.
+  const tareasLibres = useMemo(
+    () => valores.tareas.filter((t) => !opciones.some((o) => o.id === t)),
+    [valores.tareas, opciones],
+  )
+  const faltanDe = (id: string) => cupos?.find((c) => c.id === id)?.faltan ?? 0
 
   const repetido = useMemo(() => {
     const clave = normalizarNombre(valores.nombre)
@@ -175,8 +188,9 @@ export default function FormularioRol({ valores, onChange, inscriptos, nombresEx
           Tocá todas las que correspondan. Si no sabés todavía, dejalo vacío.
         </p>
         <div className="flex flex-wrap gap-2">
-          {TAREAS.map((tarea) => {
+          {opciones.map((tarea) => {
             const activa = valores.tareas.includes(tarea.id)
+            const faltan = faltanDe(tarea.id)
             return (
               <button
                 key={tarea.id}
@@ -192,6 +206,12 @@ export default function FormularioRol({ valores, onChange, inscriptos, nombresEx
                 ].join(" ")}
               >
                 {tarea.etiqueta}
+                {/* aria-hidden: el nombre del boton sigue siendo el de la tarea */}
+                {faltan > 0 && !activa && (
+                  <span aria-hidden="true" className="ml-1.5 text-[10px] font-semibold text-amber-300">
+                    {faltan === 1 ? "falta 1" : `faltan ${faltan}`}
+                  </span>
+                )}
               </button>
             )
           })}
@@ -203,7 +223,7 @@ export default function FormularioRol({ valores, onChange, inscriptos, nombresEx
               className="rounded-full border border-yellow-400 bg-yellow-400/15 px-3 py-1.5 text-xs font-medium text-yellow-300"
               title="Tocar para quitarla"
             >
-              {etiquetaTarea(libre)}
+              {etiquetaTarea(libre, opciones)}
             </button>
           ))}
         </div>

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import {
   ArrowDown,
   ArrowUp,
+  ClipboardList,
   ExternalLink,
   Loader2,
   Lock,
@@ -27,6 +28,8 @@ import { explicarError } from "@/lib/errores"
 import ResumenRoles from "@/components/roles/ResumenRoles"
 import FiltrosRoles from "@/components/roles/FiltrosRoles"
 import TarjetaRol from "@/components/roles/TarjetaRol"
+import EditorTareas from "@/components/roles/EditorTareas"
+import { useAjustesRoles } from "@/hooks/useAjustesRoles"
 import FormularioRol, {
   VALORES_VACIOS,
   datosDeValores,
@@ -34,13 +37,16 @@ import FormularioRol, {
 } from "@/components/roles/FormularioRol"
 import {
   COLUMNAS_ROL,
+  ID_AJUSTES_ROLES,
   banderasDeModo,
+  catalogoDeTareas,
   filtrarRoles,
   modoDeRol,
   ordenarRoles,
   resumirRoles,
   type FiltroRoles,
   type RolEvento,
+  type TareaConCupo,
 } from "@/lib/roles"
 
 interface Inscripto {
@@ -117,10 +123,35 @@ export default function AdminRolesPage() {
     }
   }, [authLoading, user, autorizado, cargar])
 
+  const { ajustes, setAjustes } = useAjustesRoles()
+  const [editandoTareas, setEditandoTareas] = useState(false)
+  const catalogo = useMemo(() => catalogoDeTareas(ajustes, roles), [ajustes, roles])
   const ordenados = useMemo(() => ordenarRoles(roles), [roles])
-  const resumen = useMemo(() => resumirRoles(roles), [roles])
-  const visibles = useMemo(() => filtrarRoles(ordenados, filtro), [ordenados, filtro])
+  const resumen = useMemo(() => resumirRoles(roles, catalogo), [roles, catalogo])
+  const visibles = useMemo(() => filtrarRoles(ordenados, filtro, catalogo), [ordenados, filtro, catalogo])
   const nombres = useMemo(() => roles.map((r) => r.nombre), [roles])
+
+  /** Guarda el catalogo de tareas con sus cupos en content_settings. */
+  const guardarTareas = async (tareas: TareaConCupo[]): Promise<boolean> => {
+    // El .select() no es decorativo: sin el, una fila filtrada por RLS parece
+    // un guardado exitoso.
+    const { data, error: errorGuardado } = await supabase
+      .from("content_settings")
+      .upsert({ id: ID_AJUSTES_ROLES, data: { tareas }, updated_at: new Date().toISOString() })
+      .select()
+
+    if (errorGuardado || !data?.length) {
+      toast({
+        title: "No se pudieron guardar las tareas",
+        description: errorGuardado ? explicarError(errorGuardado) : "La base no devolvió la fila guardada.",
+        variant: "destructive",
+      })
+      return false
+    }
+    setAjustes({ tareas })
+    toast({ title: "Tareas guardadas" })
+    return true
+  }
 
   const abrirNuevo = () => setEditando({ id: null, valores: VALORES_VACIOS })
 
@@ -284,23 +315,34 @@ export default function AdminRolesPage() {
               <p className="mt-0.5 text-xs text-gray-400 sm:text-sm">
                 {resumen.total} anotados · {resumen.pedalean} pedalean · {resumen.soloAyudan} ayudan
                 sin pedalear
+                {resumen.faltanEnTotal > 0 && (
+                  <span className="text-amber-300"> · faltan {resumen.faltanEnTotal}</span>
+                )}
               </p>
             </div>
-            <div className="flex w-full gap-2 sm:w-auto">
+            <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto">
               <Button
                 onClick={abrirNuevo}
-                className="flex-1 bg-yellow-400 font-semibold text-black hover:bg-yellow-500 sm:flex-none"
+                className="bg-yellow-400 px-2 font-semibold text-black hover:bg-yellow-500"
               >
-                <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                Agregar
+                <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
+                Persona
               </Button>
-              <Link href="/roles" target="_blank" className="flex-1 sm:flex-none">
+              <Button
+                onClick={() => setEditandoTareas(true)}
+                variant="outline"
+                className="border-yellow-400/40 px-2 text-yellow-400 hover:bg-yellow-400/10 hover:text-yellow-300"
+              >
+                <ClipboardList className="mr-1 h-4 w-4" aria-hidden="true" />
+                Tareas
+              </Button>
+              <Link href="/roles" target="_blank">
                 <Button
                   variant="outline"
-                  className="w-full border-zinc-700 text-zinc-300 hover:text-white"
+                  className="w-full border-zinc-700 px-2 text-zinc-300 hover:text-white"
                 >
-                  <ExternalLink className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                  Ver pública
+                  <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" />
+                  Pública
                 </Button>
               </Link>
             </div>
@@ -324,13 +366,29 @@ export default function AdminRolesPage() {
           candado fija una ficha para que el formulario público no la vuelva a tocar.
         </p>
 
-        <ResumenRoles resumen={resumen} mostrarFaltantes />
+        <ResumenRoles
+          resumen={resumen}
+          mostrarFaltantes
+          onElegirTarea={(tarea) => setFiltro((f) => ({ ...f, tarea }))}
+        />
+
+        {resumen.cupos.every((c) => c.necesarios === 0) && (
+          <button
+            type="button"
+            onClick={() => setEditandoTareas(true)}
+            className="w-full rounded-xl border border-dashed border-yellow-400/30 p-3 text-left text-xs text-zinc-400 hover:border-yellow-400/60"
+          >
+            <span className="font-semibold text-yellow-400">Poné cuántos hacen falta en cada tarea</span>{" "}
+            y la lista te dice qué falta («Falta 1 de Acreditación»). Tocá acá o en «Tareas».
+          </button>
+        )}
 
         {roles.length > 0 && (
           <FiltrosRoles
             filtro={filtro}
             onChange={setFiltro}
             tareasConGente={resumen.porTarea.map((t) => t.id)}
+            catalogo={catalogo}
           />
         )}
 
@@ -352,6 +410,7 @@ export default function AdminRolesPage() {
                 <TarjetaRol
                   key={rol.id}
                   rol={rol}
+                  catalogo={catalogo}
                   acciones={
                     ocupado === rol.id ? (
                       <Loader2 className="mx-2 h-4 w-4 animate-spin text-yellow-400" aria-hidden="true" />
@@ -464,6 +523,8 @@ export default function AdminRolesPage() {
                 onChange={(valores) => setEditando({ ...editando, valores })}
                 inscriptos={inscriptos}
                 nombresExistentes={editando.id ? [] : nombres}
+                tareas={catalogo}
+                cupos={resumen.cupos}
               />
 
               {/* Tarea a mano: lo que no esta en la lista de siempre. */}
@@ -512,6 +573,15 @@ export default function AdminRolesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {editandoTareas && (
+        <EditorTareas
+          tareas={catalogo}
+          cupos={resumen.cupos}
+          onGuardar={guardarTareas}
+          onCerrar={() => setEditandoTareas(false)}
+        />
       )}
     </div>
   )

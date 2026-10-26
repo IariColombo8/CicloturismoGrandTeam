@@ -29,14 +29,15 @@ test.describe("Lista de roles", () => {
 
     await page.getByRole("button", { name: /sumarme a la lista/i }).click()
 
-    // Las cuatro respuestas de "qué hacés el día del evento" tienen que estar
+    // Las tres respuestas de "qué hacés el día del evento" tienen que estar
     // todas a la vista: son la pregunta principal del formulario. El nombre
     // accesible de cada botón es la etiqueta más su línea de ayuda, así que se
     // busca por el comienzo.
     await expect(page.getByRole("button", { name: /^Pedaleo Hago el recorrido/i })).toBeVisible()
     await expect(page.getByRole("button", { name: /^Pedaleo y ayudo/i })).toBeVisible()
     await expect(page.getByRole("button", { name: /^Ayudo y no pedaleo/i })).toBeVisible()
-    await expect(page.getByRole("button", { name: /^No pedaleo, acompaño/i })).toBeVisible()
+    // "No pedaleo, acompaño" se saco a pedido (25/10/2026).
+    await expect(page.getByRole("button", { name: /^No pedaleo, acompaño/i })).toHaveCount(0)
 
     // Y el contenido no se sale para los costados con el modal abierto.
     const desborde = await page.evaluate(
