@@ -8,7 +8,11 @@
 // Las librerias de PDF entran por dynamic import: solo se bajan cuando alguien
 // realmente descarga algo.
 
-import { calcularEstimacion, type EntradaEstimacion } from "@/lib/finanzas/estimacion"
+import {
+  calcularEstimacion,
+  personasDelGasto,
+  type EntradaEstimacion,
+} from "@/lib/finanzas/estimacion"
 import { formatARS, type Gasto } from "./tipos"
 import {
   crearEstiloTabla,
@@ -131,12 +135,19 @@ export async function armarEstimacionPDF(
 
   // Mismos gastos que la cuenta: aprobados y pendientes, sin los rechazados.
   const gastosVigentes = datos.gastos.filter((g) => g.estado !== "rechazado")
-  const filasSale: string[][] = gastosVigentes.map((g) => [
-    g.descripcion,
-    g.categoria,
-    g.porParticipante ? `${formatARS(g.monto)} × ${est.cantidad}` : "Fijo",
-    formatARS(g.porParticipante ? g.monto * est.cantidad : g.monto),
-  ])
+  const filasSale: string[][] = gastosVigentes.map((g) => {
+    if (!g.porParticipante) return [g.descripcion, g.categoria, "Fijo", formatARS(g.monto)]
+    const personas = personasDelGasto(g, est)
+    const sinDiscapacidad = est.cantidad - personas
+    return [
+      g.descripcion,
+      g.categoria,
+      `${formatARS(g.monto)} × ${personas}${
+        sinDiscapacidad > 0 ? ` (sin ${sinDiscapacidad} con discapacidad)` : ""
+      }`,
+      formatARS(g.monto * personas),
+    ]
+  })
 
   if (filasSale.length === 0) {
     filasSale.push(["Sin gastos cargados", "", "", formatARS(0)])
@@ -173,7 +184,11 @@ export async function armarEstimacionPDF(
     ["Gastos fijos", formatARS(est.gastosFijos)],
     [
       "Gastos por persona",
-      `${formatARS(est.montoPorParticipante)} × ${est.cantidad} = ${formatARS(est.gastosVariables)}`,
+      est.ahorroDiscapacidad > 0
+        ? `${formatARS(est.montoPorParticipante)} × ${est.cantidad} - ${formatARS(
+            est.ahorroDiscapacidad,
+          )} del lugar de las personas con discapacidad = ${formatARS(est.gastosVariables)}`
+        : `${formatARS(est.montoPorParticipante)} × ${est.cantidad} = ${formatARS(est.gastosVariables)}`,
     ],
     ["Cuesta cada inscripto", formatARS(est.costoPorPersona)],
     ["Precio que empata", formatARS(est.precioQueEmpata)],
@@ -184,6 +199,14 @@ export async function armarEstimacionPDF(
         : datos.contarGratis
           ? `${cuantos(datos.gratis)}: se tuvieron en cuenta (no pagan, pero cuestan)`
           : `${cuantos(datos.gratis)}: NO se tuvieron en cuenta (se calculó como si pagaran)`,
+    ],
+    [
+      "Personas con discapacidad",
+      !datos.conDiscapacidad
+        ? "No hay cargadas"
+        : datos.contarDiscapacidad
+          ? `${datos.conDiscapacidad}: se tuvieron en cuenta (no se paga por ellas el lugar; el resto sí)`
+          : `${datos.conDiscapacidad}: NO se tuvieron en cuenta (se pagan todos los gastos por ellas)`,
     ],
     ["Gastos incluidos", "Aprobados y pendientes de aprobar (los rechazados quedan afuera)"],
   ]

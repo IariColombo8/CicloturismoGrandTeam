@@ -242,7 +242,7 @@ export async function armarFinanzasPDF(
   const filasGastos = gastosOrdenados.map((g) => [
     g.descripcion,
     g.categoria,
-    formatARS(totalGasto(g, confirmados)),
+    formatARS(totalGasto(g, confirmados, resumen.conDiscapacidad?.length ?? 0)),
     etiquetaEstadoGasto(g),
     fechaLegible(g.fecha),
   ])
@@ -398,6 +398,10 @@ export async function exportarFinanzasExcel(
       Valor: `${d.otraForma.cantidad} · ${formatARS(d.otraForma.total)}`,
     },
     { Indicador: "Inscripciones sin cargo", Valor: `${d.gratis.cantidad}` },
+    {
+      Indicador: "Personas con discapacidad (no pagan el lugar del evento)",
+      Valor: `${resumen.conDiscapacidad?.length ?? 0}`,
+    },
   ])
 
   // Mismo orden que el PDF: pagados arriba, sin pagar abajo.
@@ -405,7 +409,7 @@ export async function exportarFinanzasExcel(
     ordenarGastosPorPago(gastos).map((g) => ({
       Descripción: g.descripcion,
       Categoría: g.categoria,
-      Monto: totalGasto(g, confirmados),
+      Monto: totalGasto(g, confirmados, resumen.conDiscapacidad?.length ?? 0),
       Estado: etiquetaEstadoGasto(g),
       Fecha: fechaLegible(g.fecha),
       "Creado por": g.creadoPor || "",

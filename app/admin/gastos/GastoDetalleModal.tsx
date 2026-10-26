@@ -17,13 +17,23 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { CheckCircle, XCircle, Trash2, Pencil } from "lucide-react"
-import { esLocalhost, formatARS, mensajeError, parseMonto, totalGasto, type Gasto } from "./tipos"
+import {
+  detallePersonas,
+  esLocalhost,
+  formatARS,
+  mensajeError,
+  parseMonto,
+  totalGasto,
+  type Gasto,
+} from "./tipos"
 
 interface GastoDetalleModalProps {
   gasto: Gasto | null
   onClose: () => void
   esAdmin: boolean
   confirmados: number
+  /** Confirmados con discapacidad (no pagan los gastos que no se les cobran). */
+  conDiscapacidad?: number
   userEmail: string
   /** Badge del estado del gasto: dice "Pagado" o "Por pagar". */
   getStatusBadge: (gasto: Gasto) => React.ReactNode
@@ -35,6 +45,7 @@ export function GastoDetalleModal({
   onClose,
   esAdmin,
   confirmados,
+  conDiscapacidad = 0,
   userEmail,
   getStatusBadge,
   onCambio,
@@ -151,6 +162,27 @@ export function GastoDetalleModal({
     }
   }
 
+  // Se puede cambiar en produccion (no es editar el monto): es decir si el
+  // lugar les cobra o no a las personas con discapacidad.
+  const handleToggleCobraDiscapacidad = async (cobra: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("gastos")
+        .update({ cobra_discapacidad: cobra })
+        .eq("id", gasto.id)
+      if (error) throw error
+      toast({
+        title: cobra
+          ? "Las personas con discapacidad pagan este gasto"
+          : "Las personas con discapacidad no pagan este gasto",
+      })
+      await cerrarTodo()
+    } catch (err) {
+      console.error("Error actualizando el gasto:", mensajeError(err), err)
+      toast({ title: "Error", description: mensajeError(err), variant: "destructive" })
+    }
+  }
+
   const handleEliminar = async () => {
     try {
       const { error } = await supabase.from("gastos").delete().eq("id", gasto.id)
@@ -255,11 +287,12 @@ export function GastoDetalleModal({
                 <div>
                   <Label className="text-gray-400">Total</Label>
                   <p className="text-white font-bold text-xl">
-                    {formatARS(totalGasto(gasto, confirmados))}
+                    {formatARS(totalGasto(gasto, confirmados, conDiscapacidad))}
                   </p>
                   {gasto.porParticipante && (
                     <p className="text-xs text-blue-400">
-                      {formatARS(gasto.monto)} por persona × {confirmados} confirmados
+                      {formatARS(gasto.monto)} por persona{" "}
+                      {detallePersonas(gasto, confirmados, conDiscapacidad)}
                     </p>
                   )}
                 </div>
@@ -294,6 +327,22 @@ export function GastoDetalleModal({
                   </p>
                 </div>
                 <Switch checked={gasto.pagado} onCheckedChange={handleTogglePagado} />
+              </div>
+            )}
+
+            {!editando && esAdmin && gasto.porParticipante && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-700/40 p-3">
+                <div>
+                  <Label className="text-gray-200">¿Las personas con discapacidad pagan esto?</Label>
+                  <p className="text-xs text-gray-400">
+                    Apagalo si por ellas no se paga (ej: el lugar del evento). Se marcan en el
+                    registro de inscripciones, en el bloque de Pago.
+                  </p>
+                </div>
+                <Switch
+                  checked={gasto.cobraDiscapacidad}
+                  onCheckedChange={handleToggleCobraDiscapacidad}
+                />
               </div>
             )}
 

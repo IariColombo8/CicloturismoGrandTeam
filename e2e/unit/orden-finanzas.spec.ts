@@ -16,6 +16,7 @@ function gasto(id: string, estado: Gasto["estado"], pagado: boolean, fecha: stri
     descripcion: id,
     monto: 1000,
     porParticipante: false,
+    cobraDiscapacidad: true,
     categoria: "otro",
     estado,
     pagado,

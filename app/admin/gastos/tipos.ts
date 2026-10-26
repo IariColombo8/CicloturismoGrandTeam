@@ -10,6 +10,11 @@ export interface Gasto {
   descripcion: string
   monto: number
   porParticipante: boolean
+  /**
+   * Solo en gastos por participante: false = no se paga por las personas con
+   * discapacidad (el Viejo Molino no les cobra la entrada al lugar).
+   */
+  cobraDiscapacidad: boolean
   categoria: string
   estado: EstadoGasto
   /** Si es false, el gasto esta aprobado pero todavia no se abono (se paga a ultimo momento). */
@@ -58,6 +63,8 @@ export interface InscripcionPago {
   pagoEstado: EstadoPago
   /** Aclaracion del pago cuando `pagoEstado` es "otro". */
   pagoNota: string | null
+  /** Persona con discapacidad: no paga los gastos por persona con `cobraDiscapacidad` en false. */
+  discapacidad: boolean
 }
 
 // Nota suelta sobre la caja ("pagaron en pesos uruguayos", "falta la
@@ -256,11 +263,43 @@ export function estadoMovimiento(mov: Movimiento): string {
 }
 
 /**
- * Total de un gasto segun la cantidad de participantes.
- * Los gastos por participante multiplican su monto unitario.
+ * Por cuantas personas se paga un gasto por participante. Si el gasto no se
+ * cobra a las personas con discapacidad (el lugar del evento), ellas no cuentan.
  */
-export function totalGasto(gasto: Gasto, cantidadParticipantes: number): number {
-  return gasto.porParticipante ? gasto.monto * cantidadParticipantes : gasto.monto
+export function personasQuePagan(
+  gasto: Pick<Gasto, "cobraDiscapacidad">,
+  cantidadParticipantes: number,
+  conDiscapacidad = 0,
+): number {
+  if (gasto.cobraDiscapacidad) return cantidadParticipantes
+  return Math.max(0, cantidadParticipantes - Math.min(conDiscapacidad, cantidadParticipantes))
+}
+
+/**
+ * Total de un gasto segun la cantidad de participantes.
+ * Los gastos por participante multiplican su monto unitario (sin las personas
+ * con discapacidad, si ese gasto no se les cobra).
+ */
+export function totalGasto(gasto: Gasto, cantidadParticipantes: number, conDiscapacidad = 0): number {
+  return gasto.porParticipante
+    ? gasto.monto * personasQuePagan(gasto, cantidadParticipantes, conDiscapacidad)
+    : gasto.monto
+}
+
+/**
+ * "× 119 confirmados" o, si el gasto no se cobra a las personas con
+ * discapacidad, "× 117 confirmados (2 con discapacidad no pagan)".
+ */
+export function detallePersonas(
+  gasto: Pick<Gasto, "cobraDiscapacidad">,
+  cantidadParticipantes: number,
+  conDiscapacidad = 0,
+  palabra = "confirmados",
+): string {
+  const pagan = personasQuePagan(gasto, cantidadParticipantes, conDiscapacidad)
+  const descontados = cantidadParticipantes - pagan
+  if (descontados === 0) return `× ${cantidadParticipantes} ${palabra}`
+  return `× ${pagan} ${palabra} (${descontados} con discapacidad no paga${descontados === 1 ? "" : "n"})`
 }
 
 /**

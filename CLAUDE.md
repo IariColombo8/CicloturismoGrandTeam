@@ -140,6 +140,8 @@ public.inscripciones         -> datos personales, pago, estado (tabla nueva)
 public.participantes         -> nombre, apellido, dni, email, categoria, checked_in
   comprobante_nota: por que la inscripcion llego sin comprobante (vacio = todo bien).
     Lo escribe /api/inscripcion/submit y se ve en /admin/registro-inscripciones.
+  discapacidad (BOOLEAN, default false): persona con discapacidad. No se paga por ella
+    ningun gasto por persona con cobra_discapacidad = false (ver "Personas con discapacidad").
 public.remera                -> dni, nombre, telefono, items (JSONB), estado, envio_tipo
   items = [{talle: "M", cantidad: 1}, ...]
   estado: "pendiente" | "entregado"
@@ -147,6 +149,8 @@ public.remera                -> dni, nombre, telefono, items (JSONB), estado, en
 public.content_settings      -> id (PK texto), data (JSONB)
   id puede ser: "remera" | "sponsors" | "fotos" | "contacto" | "confirmacion"
 public.gastos                -> descripcion, monto, categoria, estado, aprobado_por
+  cobra_discapacidad (BOOLEAN, default true): en un gasto por participante, false = no se
+    paga por las personas con discapacidad. El "Viejo Molino" ($10.000 x persona) va en false.
 public.ingresos              -> descripcion, monto, categoria, estado, fecha, items (JSONB)
   items = acreditaciones que componen el ingreso ([{id, fecha, monto, nota}]), y `monto`
     es su suma. Lo usa el acumulador "Comisiones de Naranja X" (categoria 'comision');
@@ -707,9 +711,13 @@ colores ni vuelve a dibujar tarjetas**.
 - La cuenta de la estimacion es `lib/finanzas/estimacion.ts` (pura, con test). **La misma
   funcion la usan la tarjeta en pantalla y el PDF**: antes de separarla, el PDF podia
   decir otro numero que la pantalla desde la que se descargo.
-- El boton "PDF de esta cantidad" pregunta si hay que **tener en cuenta las inscripciones
-  gratis**: no pagan (salen de lo que entra) pero igual comen y llevan remera (siguen en
-  los gastos por participante). Si no hay ninguna gratis cargada, no pregunta nada. El
+- **En pantalla separa a la gente en tres**: los que pagan la inscripcion, los **gratis**
+  (no pagan los $25.000 pero cuentan en todos los gastos por persona) y las **personas con
+  discapacidad** (no cuentan en los gastos con `cobra_discapacidad = false`, como el lugar),
+  con la lista de gastos por persona y por cuantos se paga cada uno.
+- El boton "PDF de esta cantidad" pregunta si hay que **tener en cuenta los gratis y las
+  personas con discapacidad** (como en pantalla) o calcular como si todos pagaran todo. Si
+  no hay ninguno cargado, no pregunta nada. El
   criterio elegido **queda escrito en el PDF**, para que un mes despues se entienda de
   donde salio el numero.
 - Los dos informes separan `armar...PDF` (devuelve el `doc`) de `exportar...PDF` (lo
@@ -768,6 +776,26 @@ el total, "Rechazadas" casi siempre 0, y lo que se mira es quien pago. Las dos d
 raros ("Pagaron otro monto", "Pago de otra forma") **aparecen solo si hay alguno**, y
 recien ahi se arma una segunda pagina con sus puntos y flechas. El estado de la
 inscripcion sigue estando en el badge de cada fila y en el filtro.
+
+### Personas con discapacidad (no pagan el lugar del evento)
+
+El Viejo Molino no cobra la entrada por las personas con discapacidad; el seguro, la
+bolsita y lo demas si (`20261025_personas_con_discapacidad.sql`).
+
+- **Se marca en el bloque de Pago** del modal de `/admin/registro-inscripciones` ("Persona
+  con discapacidad"), **aparte** de la opcion de pago: puede pagar los $25.000, ser gratis,
+  etc. Se guarda en `participantes.discapacidad`. La palabra es "persona con discapacidad",
+  nunca "discapacitado".
+- **Cada gasto por persona dice si se paga por ellas** ("¿Las personas con discapacidad
+  pagan esto?"): en el alta y en el detalle del gasto de `/admin/gastos`, que se puede
+  cambiar en produccion. Se guarda en `gastos.cobra_discapacidad`.
+- La cuenta es `totalGasto(gasto, confirmados, conDiscapacidad)` / `personasQuePagan()` en
+  `app/admin/gastos/tipos.ts`, y la usan todas las pantallas, el PDF/Excel y
+  `lib/finanzas/saldoEsperado.ts`. El detalle dice "× 117 confirmados (2 con discapacidad no
+  pagan)".
+- **En el registro van en la misma tarjeta que los gratis** ("Gratis · Con discapacidad",
+  a pedido: no en otra tarjeta), con "ver" para la lista. Tienen badge propio en la grilla
+  y filtro "Con discapacidad".
 
 ### Dashboard Admin
 

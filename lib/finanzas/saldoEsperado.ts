@@ -52,10 +52,10 @@ export async function calcularSaldoEsperado(): Promise<SaldoEsperado | null> {
       supabase.from("event_settings").select("precio").eq("id", "eventSettings").maybeSingle(),
       supabase
         .from("participantes")
-        .select("estado, monto_pagado, pago_estado")
+        .select("estado, monto_pagado, pago_estado, discapacidad")
         .contains("anios", [EDICION_ACTUAL]),
       supabase.from("ingresos").select("monto, estado"),
-      supabase.from("gastos").select("monto, estado, pagado, por_participante"),
+      supabase.from("gastos").select("monto, estado, pagado, por_participante, cobra_discapacidad"),
     ])
 
     const precio =
@@ -65,16 +65,19 @@ export async function calcularSaldoEsperado(): Promise<SaldoEsperado | null> {
       estado: string
       monto_pagado: number | null
       pago_estado: string | null
+      discapacidad: boolean | null
     }[]
 
     let inscripcionesConfirmadas = 0
     let inscripcionesPendientes = 0
     let confirmados = 0
+    let confirmadosConDiscapacidad = 0
     let pendientes = 0
 
     for (const p of participantes) {
       if (p.estado === "confirmada") {
         confirmados += 1
+        if (p.discapacidad === true) confirmadosConDiscapacidad += 1
         // Una inscripcion confirmada pero impaga, gratis, o pagada de una forma
         // que no entro a la caja ("otro") no aporta plata a la cuenta.
         if (
@@ -101,11 +104,16 @@ export async function calcularSaldoEsperado(): Promise<SaldoEsperado | null> {
       estado: string
       pagado: boolean | null
       por_participante: boolean | null
+      cobra_discapacidad: boolean | null
     }[]
+    // Mismo criterio que totalGasto() del panel: un gasto por persona que no se
+    // cobra a las personas con discapacidad (el lugar) no las cuenta.
+    const personas = (g: (typeof gastos)[number]) =>
+      g.cobra_discapacidad === false ? confirmados - confirmadosConDiscapacidad : confirmados
     const gastosPagados = gastos
       .filter((g) => g.estado === "aprobado" && g.pagado)
       .reduce(
-        (suma, g) => suma + Number(g.monto || 0) * (g.por_participante ? confirmados : 1),
+        (suma, g) => suma + Number(g.monto || 0) * (g.por_participante ? personas(g) : 1),
         0
       )
 

@@ -27,6 +27,8 @@ interface CalculadoraCajaProps {
   gastos: Gasto[]
   ingresos: Ingreso[]
   confirmados: number
+  /** Confirmados con discapacidad (no pagan los gastos que no se les cobran). */
+  conDiscapacidad?: number
   ingresoInscripciones: number
   ingresoInscripcionesProyectado: number
   /** Como se componen las inscripciones: quien pago el precio, quien otro monto, quien no pago. */
@@ -42,6 +44,7 @@ export function CalculadoraCaja({
   gastos,
   ingresos,
   confirmados,
+  conDiscapacidad = 0,
   ingresoInscripciones,
   ingresoInscripcionesProyectado,
   desglosePagos,
@@ -164,11 +167,11 @@ export function CalculadoraCaja({
         id: `gasto-${g.id}`,
         label: g.descripcion,
         detalle: g.categoria,
-        monto: totalGasto(g, confirmados),
+        monto: totalGasto(g, confirmados, conDiscapacidad),
         defaultChecked: g.pagado,
         etiqueta: g.pagado ? undefined : "Aún no se pagó",
       }))
-  }, [gastos, confirmados])
+  }, [gastos, confirmados, conDiscapacidad])
 
   const [marcadosEntra, setMarcadosEntra] = useState<Set<string> | null>(null)
   const [marcadosSale, setMarcadosSale] = useState<Set<string> | null>(null)

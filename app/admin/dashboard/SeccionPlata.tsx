@@ -43,12 +43,12 @@ export function SeccionPlata({ precio, habilitado }: { precio: number; habilitad
     for (const gasto of gastos) {
       if (gasto.estado !== "aprobado") continue
       const categoria = (gasto.categoria || "sin categoría").trim()
-      mapa.set(categoria, (mapa.get(categoria) ?? 0) + totalGasto(gasto, resumen.confirmados))
+      mapa.set(categoria, (mapa.get(categoria) ?? 0) + totalGasto(gasto, resumen.confirmados, resumen.conDiscapacidad.length))
     }
     return [...mapa.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([categoria, monto]) => ({ categoria, monto }))
-  }, [gastos, resumen.confirmados])
+  }, [gastos, resumen.confirmados, resumen.conDiscapacidad])
 
   // Cada situacion de pago, con los nombres detras del boton "ver".
   const filasPago: { conteo: Conteo; monto: number; nota?: string }[] = [

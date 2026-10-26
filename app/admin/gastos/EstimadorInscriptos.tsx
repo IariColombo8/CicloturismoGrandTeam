@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Calculator, TrendingUp, TrendingDown, Scale, ChevronDown, FileText } from "lucide-react"
-import { calcularEstimacion } from "@/lib/finanzas/estimacion"
+import { calcularEstimacion, personasDelGasto } from "@/lib/finanzas/estimacion"
 import { exportarEstimacionPDF } from "./exportEstimacion"
 import { formatARS, mensajeError, type Gasto } from "./tipos"
 
@@ -28,15 +28,18 @@ interface EstimadorInscriptosProps {
   inscriptosActuales: number
   /** Inscripciones sin cargo ya cargadas (confirmadas con pago "gratis"). */
   gratis: number
+  /** Confirmados con discapacidad: no pagan los gastos que no se les cobran (el lugar). */
+  conDiscapacidad?: number
 }
 
 /**
  * Simulador: si llegan a inscribirse N personas, ¿cuanto entra, cuanto sale y cual es el neto?
  * Se calcula sobre gastos aprobados + pendientes (peor caso realista, sin contar rechazados).
  *
- * El boton de PDF baja el mismo informe para esa cantidad proyectada, y antes
- * pregunta si hay que tener en cuenta las inscripciones gratis (que no pagan,
- * pero igual comen y llevan remera).
+ * En pantalla se separa a la gente en tres: los que pagan la inscripcion, los
+ * gratis (no pagan, pero cuentan en todos los gastos por persona) y las
+ * personas con discapacidad (no cuentan en los gastos que no se les cobran,
+ * como el lugar del evento). El PDF pregunta si tenerlos en cuenta.
  */
 export function EstimadorInscriptos({
   gastos,
@@ -45,17 +48,17 @@ export function EstimadorInscriptos({
   ingresosPorCobrar,
   inscriptosActuales,
   gratis,
+  conDiscapacidad = 0,
 }: EstimadorInscriptosProps) {
   const { toast } = useToast()
   const [abierto, setAbierto] = useState(false)
   const [cantidadTexto, setCantidadTexto] = useState(String(inscriptosActuales || 150))
-  const [preguntarGratis, setPreguntarGratis] = useState(false)
+  const [preguntarEspeciales, setPreguntarEspeciales] = useState(false)
   const [generando, setGenerando] = useState(false)
 
   const cantidad = Math.max(0, Number.parseInt(cantidadTexto, 10) || 0)
+  const hayEspeciales = gratis > 0 || conDiscapacidad > 0
 
-  // En pantalla se muestra la cuenta simple (todos pagan); el PDF pregunta si
-  // hay que descontar las gratis.
   const est = useMemo(
     () =>
       calcularEstimacion({
@@ -65,9 +68,17 @@ export function EstimadorInscriptos({
         ingresosCobrados,
         ingresosPorCobrar,
         gratis,
-        contarGratis: false,
+        contarGratis: true,
+        conDiscapacidad,
+        contarDiscapacidad: true,
       }),
-    [cantidad, precioBase, gastos, ingresosCobrados, ingresosPorCobrar, gratis],
+    [cantidad, precioBase, gastos, ingresosCobrados, ingresosPorCobrar, gratis, conDiscapacidad],
+  )
+
+  // Gastos por persona vigentes, con por cuantos se paga cada uno.
+  const gastosPorPersona = useMemo(
+    () => gastos.filter((g) => g.porParticipante && g.estado !== "rechazado"),
+    [gastos],
   )
 
   const estado =
@@ -77,8 +88,8 @@ export function EstimadorInscriptos({
         ? { color: "text-yellow-400", borde: "border-yellow-400/40", bg: "bg-yellow-400/10" }
         : { color: "text-red-500", borde: "border-red-500/40", bg: "bg-red-500/10" }
 
-  const descargar = async (contarGratis: boolean) => {
-    setPreguntarGratis(false)
+  const descargar = async (contar: boolean) => {
+    setPreguntarEspeciales(false)
     setGenerando(true)
     try {
       await exportarEstimacionPDF({
@@ -88,7 +99,9 @@ export function EstimadorInscriptos({
         ingresosCobrados,
         ingresosPorCobrar,
         gratis,
-        contarGratis,
+        contarGratis: contar,
+        conDiscapacidad,
+        contarDiscapacidad: contar,
       })
     } catch (err) {
       console.error("Error generando el PDF de la estimación:", mensajeError(err), err)
@@ -107,12 +120,12 @@ export function EstimadorInscriptos({
       })
       return
     }
-    // Sin inscripciones gratis no hay nada que preguntar.
-    if (gratis === 0) {
+    // Sin gratis ni personas con discapacidad no hay nada que preguntar.
+    if (!hayEspeciales) {
       descargar(false)
       return
     }
-    setPreguntarGratis(true)
+    setPreguntarEspeciales(true)
   }
 
   return (
@@ -166,14 +179,9 @@ export function EstimadorInscriptos({
                 </p>
                 <p className="text-2xl font-bold text-green-500">+{formatARS(est.entra)}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {cantidad} × {formatARS(precioBase)} inscripción
+                  {est.pagan} × {formatARS(precioBase)} inscripción
                   {est.entraOtros > 0 && <> + {formatARS(est.entraOtros)} otros ingresos</>}
                 </p>
-                {gratis > 0 && (
-                  <p className="text-[10px] text-gray-500 mt-1">
-                    No descuenta las {gratis} sin cargo (el PDF te pregunta).
-                  </p>
-                )}
               </div>
 
               <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
@@ -182,8 +190,7 @@ export function EstimadorInscriptos({
                 </p>
                 <p className="text-2xl font-bold text-red-400">-{formatARS(est.sale)}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {formatARS(est.gastosFijos)} fijos + {formatARS(est.montoPorParticipante)} ×{" "}
-                  {cantidad} por participante
+                  {formatARS(est.gastosFijos)} fijos + {formatARS(est.gastosVariables)} por persona
                 </p>
               </div>
 
@@ -198,32 +205,84 @@ export function EstimadorInscriptos({
                 <p className={`text-xs font-semibold mt-1 ${estado.color}`}>{est.veredicto}</p>
               </div>
             </div>
+
+            {/* Quien paga que: la cuenta de arriba, separada por grupo. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="rounded-lg border border-gray-700 bg-gray-700/30 p-3 space-y-2">
+                <p className="text-gray-300 font-semibold">La gente ({cantidad})</p>
+                <p className="text-gray-400">
+                  <span className="text-white font-semibold">{est.pagan}</span> pagan la inscripción
+                  ({formatARS(precioBase)}) = {formatARS(est.entraInscripciones)}
+                </p>
+                <p className="text-gray-400">
+                  <span className="text-blue-300 font-semibold">{est.gratisDescontados}</span> gratis: no
+                  pagan la inscripción, pero cuentan en todos los gastos por persona (lugar, seguro y
+                  lo demás).
+                </p>
+                <p className="text-gray-400">
+                  <span className="text-teal-300 font-semibold">{est.discapacidadDescontados}</span> con
+                  discapacidad: no se paga por ellas el lugar del evento
+                  {est.montoNoCobraDiscapacidad > 0 &&
+                    ` (${formatARS(est.montoNoCobraDiscapacidad)} c/u = ${formatARS(est.ahorroDiscapacidad)} menos)`}
+                  ; el seguro y lo demás sí. La inscripción la pagan según lo cargado (si son gratis,
+                  ya están en los gratis).
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Gratis y personas con discapacidad salen de los confirmados de hoy.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-700 bg-gray-700/30 p-3 space-y-1.5">
+                <p className="text-gray-300 font-semibold">Gastos por persona</p>
+                {gastosPorPersona.length === 0 ? (
+                  <p className="text-gray-500">No hay gastos por persona cargados.</p>
+                ) : (
+                  gastosPorPersona.map((g) => {
+                    const personas = personasDelGasto(g, est)
+                    return (
+                      <div key={g.id} className="flex items-start justify-between gap-2">
+                        <span className="text-gray-400 min-w-0">
+                          {g.descripcion}{" "}
+                          <span className="text-gray-500">
+                            {formatARS(g.monto)} × {personas}
+                            {personas < cantidad && " (sin las personas con discapacidad)"}
+                          </span>
+                        </span>
+                        <span className="text-red-400 font-semibold whitespace-nowrap">
+                          {formatARS(g.monto * personas)}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* La pregunta del PDF: las gratis no pagan, pero igual cuestan. */}
-      <Dialog open={preguntarGratis} onOpenChange={setPreguntarGratis}>
+      {/* La pregunta del PDF: gratis y personas con discapacidad. */}
+      <Dialog open={preguntarEspeciales} onOpenChange={setPreguntarEspeciales}>
         <DialogContent className="bg-gray-800 border-yellow-400/30 max-w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-yellow-400">
-              ¿Tener en cuenta las inscripciones gratis?
+              ¿Tener en cuenta los gratis y las personas con discapacidad?
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Hay {gratis} inscripci{gratis === 1 ? "ón" : "ones"} sin cargo. En los{" "}
-              {cantidad} que proyectás pueden contarse de dos formas.
+              En los {cantidad} que proyectás hay {gratis} gratis y {conDiscapacidad} con
+              discapacidad. Pueden contarse de dos formas.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2 text-sm">
             <p className="rounded-lg border border-gray-700 bg-gray-700/40 p-3 text-gray-300">
-              <span className="font-semibold text-white">Tenerlas en cuenta:</span> {gratis} de los{" "}
-              {cantidad} no pagan la inscripción, pero igual comen y llevan remera, así que siguen
-              contando en los gastos por persona.
+              <span className="font-semibold text-white">Tenerlos en cuenta (como en pantalla):</span>{" "}
+              los gratis no pagan la inscripción pero cuentan en los gastos por persona; por las
+              personas con discapacidad no se paga el lugar del evento.
             </p>
             <p className="rounded-lg border border-gray-700 bg-gray-700/40 p-3 text-gray-300">
-              <span className="font-semibold text-white">No tenerlas en cuenta:</span> se calcula
-              como si los {cantidad} pagaran el precio de lista.
+              <span className="font-semibold text-white">No tenerlos en cuenta:</span> se calcula
+              como si los {cantidad} pagaran el precio de lista y todos los gastos por persona.
             </p>
           </div>
 
@@ -239,7 +298,7 @@ export function EstimadorInscriptos({
               className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700"
               onClick={() => descargar(true)}
             >
-              Sí, tenerlas en cuenta
+              Sí, tenerlos en cuenta
             </Button>
           </DialogFooter>
         </DialogContent>

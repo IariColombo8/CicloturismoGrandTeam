@@ -6,20 +6,29 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Eye, Users, CircleDollarSign } from "lucide-react"
 import { Paginacion } from "./Paginacion"
-import { formatARS, totalGasto, type Gasto } from "./tipos"
+import { formatARS, personasQuePagan, totalGasto, type Gasto } from "./tipos"
 
 const PAGE_SIZE = 15
 
 interface GastosTableProps {
   gastos: Gasto[]
   confirmados: number
+  /** Confirmados con discapacidad (no pagan los gastos que no se les cobran). */
+  conDiscapacidad?: number
   onView: (gasto: Gasto) => void
   /** Badge del estado del gasto: dice "Pagado" o "Por pagar". */
   getStatusBadge: (gasto: Gasto) => React.ReactNode
   onTogglePagado?: (gasto: Gasto) => void
 }
 
-export function GastosTable({ gastos, confirmados, onView, getStatusBadge, onTogglePagado }: GastosTableProps) {
+export function GastosTable({
+  gastos,
+  confirmados,
+  conDiscapacidad = 0,
+  onView,
+  getStatusBadge,
+  onTogglePagado,
+}: GastosTableProps) {
   const [page, setPage] = useState(1)
   const pageItems = gastos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
@@ -61,10 +70,13 @@ export function GastosTable({ gastos, confirmados, onView, getStatusBadge, onTog
                 </TableCell>
                 <TableCell className="text-gray-400 capitalize hidden sm:table-cell">{gasto.categoria}</TableCell>
                 <TableCell className="text-white font-bold text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4 py-2">
-                  {formatARS(totalGasto(gasto, confirmados))}
+                  {formatARS(totalGasto(gasto, confirmados, conDiscapacidad))}
                   {gasto.porParticipante && (
                     <span className="block text-[10px] sm:text-xs font-normal text-gray-500">
-                      {formatARS(gasto.monto)} × {confirmados}
+                      {formatARS(gasto.monto)} × {personasQuePagan(gasto, confirmados, conDiscapacidad)}
+                      {personasQuePagan(gasto, confirmados, conDiscapacidad) < confirmados && (
+                        <span className="block whitespace-normal">sin las personas con discapacidad</span>
+                      )}
                     </span>
                   )}
                 </TableCell>

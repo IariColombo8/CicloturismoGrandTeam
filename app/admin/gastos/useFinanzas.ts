@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import type { DesglosePagos, EstadoPago, Gasto, Ingreso, InscripcionPago, Movimiento } from "./tipos"
 import {
+  detallePersonas,
   formatARS,
   montoCobrado,
   montoEsperado,
@@ -46,6 +47,13 @@ export interface ResumenFinanciero {
   confirmados: number
   /** Confirmadas + pendientes (proyeccion si todos confirman). */
   inscriptosTotales: number
+  /**
+   * Confirmados con discapacidad: no pagan los gastos por persona que no se
+   * les cobran (el lugar del evento). Lo que pagan de inscripcion va aparte.
+   */
+  conDiscapacidad: InscripcionPago[]
+  /** Lo mismo contando las pendientes, para las proyecciones. */
+  inscriptosConDiscapacidad: number
   /** Ingresos por inscripciones confirmadas. */
   ingresoInscripciones: number
   /** Ingresos por inscripciones si tambien pagaran las pendientes. */
@@ -88,6 +96,8 @@ function mapGasto(g: any): Gasto {
     descripcion: g.descripcion,
     monto: Number(g.monto) || 0,
     porParticipante: Boolean(g.por_participante),
+    // Sin la columna (o en NULL) se cobra por todos, como siempre.
+    cobraDiscapacidad: g.cobra_discapacidad !== false,
     categoria: g.categoria,
     estado: g.estado,
     pagado: g.pagado === false ? false : true,
@@ -134,6 +144,7 @@ function mapInscripcion(i: any): InscripcionPago {
     montoPagado: i.monto_pagado === null || i.monto_pagado === undefined ? null : Number(i.monto_pagado),
     pagoEstado,
     pagoNota: i.pago_nota ?? null,
+    discapacidad: i.discapacidad === true,
   }
 }
 
@@ -157,7 +168,7 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
         supabase.from("ingresos").select("*").order("fecha", { ascending: false }),
         supabase
           .from("participantes")
-          .select("id, nombre, apellido, dni, estado, monto_pagado, pago_estado, pago_nota")
+          .select("id, nombre, apellido, dni, estado, monto_pagado, pago_estado, pago_nota, discapacidad")
           .contains("anios", [EDICION_ACTUAL])
           .in("estado", [ESTADO_CONFIRMADA, ESTADO_PENDIENTE]),
         supabase
@@ -204,6 +215,9 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
     const confirmadas = inscripciones.filter((i) => i.estado === ESTADO_CONFIRMADA)
     const confirmados = confirmadas.length
     const inscriptosTotales = inscripciones.length
+    const conDiscapacidad = confirmadas.filter((i) => i.discapacidad)
+    const disc = conDiscapacidad.length
+    const inscriptosConDiscapacidad = inscripciones.filter((i) => i.discapacidad).length
 
     // Lo cobrado de verdad: las confirmadas que ademas estan marcadas pagadas.
     const ingresoInscripciones = confirmadas.reduce((sum, i) => sum + montoCobrado(i, precioBase), 0)
@@ -264,15 +278,15 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
     const aprobados = gastos.filter((g) => g.estado === "aprobado")
     const pendientes = gastos.filter((g) => g.estado === "pendiente")
 
-    const gastosAprobados = aprobados.reduce((sum, g) => sum + totalGasto(g, confirmados), 0)
+    const gastosAprobados = aprobados.reduce((sum, g) => sum + totalGasto(g, confirmados, disc), 0)
     const gastosAprobadosProyectado = aprobados.reduce(
-      (sum, g) => sum + totalGasto(g, inscriptosTotales),
+      (sum, g) => sum + totalGasto(g, inscriptosTotales, inscriptosConDiscapacidad),
       0,
     )
-    const gastosPendientes = pendientes.reduce((sum, g) => sum + totalGasto(g, confirmados), 0)
+    const gastosPendientes = pendientes.reduce((sum, g) => sum + totalGasto(g, confirmados, disc), 0)
     const gastosAprobadosPagados = aprobados
       .filter((g) => g.pagado)
-      .reduce((sum, g) => sum + totalGasto(g, confirmados), 0)
+      .reduce((sum, g) => sum + totalGasto(g, confirmados, disc), 0)
     const gastosAprobadosSinPagar = gastosAprobados - gastosAprobadosPagados
 
     const totalIngresos = ingresoInscripciones + ingresosCobrados
@@ -286,6 +300,8 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
     return {
       confirmados,
       inscriptosTotales,
+      conDiscapacidad,
+      inscriptosConDiscapacidad,
       ingresoInscripciones,
       ingresoInscripcionesProyectado,
       desglosePagos,
@@ -312,10 +328,10 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       tipo: "gasto",
       descripcion: g.descripcion,
       detalle: g.porParticipante
-        ? `${formatARS(g.monto)} por persona × ${resumen.confirmados} confirmados`
+        ? `${formatARS(g.monto)} por persona ${detallePersonas(g, resumen.confirmados, resumen.conDiscapacidad.length)}`
         : null,
       categoria: g.categoria,
-      monto: -totalGasto(g, resumen.confirmados),
+      monto: -totalGasto(g, resumen.confirmados, resumen.conDiscapacidad.length),
       estado: g.estado,
       fecha: g.fecha,
       origen: g,
@@ -436,7 +452,7 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
 
     // Pagado/cobrado arriba, por pagar/por cobrar abajo.
     return ordenarMovimientos([...deInscripciones, ...deIngresos, ...deGastos])
-  }, [gastos, ingresos, resumen.confirmados, resumen.desglosePagos, precioBase])
+  }, [gastos, ingresos, resumen.confirmados, resumen.conDiscapacidad, resumen.desglosePagos, precioBase])
 
   // Las listas salen ordenadas por situacion de pago: lo que ya se movio arriba
   // y lo que falta abajo. Dentro de cada grupo sigue mandando la fecha.

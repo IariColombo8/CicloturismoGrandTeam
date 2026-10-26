@@ -205,6 +205,8 @@ export default function GastosPage() {
               <p className="text-xs text-gray-500">
                 Precio base por inscripto: {formatARS(precioBase)} · {resumen.confirmados} confirmados de{" "}
                 {resumen.inscriptosTotales} inscriptos
+                {resumen.conDiscapacidad.length > 0 &&
+                  ` · ${resumen.conDiscapacidad.length} con discapacidad`}
               </p>
             </div>
           </div>
@@ -543,6 +545,7 @@ export default function GastosPage() {
               <GastosTable
                 gastos={gastos}
                 confirmados={resumen.confirmados}
+                conDiscapacidad={resumen.conDiscapacidad.length}
                 onView={setSelectedGasto}
                 getStatusBadge={getStatusBadge}
                 onTogglePagado={esAdmin ? handleTogglePagado : undefined}
@@ -582,6 +585,7 @@ export default function GastosPage() {
               <GastosTable
                 gastos={rechazados}
                 confirmados={resumen.confirmados}
+                conDiscapacidad={resumen.conDiscapacidad.length}
                 onView={setSelectedGasto}
                 getStatusBadge={getStatusBadge}
               />
@@ -609,6 +613,7 @@ export default function GastosPage() {
             gastos={gastos}
             ingresos={ingresos}
             confirmados={resumen.confirmados}
+            conDiscapacidad={resumen.conDiscapacidad.length}
             ingresoInscripciones={resumen.ingresoInscripciones}
             ingresoInscripcionesProyectado={resumen.ingresoInscripcionesProyectado}
             desglosePagos={resumen.desglosePagos}
@@ -622,6 +627,7 @@ export default function GastosPage() {
             ingresosPorCobrar={resumen.ingresosPorCobrar}
             inscriptosActuales={resumen.inscriptosTotales}
             gratis={resumen.desglosePagos.gratis.cantidad}
+            conDiscapacidad={resumen.conDiscapacidad.length}
           />
           {/* Notas de caja al final: se cargan en el registro de inscripciones
               y acá se leen (lo puntual de cada pago va en la nota del pago). */}
@@ -633,6 +639,7 @@ export default function GastosPage() {
           onOpenChange={setIsGastoModalOpen}
           esAdmin={esAdmin}
           confirmados={resumen.confirmados}
+          conDiscapacidad={resumen.conDiscapacidad.length}
           userEmail={user?.email || ""}
           userRole={userRole || ""}
           onGuardado={recargar}
@@ -651,6 +658,7 @@ export default function GastosPage() {
           onClose={() => setSelectedGasto(null)}
           esAdmin={esAdmin}
           confirmados={resumen.confirmados}
+          conDiscapacidad={resumen.conDiscapacidad.length}
           userEmail={user?.email || ""}
           getStatusBadge={getStatusBadge}
           onCambio={recargar}

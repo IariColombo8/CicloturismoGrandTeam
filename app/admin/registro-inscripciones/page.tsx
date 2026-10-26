@@ -37,6 +37,7 @@ import {
   Loader2,
   AlertTriangle,
   Gift,
+  Accessibility,
   MailX,
   StickyNote,
   FileText,
@@ -51,7 +52,8 @@ const INSCRIPCIONES_COLUMNS =
   "metodo_pago, numero_referencia, fecha_nacimiento, grupo_sanguineo, telefono, " +
   "tiene_alergias, alergias, tiene_problemas_salud, condicion_salud, comprobante_pago_url, " +
   "comprobante_nota, " +
-  "nota_estado, numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado, pago_nota"
+  "nota_estado, numero_inscripcion, fecha_inscripcion, token_qr, pago_estado, monto_pagado, pago_nota, " +
+  "discapacidad"
 
 // Respaldo temporal para bases que todavía tengan una vista, función o política
 // desactualizada que falle al resolver la ubicación. Permite que el administrador
@@ -84,7 +86,7 @@ interface FiltrosAvanzados {
   ciudad: string
   grupo: string
   sangre: string
-  /** all | sin-pagar | otro-precio | gratis | pagado | otra-forma */
+  /** all | sin-pagar | otro-precio | gratis | pagado | otra-forma | discapacidad */
   pago: string
   /** all | problemas | alergias | celiaco */
   salud: string
@@ -172,6 +174,14 @@ interface ResumenPagos {
   sinPagar: InscriptoSimple[]
   /** Confirmadas marcadas como gratis. */
   gratis: number
+  /** Quienes son gratis, para el modal de "ver". */
+  listaGratis: InscriptoSimple[]
+  /**
+   * Confirmadas de personas con discapacidad: no pagan el lugar del evento.
+   * Van en la misma tarjeta que las gratis (a pedido): son los dos casos de
+   * "no paga algo".
+   */
+  conDiscapacidad: InscriptoSimple[]
   /** Quienes pagaron un monto distinto al de lista, para que quede registrado. */
   distintos: PagoDistinto[]
   /** Pagaron de una forma que no entro a la caja (con su nota). */
@@ -185,6 +195,8 @@ const RESUMEN_PAGOS_VACIO: ResumenPagos = {
   faltaCobrar: 0,
   sinPagar: [],
   gratis: 0,
+  listaGratis: [],
+  conDiscapacidad: [],
   distintos: [],
   otraForma: [],
 }
@@ -273,6 +285,9 @@ export default function RegistroInscripciones() {
   // Aclaracion del pago cuando no es un monto en pesos ("Pago 700 uruguayos,
   // Lore nos transfiere esa plata").
   const [pagoNota, setPagoNota] = useState("")
+  // Persona con discapacidad: no se paga por ella el lugar del evento. Va
+  // aparte de la opcion de pago porque la inscripcion la puede pagar igual.
+  const [conDiscapacidad, setConDiscapacidad] = useState(false)
   const [openingComprobante, setOpeningComprobante] = useState<string | null>(null)
   const [comprobanteModal, setComprobanteModal] = useState<{
     url: string
@@ -375,6 +390,9 @@ export default function RegistroInscripciones() {
           case "otra-forma":
             query = query.eq("pago_estado", "otro")
             break
+          case "discapacidad":
+            query = query.eq("discapacidad", true)
+            break
         }
 
         switch (filtros.salud) {
@@ -476,6 +494,7 @@ export default function RegistroInscripciones() {
           pagoEstado: d.pago_estado ?? "pendiente",
           montoPagado: d.monto_pagado != null ? Number(d.monto_pagado) : null,
           pagoNota: d.pago_nota ?? null,
+          discapacidad: d.discapacidad === true,
         }))
       )
     },
@@ -510,7 +529,7 @@ export default function RegistroInscripciones() {
     // confirmadas, asi que la consulta sigue siendo liviana.
     const { data: pagosData, error: pagosError } = await supabase
       .from("participantes")
-      .select("id, nombre, apellido, dni, pago_estado, monto_pagado, pago_nota")
+      .select("id, nombre, apellido, dni, pago_estado, monto_pagado, pago_nota, discapacidad")
       .contains("anios", [EDICION_ACTUAL])
       .eq("estado", "confirmada")
 
@@ -526,6 +545,8 @@ export default function RegistroInscripciones() {
       faltaCobrar: 0,
       sinPagar: [],
       gratis: 0,
+      listaGratis: [],
+      conDiscapacidad: [],
       distintos: [],
       otraForma: [],
     }
@@ -533,8 +554,24 @@ export default function RegistroInscripciones() {
     for (const p of pagosData as any[]) {
       const nombreCompleto = `${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()
 
+      // Discapacidad es aparte del pago: se cuenta y despues sigue con lo que pago.
+      if (p.discapacidad === true) {
+        resumen.conDiscapacidad.push({
+          id: p.id,
+          nombre: nombreCompleto,
+          dni: p.dni ?? "",
+          nota: "Con discapacidad: no paga el lugar del evento",
+        })
+      }
+
       if (p.pago_estado === "gratis") {
         resumen.gratis += 1
+        resumen.listaGratis.push({
+          id: p.id,
+          nombre: nombreCompleto,
+          dni: p.dni ?? "",
+          nota: "Inscripción gratis",
+        })
         continue
       }
       // Pago que no entro a la caja: cuenta como "falta cobrar" pero se
@@ -886,6 +923,7 @@ export default function RegistroInscripciones() {
     // mostrando lo que realmente paso y no un default enganoso.
     const monto = insc.montoPagado != null ? Number(insc.montoPagado) : null
     setPagoNota(insc.pagoNota || "")
+    setConDiscapacidad(insc.discapacidad === true)
     if (insc.pagoEstado === "gratis") {
       setPagoOpcion("gratis")
       setMontoOtro("")
@@ -1155,6 +1193,8 @@ export default function RegistroInscripciones() {
           estado: newStatus,
           nota_estado: statusNote,
           ...(pago ?? {}),
+          // Se marca en el bloque de Pago, que solo se ve al confirmar.
+          ...(confirmandoAhora ? { discapacidad: conDiscapacidad } : {}),
         })
         .eq("id", selectedInscripcion.id)
 
@@ -1216,6 +1256,7 @@ export default function RegistroInscripciones() {
                       pagoEstado: pago.pago_estado,
                       montoPagado: pago.monto_pagado,
                       pagoNota: pago.pago_nota,
+                      discapacidad: conDiscapacidad,
                     }
                   : {}),
               }
@@ -1282,6 +1323,8 @@ export default function RegistroInscripciones() {
       query = query.eq("pago_estado", "pagado")
     } else if (f.pago === "otra-forma") {
       query = query.eq("pago_estado", "otro")
+    } else if (f.pago === "discapacidad") {
+      query = query.eq("discapacidad", true)
     }
 
     if (f.salud === "problemas") query = query.in("tiene_problemas_salud", ["si", "true"])
@@ -1315,6 +1358,7 @@ export default function RegistroInscripciones() {
               : "Falta pagar",
       "Monto Pagado": d.monto_pagado != null ? Number(d.monto_pagado) : "",
       "Nota del Pago": d.pago_nota || "",
+      Discapacidad: d.discapacidad === true ? "Si" : "",
       Nota: d.nota_estado || "",
       "Fecha Inscripcion": d.fecha_inscripcion
         ? new Date(d.fecha_inscripcion).toLocaleDateString("es-AR")
@@ -1371,13 +1415,31 @@ export default function RegistroInscripciones() {
           setCurrentPage(1)
         },
       },
+      // Gratis y personas con discapacidad en la misma tarjeta (a pedido, no
+      // en otra): son los dos casos de "no paga algo". Si hay alguna persona
+      // con discapacidad, el numero muestra los dos ("3 · 2").
       {
         id: "gratis",
-        titulo: "Gratis",
-        valor: resumenPagos.gratis,
+        titulo: resumenPagos.conDiscapacidad.length > 0 ? "Gratis · Con discapacidad" : "Gratis",
+        valor:
+          resumenPagos.conDiscapacidad.length > 0
+            ? `${resumenPagos.gratis} · ${resumenPagos.conDiscapacidad.length}`
+            : resumenPagos.gratis,
         icono: Gift,
         color: "text-blue-400",
-        pie: "sin cargo",
+        pie:
+          resumenPagos.conDiscapacidad.length > 0
+            ? "sin cargo · sin el lugar"
+            : "sin cargo",
+        onVer:
+          resumenPagos.listaGratis.length + resumenPagos.conDiscapacidad.length > 0
+            ? () =>
+                setListaModal({
+                  titulo: "Gratis y con discapacidad",
+                  descripcion: `${resumenPagos.gratis} gratis (no pagan la inscripción) · ${resumenPagos.conDiscapacidad.length} con discapacidad (no pagan el lugar del evento)`,
+                  items: [...resumenPagos.listaGratis, ...resumenPagos.conDiscapacidad],
+                })
+            : undefined,
       },
     ]
 
@@ -1704,6 +1766,7 @@ export default function RegistroInscripciones() {
                       { v: "otro-precio", t: "Pagaron otro precio" },
                       { v: "otra-forma", t: "Pagaron de otra forma" },
                       { v: "gratis", t: "Inscripcion gratis" },
+                      { v: "discapacidad", t: "Con discapacidad" },
                       { v: "pagado", t: "Pagados" },
                     ],
                   },
@@ -1862,6 +1925,15 @@ export default function RegistroInscripciones() {
                         <div className="flex flex-row sm:flex-col items-center sm:items-start gap-1">
                           {getStatusBadge(insc.estado)}
                           {insc.estado === "confirmada" && getPagoBadge(insc)}
+                          {insc.discapacidad && (
+                            <span
+                              title="Persona con discapacidad: no paga el lugar del evento"
+                              className="inline-flex items-center gap-1 rounded-full text-[10px] font-semibold px-1.5 py-0.5 sm:px-2 border bg-teal-500/15 text-teal-300 border-teal-500/30"
+                            >
+                              <Accessibility className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                              <span className="sr-only">Persona con discapacidad</span>
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-2 py-3 sm:px-4 text-right">
@@ -2312,6 +2384,31 @@ export default function RegistroInscripciones() {
                                   ? "Queda registrado que pagó, con tu nota, pero no suma plata a la caja hasta que lo pases a «Pagó $…» u «otro monto»."
                                   : "Precio de lista actual del evento."}
                         </p>
+
+                        {/* Va aparte de la opcion de pago: una persona con
+                            discapacidad puede pagar la inscripcion, ser
+                            gratis, etc. Lo unico que cambia es que por ella
+                            no se paga el lugar del evento. */}
+                        <button
+                          type="button"
+                          onClick={() => setConDiscapacidad((v) => !v)}
+                          aria-pressed={conDiscapacidad}
+                          className={`mt-3 w-full flex items-start gap-2 px-3 py-2 rounded-lg border text-sm text-left transition-all ${
+                            conDiscapacidad
+                              ? "bg-teal-400/10 border-teal-400/50 text-teal-300 font-semibold"
+                              : "bg-zinc-900 border-zinc-700 text-gray-300 hover:border-teal-400/30"
+                          }`}
+                        >
+                          <Accessibility className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                          <span>
+                            Persona con discapacidad
+                            <span className="block text-xs font-normal text-gray-500">
+                              {conDiscapacidad
+                                ? "Sí. No se paga por ella el lugar del evento; el seguro y lo demás, sí."
+                                : "Tocá si tiene discapacidad: no se paga por ella el lugar del evento."}
+                            </span>
+                          </span>
+                        </button>
                       </div>
                     )}
 
@@ -2430,7 +2527,7 @@ export default function RegistroInscripciones() {
               <ol className="overflow-y-auto p-3 sm:p-4 space-y-1.5">
                 {listaModal.items.map((item, i) => (
                   <li
-                    key={item.id}
+                    key={`${item.id}-${i}`}
                     className="flex items-start gap-2 bg-zinc-800/50 border border-yellow-400/10 rounded-lg px-3 py-2"
                   >
                     <span className="text-xs text-gray-500 w-5 flex-shrink-0 pt-0.5">{i + 1}.</span>

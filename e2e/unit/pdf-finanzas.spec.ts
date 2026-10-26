@@ -23,6 +23,7 @@ function gasto(parcial: Partial<Gasto> & { descripcion: string }): Gasto {
     id: parcial.descripcion,
     monto: 100000,
     porParticipante: false,
+    cobraDiscapacidad: true,
     categoria: "logistica",
     estado: "aprobado",
     pagado: true,
@@ -98,6 +99,7 @@ function inscripcion(nombre: string, extra: Partial<InscripcionPago> = {}): Insc
     montoPagado: PRECIO,
     pagoEstado: "pagado",
     pagoNota: null,
+    discapacidad: false,
     ...extra,
   }
 }
@@ -105,6 +107,8 @@ function inscripcion(nombre: string, extra: Partial<InscripcionPago> = {}): Insc
 const RESUMEN: ResumenFinanciero = {
   confirmados: 40,
   inscriptosTotales: 52,
+  conDiscapacidad: [],
+  inscriptosConDiscapacidad: 0,
   ingresoInscripciones: 38 * PRECIO,
   ingresoInscripcionesProyectado: 52 * PRECIO,
   desglosePagos: {
@@ -215,6 +219,8 @@ test("sin gastos ni ingresos no explota (evento recién arrancado)", async () =>
     ...RESUMEN,
     confirmados: 0,
     inscriptosTotales: 0,
+    conDiscapacidad: [],
+    inscriptosConDiscapacidad: 0,
     ingresoInscripciones: 0,
     desglosePagos: {
       precioLista: { cantidad: 0, total: 0 },

@@ -1,9 +1,16 @@
 import { test, expect } from "@playwright/test"
 import {
   calcularEstimacion,
+  personasDelGasto,
   type EntradaEstimacion,
   type GastoEstimado,
 } from "@/lib/finanzas/estimacion"
+import {
+  detallePersonas,
+  personasQuePagan,
+  totalGasto,
+  type Gasto,
+} from "@/app/admin/gastos/tipos"
 
 const FIJO = (monto: number, estado = "aprobado"): GastoEstimado => ({
   monto,
@@ -131,5 +138,72 @@ test.describe("datos derivados", () => {
 
   test("una cantidad con decimales se trunca a personas enteras", () => {
     expect(calcularEstimacion(entrada({ cantidad: 10.9 })).cantidad).toBe(10)
+  })
+})
+
+test.describe("personas con discapacidad", () => {
+  // El lugar del evento no les cobra; el seguro y lo demas si.
+  const LUGAR: GastoEstimado = { monto: 10000, porParticipante: true, estado: "aprobado", cobraDiscapacidad: false }
+  const SEGURO: GastoEstimado = { monto: 820, porParticipante: true, estado: "aprobado" }
+
+  test("no se paga el lugar por ellas, pero si el seguro", () => {
+    const est = calcularEstimacion(
+      entrada({ gastos: [LUGAR, SEGURO], conDiscapacidad: 2, contarDiscapacidad: true }),
+    )
+    expect(est.discapacidadDescontados).toBe(2)
+    expect(est.ahorroDiscapacidad).toBe(2 * 10000)
+    expect(est.gastosVariables).toBe(98 * 10000 + 100 * 820)
+    expect(personasDelGasto(LUGAR, est)).toBe(98)
+    expect(personasDelGasto(SEGURO, est)).toBe(100)
+  })
+
+  test("no cambian lo que entra: la inscripcion depende de su pago", () => {
+    const sin = calcularEstimacion(entrada({ gastos: [LUGAR] }))
+    const con = calcularEstimacion(entrada({ gastos: [LUGAR], conDiscapacidad: 3, contarDiscapacidad: true }))
+    expect(con.entra).toBe(sin.entra)
+    expect(sin.sale - con.sale).toBe(3 * 10000)
+  })
+
+  test("gratis y con discapacidad se cuentan cada uno por su lado", () => {
+    const est = calcularEstimacion(
+      entrada({
+        gastos: [LUGAR, SEGURO],
+        gratis: 5,
+        contarGratis: true,
+        conDiscapacidad: 2,
+        contarDiscapacidad: true,
+      }),
+    )
+    // Los gratis no pagan la inscripcion pero si el lugar.
+    expect(est.pagan).toBe(95)
+    expect(est.entraInscripciones).toBe(95 * 25000)
+    expect(est.gastosVariables).toBe(98 * 10000 + 100 * 820)
+  })
+
+  test("sin tenerlas en cuenta se paga todo por todos", () => {
+    const est = calcularEstimacion(
+      entrada({ gastos: [LUGAR], conDiscapacidad: 2, contarDiscapacidad: false }),
+    )
+    expect(est.discapacidadDescontados).toBe(0)
+    expect(est.gastosVariables).toBe(100 * 10000)
+  })
+
+  test("nunca se descuentan mas personas que las proyectadas", () => {
+    const est = calcularEstimacion(
+      entrada({ cantidad: 1, gastos: [LUGAR], conDiscapacidad: 5, contarDiscapacidad: true }),
+    )
+    expect(est.discapacidadDescontados).toBe(1)
+    expect(est.gastosVariables).toBe(0)
+  })
+
+  test("en el panel, el total del gasto tambien las descuenta", () => {
+    const base = { porParticipante: true, monto: 10000 } as const
+    expect(totalGasto({ ...base, cobraDiscapacidad: false } as Gasto, 119, 2)).toBe(117 * 10000)
+    expect(totalGasto({ ...base, cobraDiscapacidad: true } as Gasto, 119, 2)).toBe(119 * 10000)
+    expect(personasQuePagan({ cobraDiscapacidad: false }, 3, 10)).toBe(0)
+    expect(detallePersonas({ cobraDiscapacidad: false }, 119, 2)).toBe(
+      "× 117 confirmados (2 con discapacidad no pagan)",
+    )
+    expect(detallePersonas({ cobraDiscapacidad: false }, 119, 0)).toBe("× 119 confirmados")
   })
 })

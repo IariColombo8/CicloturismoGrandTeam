@@ -19,12 +19,14 @@ import { useToast } from "@/hooks/use-toast"
 import { claveBorrador, useBorradorFormulario } from "@/hooks/useBorradorFormulario"
 import BannerBorrador from "@/components/admin/BannerBorrador"
 import DialogoSalirSinGuardar from "@/components/admin/DialogoSalirSinGuardar"
-import { formatARS, mensajeError, parseMonto } from "./tipos"
+import { detallePersonas, formatARS, mensajeError, parseMonto, personasQuePagan } from "./tipos"
 
 interface BorradorGasto {
   descripcion: string
   monto: string
   porParticipante: boolean
+  /** Opcional: los borradores de antes no lo tenian (= se cobra por todos). */
+  cobraDiscapacidad?: boolean
   categoria: string
 }
 
@@ -33,6 +35,8 @@ interface GastoFormModalProps {
   onOpenChange: (open: boolean) => void
   esAdmin: boolean
   confirmados: number
+  /** Confirmados con discapacidad, para la vista previa del total. */
+  conDiscapacidad?: number
   userEmail: string
   userRole: string
   onGuardado: () => Promise<void>
@@ -43,6 +47,7 @@ export function GastoFormModal({
   onOpenChange,
   esAdmin,
   confirmados,
+  conDiscapacidad = 0,
   userEmail,
   userRole,
   onGuardado,
@@ -52,18 +57,23 @@ export function GastoFormModal({
   const [descripcion, setDescripcion] = useState("")
   const [monto, setMonto] = useState("")
   const [porParticipante, setPorParticipante] = useState(false)
+  // true = tambien se paga por las personas con discapacidad (lo normal).
+  const [cobraDiscapacidad, setCobraDiscapacidad] = useState(true)
   const [categoria, setCategoria] = useState("equipamiento")
   const [comprobante, setComprobante] = useState<File | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [confirmarSalida, setConfirmarSalida] = useState(false)
 
   const montoNumero = parseMonto(monto)
-  const previewTotal = Number.isFinite(montoNumero) ? montoNumero * confirmados : 0
+  const previewTotal = Number.isFinite(montoNumero)
+    ? montoNumero * personasQuePagan({ cobraDiscapacidad }, confirmados, conDiscapacidad)
+    : 0
 
   const limpiar = () => {
     setDescripcion("")
     setMonto("")
     setPorParticipante(false)
+    setCobraDiscapacidad(true)
     setCategoria("equipamiento")
     setComprobante(null)
   }
@@ -71,11 +81,16 @@ export function GastoFormModal({
   // Borrador: cerrar el modal (o la pestaña) no borra lo que se estaba cargando.
   // El comprobante no se guarda: un archivo no entra en el localStorage.
   const datosBorrador = useMemo<BorradorGasto>(
-    () => ({ descripcion, monto, porParticipante, categoria }),
-    [descripcion, monto, porParticipante, categoria],
+    () => ({ descripcion, monto, porParticipante, cobraDiscapacidad, categoria }),
+    [descripcion, monto, porParticipante, cobraDiscapacidad, categoria],
   )
   const hayCambios =
-    open && (descripcion.trim() !== "" || monto.trim() !== "" || porParticipante || categoria !== "equipamiento")
+    open &&
+    (descripcion.trim() !== "" ||
+      monto.trim() !== "" ||
+      porParticipante ||
+      !cobraDiscapacidad ||
+      categoria !== "equipamiento")
 
   const { borrador, guardarAhora, descartarBorrador, ocultarAviso } =
     useBorradorFormulario<BorradorGasto>({
@@ -89,6 +104,7 @@ export function GastoFormModal({
     setDescripcion(borrador.datos.descripcion)
     setMonto(borrador.datos.monto)
     setPorParticipante(borrador.datos.porParticipante)
+    setCobraDiscapacidad(borrador.datos.cobraDiscapacidad !== false)
     setCategoria(borrador.datos.categoria)
     ocultarAviso()
   }
@@ -132,6 +148,8 @@ export function GastoFormModal({
         descripcion,
         monto: montoNumero,
         por_participante: porParticipante,
+        // Solo tiene sentido en un gasto por persona: uno fijo se paga una vez.
+        cobra_discapacidad: porParticipante ? cobraDiscapacidad : true,
         categoria,
         fecha: now,
         comprobante: comprobanteUrl,
@@ -216,6 +234,18 @@ export function GastoFormModal({
             <Switch checked={porParticipante} onCheckedChange={setPorParticipante} />
           </div>
 
+          {porParticipante && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-700/40 p-3">
+              <div>
+                <Label className="text-gray-200">¿Las personas con discapacidad pagan esto?</Label>
+                <p className="text-xs text-gray-400">
+                  Apagalo si por ellas no se paga (ej: el lugar del evento no les cobra).
+                </p>
+              </div>
+              <Switch checked={cobraDiscapacidad} onCheckedChange={setCobraDiscapacidad} />
+            </div>
+          )}
+
           <div>
             <Label className="text-gray-300">
               {porParticipante ? "Monto por persona (ARS) *" : "Monto total (ARS) *"}
@@ -230,7 +260,8 @@ export function GastoFormModal({
             />
             {porParticipante && Number.isFinite(montoNumero) && montoNumero > 0 && (
               <p className="text-xs text-blue-400 mt-1">
-                Total estimado hoy: {formatARS(montoNumero)} × {confirmados} confirmados ={" "}
+                Total estimado hoy: {formatARS(montoNumero)}{" "}
+                {detallePersonas({ cobraDiscapacidad }, confirmados, conDiscapacidad)} ={" "}
                 <strong>{formatARS(previewTotal)}</strong>
               </p>
             )}
