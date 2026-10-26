@@ -6,7 +6,13 @@ import { cargarFechaNacimiento, cerrarAvisosDelEvento, comprobanteDePrueba, sile
 // Safari es el que más se diferencia en campos de fecha, cámara, IndexedDB y
 // almacenamiento.
 
-test.use({ ...devices["iPhone 13"] })
+// Sin Service Worker: apenas carga toma el control de la pagina (skipWaiting +
+// clients.claim) y en WebKit las peticiones que pasan por el ya no las
+// intercepta page.route. El /api/version silenciado llegaba igual, salia el
+// cartel "Hicimos actualizaciones" tapando el "Entendido" de los avisos y el
+// test se colgaba. Lo offline se prueba en offline.spec.ts y en
+// inscripcion-celular.spec.ts, que si usan el worker.
+test.use({ ...devices["iPhone 13"], serviceWorkers: "block" })
 test.setTimeout(180_000)
 
 const datos = {

@@ -83,6 +83,17 @@ test.describe("Inscripción · paso 1", () => {
   test.beforeEach(async ({ page }) => {
     await stubLookup(page)
     await page.goto("/inscripcion")
+    // La ventana "Antes de inscribirte" se abre recien cuando la pagina ya
+    // hidrato. Si el test toca "Siguiente" antes, el clic cae en un boton que
+    // todavia no hace nada y despues aparece el aviso: el test fallaba la
+    // mitad de las veces. Se espera a que aparezca con waitForFunction (que no
+    // dispara el handler de cerrarAvisosDelEvento): la proxima accion del test
+    // la cierra y para entonces la pagina ya responde.
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('[role="dialog"]')].some((d) =>
+        d.textContent?.includes("Antes de inscribirte"),
+      ),
+    )
   })
 
   test("arranca en el paso 1 con 'Anterior' deshabilitado", async ({ page }) => {
