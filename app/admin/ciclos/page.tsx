@@ -6,6 +6,7 @@ import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { onInscripciones, type Inscripcion } from "@/lib/services/inscripciones"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, Users, TrendingUp, Bike } from "lucide-react"
+import { agruparTextos, claveTexto } from "@/lib/agruparTexto"
 
 interface LocalidadData {
   localidad: string
@@ -40,11 +41,22 @@ export default function CiclosLocalidadPage() {
     return () => unsubscribe()
   }, [isAuthorized, user])
 
-  // Agrupar por localidad
+  // Agrupar por localidad. La clave ignora mayusculas, acentos y espacios de
+  // mas: "concepcion del uruguay" y "CONCEPCIÓN DEL URUGUAY" son la misma fila.
+  // Se muestra la variante mejor escrita (la de agruparTextos).
+  const nombreCiudad = new Map(
+    agruparTextos(inscripciones.map((i) => i.localidad)).map((g) => [g.clave, g.etiqueta]),
+  )
+  const nombrePais = new Map(
+    agruparTextos(inscripciones.map((i) => i.pais)).map((g) => [g.clave, g.etiqueta]),
+  )
   const localidadesMap = new Map<string, LocalidadData>()
   inscripciones.forEach((i) => {
-    const prov = `${i.localidad || "Sin localidad"} · ${i.pais || "Sin país"}`
-    const existing = localidadesMap.get(prov) || {
+    const claveCiudad = claveTexto(i.localidad)
+    const clavePais = claveTexto(i.pais)
+    const clave = `${claveCiudad}|${clavePais}`
+    const prov = `${nombreCiudad.get(claveCiudad) || "Sin localidad"} · ${nombrePais.get(clavePais) || "Sin país"}`
+    const existing = localidadesMap.get(clave) || {
       localidad: prov,
       total: 0,
       confirmadas: 0,
@@ -55,7 +67,7 @@ export default function CiclosLocalidadPage() {
     if (i.estado === "confirmada") existing.confirmadas++
     else if (i.estado === "pendiente") existing.pendientes++
     else if (i.estado === "rechazada") existing.rechazadas++
-    localidadesMap.set(prov, existing)
+    localidadesMap.set(clave, existing)
   })
 
   const localidadData = Array.from(localidadesMap.values()).sort(

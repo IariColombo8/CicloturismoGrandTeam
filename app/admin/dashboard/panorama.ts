@@ -6,6 +6,8 @@
 // si fuera el total: el pie de estados, los grupos y el top de localidades
 // salian de 5 filas de 73. Ahora se calcula sobre todas las filas de la edicion.
 
+import { claveTexto, nombrePropio } from "@/lib/agruparTexto"
+
 /** Fila cruda de `participantes` tal como viene de Supabase. */
 export interface FilaParticipante {
   id: string
@@ -79,18 +81,13 @@ const SIN_DATO = "Sin dato"
  * fila del grafico.
  */
 function claveAgrupacion(valor: string): string {
-  return valor
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
+  // La misma clave que el filtro de ciudad del registro y /admin/ciclos.
+  return claveTexto(valor)
 }
 
-/** Capitaliza cada palabra: "LAS ACELERADAS" -> "Las Aceleradas". */
+/** "CONCEPCIÓN DEL URUGUAY" -> "Concepción del Uruguay" (igual que el filtro del registro). */
 function capitalizar(valor: string): string {
-  return valor
-    .split(" ")
-    .map((parte) => (parte ? parte.charAt(0).toUpperCase() + parte.slice(1).toLowerCase() : parte))
-    .join(" ")
+  return nombrePropio(valor)
 }
 
 function limpiar(valor: string | null | undefined): string {

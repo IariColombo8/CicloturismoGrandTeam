@@ -11,6 +11,7 @@ import { SIN_NUMERO } from "@/lib/numeroInscripcion"
 import { reproducirAviso } from "@/lib/sonidoAviso"
 import NotificacionesPush from "@/components/admin/NotificacionesPush"
 import NotasCaja from "@/components/admin/NotasCaja"
+import { agruparTextos, type GrupoTexto } from "@/lib/agruparTexto"
 import {
   Users,
   CheckCircle,
@@ -78,7 +79,9 @@ const PRECIO_FALLBACK = 25000
 // "otra-forma": pago de una manera que no entro a la caja (otra moneda, le
 // transfirio a alguien del equipo). Queda registrado con una nota y NO suma
 // plata hasta que se lo pase a "pagado" o "otro monto".
-type OpcionPago = "pagado" | "falta" | "otro" | "gratis" | "otra-forma"
+// "discapacidad": persona con discapacidad. No paga la inscripcion (se guarda
+// como gratis) y por ella no se paga el lugar del evento (discapacidad = true).
+type OpcionPago = "pagado" | "falta" | "otro" | "gratis" | "otra-forma" | "discapacidad"
 
 /** Filtros que viajan a la query de Supabase junto con estado y busqueda. */
 interface FiltrosAvanzados {
@@ -241,10 +244,18 @@ export default function RegistroInscripciones() {
   // Valores disponibles para los selects, derivados de las inscripciones reales.
   const [opcionesFiltro, setOpcionesFiltro] = useState<{
     paises: string[]
-    ciudades: string[]
+    /** Una por ciudad aunque este escrita de varias formas (ver lib/agruparTexto.ts). */
+    ciudades: GrupoTexto[]
     grupos: string[]
     sangres: string[]
   }>({ paises: [], ciudades: [], grupos: [], sangres: [] })
+  // El filtro de ciudad guarda la clave comun; para consultar hacen falta los
+  // textos tal cual estan en la base. Va por ref para que las consultas (que
+  // son useCallback) siempre vean las opciones vigentes.
+  const ciudadesRef = useRef<GrupoTexto[]>([])
+  ciudadesRef.current = opcionesFiltro.ciudades
+  const variantesDeCiudad = (clave: string) =>
+    ciudadesRef.current.find((c) => c.clave === clave)?.variantes ?? [clave]
 
   // Paginacion server-side
   const [currentPage, setCurrentPage] = useState(1)
@@ -285,9 +296,9 @@ export default function RegistroInscripciones() {
   // Aclaracion del pago cuando no es un monto en pesos ("Pago 700 uruguayos,
   // Lore nos transfiere esa plata").
   const [pagoNota, setPagoNota] = useState("")
-  // Persona con discapacidad: no se paga por ella el lugar del evento. Va
-  // aparte de la opcion de pago porque la inscripcion la puede pagar igual.
-  const [conDiscapacidad, setConDiscapacidad] = useState(false)
+  // Persona con discapacidad: es una opcion mas del pago (antes era un
+  // interruptor aparte y habia que marcar "gratis" y "con discapacidad").
+  const conDiscapacidad = pagoOpcion === "discapacidad"
   const [openingComprobante, setOpeningComprobante] = useState<string | null>(null)
   const [comprobanteModal, setComprobanteModal] = useState<{
     url: string
@@ -361,7 +372,7 @@ export default function RegistroInscripciones() {
 
         // --- Filtros avanzados ---
         if (filtros.pais !== "all") query = query.eq("pais", filtros.pais)
-        if (filtros.ciudad !== "all") query = query.eq("localidad", filtros.ciudad)
+        if (filtros.ciudad !== "all") query = query.in("localidad", variantesDeCiudad(filtros.ciudad))
         if (filtros.grupo !== "all") query = query.eq("grupo_ciclistas", filtros.grupo)
         // El grupo sanguineo se cargo con distinta grafia ("a+", "A+"), por eso ilike.
         if (filtros.sangre !== "all") query = query.ilike("grupo_sanguineo", filtros.sangre)
@@ -554,14 +565,16 @@ export default function RegistroInscripciones() {
     for (const p of pagosData as any[]) {
       const nombreCompleto = `${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()
 
-      // Discapacidad es aparte del pago: se cuenta y despues sigue con lo que pago.
+      // Con discapacidad se cuenta una sola vez: en la base queda como gratis
+      // (no paga la inscripcion), pero no se suma tambien a los "gratis".
       if (p.discapacidad === true) {
         resumen.conDiscapacidad.push({
           id: p.id,
           nombre: nombreCompleto,
           dni: p.dni ?? "",
-          nota: "Con discapacidad: no paga el lugar del evento",
+          nota: "Con discapacidad: no paga la inscripción ni el lugar del evento",
         })
+        if (p.pago_estado === "gratis") continue
       }
 
       if (p.pago_estado === "gratis") {
@@ -684,7 +697,9 @@ export default function RegistroInscripciones() {
 
       setOpcionesFiltro({
         paises: unicos(data.map((d: any) => d.pais)),
-        ciudades: unicos(data.map((d: any) => d.localidad)),
+        // "concepcion del uruguay" y "CONCEPCIÓN DEL URUGUAY" son una sola
+        // opcion; la base queda como la escribio cada uno.
+        ciudades: agruparTextos(data.map((d: any) => d.localidad)),
         grupos: unicos(data.map((d: any) => d.grupo_ciclistas)),
         // El grupo sanguineo se normaliza a mayusculas para no repetir "a+"/"A+".
         sangres: unicos(data.map((d: any) => (d.grupo_sanguineo || "").toUpperCase())),
@@ -923,8 +938,10 @@ export default function RegistroInscripciones() {
     // mostrando lo que realmente paso y no un default enganoso.
     const monto = insc.montoPagado != null ? Number(insc.montoPagado) : null
     setPagoNota(insc.pagoNota || "")
-    setConDiscapacidad(insc.discapacidad === true)
-    if (insc.pagoEstado === "gratis") {
+    if (insc.discapacidad === true) {
+      setPagoOpcion("discapacidad")
+      setMontoOtro("")
+    } else if (insc.pagoEstado === "gratis") {
       setPagoOpcion("gratis")
       setMontoOtro("")
     } else if (insc.pagoEstado === "otro") {
@@ -950,7 +967,8 @@ export default function RegistroInscripciones() {
     | null => {
     if (pagoOpcion === "falta")
       return { pago_estado: "pendiente", monto_pagado: 0, pago_nota: null }
-    if (pagoOpcion === "gratis") return { pago_estado: "gratis", monto_pagado: 0, pago_nota: null }
+    if (pagoOpcion === "gratis" || pagoOpcion === "discapacidad")
+      return { pago_estado: "gratis", monto_pagado: 0, pago_nota: null }
     if (pagoOpcion === "pagado")
       return { pago_estado: "pagado", monto_pagado: precioInscripcion, pago_nota: null }
 
@@ -1305,7 +1323,7 @@ export default function RegistroInscripciones() {
     // de lo que esta viendo el admin seria confuso.
     const f = filtrosAvanzados
     if (f.pais !== "all") query = query.eq("pais", f.pais)
-    if (f.ciudad !== "all") query = query.eq("localidad", f.ciudad)
+    if (f.ciudad !== "all") query = query.in("localidad", variantesDeCiudad(f.ciudad))
     if (f.grupo !== "all") query = query.eq("grupo_ciclistas", f.grupo)
     if (f.sangre !== "all") query = query.ilike("grupo_sanguineo", f.sangre)
     if (f.conNota) query = query.not("nota_estado", "is", null).neq("nota_estado", "")
@@ -1436,7 +1454,7 @@ export default function RegistroInscripciones() {
             ? () =>
                 setListaModal({
                   titulo: "Gratis y con discapacidad",
-                  descripcion: `${resumenPagos.gratis} gratis (no pagan la inscripción) · ${resumenPagos.conDiscapacidad.length} con discapacidad (no pagan el lugar del evento)`,
+                  descripcion: `${resumenPagos.gratis} gratis (no pagan la inscripción) · ${resumenPagos.conDiscapacidad.length} con discapacidad (no pagan la inscripción ni el lugar del evento)`,
                   items: [...resumenPagos.listaGratis, ...resumenPagos.conDiscapacidad],
                 })
             : undefined,
@@ -1805,7 +1823,7 @@ export default function RegistroInscripciones() {
                     set: setFiltroCiudad,
                     opciones: [
                       { v: "all", t: "Todas las ciudades" },
-                      ...opcionesFiltro.ciudades.map((c) => ({ v: c, t: c })),
+                      ...opcionesFiltro.ciudades.map((c) => ({ v: c.clave, t: c.etiqueta })),
                     ],
                   },
                   {
@@ -2325,6 +2343,7 @@ export default function RegistroInscripciones() {
                               { id: "otro", label: "Pagó otro monto" },
                               { id: "gratis", label: "Inscripción gratis" },
                               { id: "otra-forma", label: "Pagó de otra forma (con nota)" },
+                              { id: "discapacidad", label: "Persona con discapacidad" },
                             ] as { id: OpcionPago; label: string }[]
                           ).map((opcion) => (
                             <button
@@ -2382,33 +2401,10 @@ export default function RegistroInscripciones() {
                                 ? "Se registra el monto que indiques en vez del precio de lista."
                                 : pagoOpcion === "otra-forma"
                                   ? "Queda registrado que pagó, con tu nota, pero no suma plata a la caja hasta que lo pases a «Pagó $…» u «otro monto»."
-                                  : "Precio de lista actual del evento."}
+                                  : pagoOpcion === "discapacidad"
+                                    ? "No paga la inscripción y no se paga por ella el lugar del evento; el seguro y lo demás, sí."
+                                    : "Precio de lista actual del evento."}
                         </p>
-
-                        {/* Va aparte de la opcion de pago: una persona con
-                            discapacidad puede pagar la inscripcion, ser
-                            gratis, etc. Lo unico que cambia es que por ella
-                            no se paga el lugar del evento. */}
-                        <button
-                          type="button"
-                          onClick={() => setConDiscapacidad((v) => !v)}
-                          aria-pressed={conDiscapacidad}
-                          className={`mt-3 w-full flex items-start gap-2 px-3 py-2 rounded-lg border text-sm text-left transition-all ${
-                            conDiscapacidad
-                              ? "bg-teal-400/10 border-teal-400/50 text-teal-300 font-semibold"
-                              : "bg-zinc-900 border-zinc-700 text-gray-300 hover:border-teal-400/30"
-                          }`}
-                        >
-                          <Accessibility className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
-                          <span>
-                            Persona con discapacidad
-                            <span className="block text-xs font-normal text-gray-500">
-                              {conDiscapacidad
-                                ? "Sí. No se paga por ella el lugar del evento; el seguro y lo demás, sí."
-                                : "Tocá si tiene discapacidad: no se paga por ella el lugar del evento."}
-                            </span>
-                          </span>
-                        </button>
                       </div>
                     )}
 

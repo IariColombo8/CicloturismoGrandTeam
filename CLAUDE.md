@@ -478,8 +478,18 @@ mezclaba dos cosas que no tienen nada que ver.
 
 Reglas:
 
-- **Pedalea y ayuda son dos datos, pero en pantalla es UNA pregunta** con cuatro respuestas
-  (`MODOS`: pedaleo / pedaleo y ayudo / ayudo y no pedaleo / no pedaleo). En la base son dos
+- **Tareas y cupos** (boton "Tareas" de `/admin/roles`, `components/roles/EditorTareas.tsx`):
+  el equipo arma la lista de tareas, les cambia el nombre, las ordena y pone **cuantos hacen
+  falta** en cada una. Se guarda en `content_settings` (id `"roles"`,
+  `data.tareas = [{id, etiqueta, ayuda?, necesarios}]`): lectura publica, escritura del panel,
+  sin tabla nueva. Las dos pantallas muestran arriba "Falta 1 de Acreditación" (lo que mas
+  falta primero), despues las tareas con gente sin cupo y **lo cubierto abajo de todo**
+  (`cuposDeTareas()` / `textoFalta()`). Una tarea escrita a mano en una ficha entra sola al
+  catalogo (`catalogoDeTareas()`), asi se puede volver a elegir con un toque. Sin la fila se
+  usa `TAREAS` sin cupos. Hook: `hooks/useAjustesRoles.ts`.
+- **Pedalea y ayuda son dos datos, pero en pantalla es UNA pregunta** con tres respuestas
+  (`MODOS`: pedaleo / pedaleo y ayudo / ayudo y no pedaleo). "No pedaleo, acompaño" se saco
+  el 25/10/2026; las fichas viejas con las dos banderas en false se muestran "Acompaña". En la base son dos
   booleanos (`pedalea`, `ayuda`) para poder preguntar "quienes ayudan" sin cuentas raras;
   `modoDeRol()` y `banderasDeModo()` traducen en los dos sentidos.
 - **Una fila por persona**: `roles_evento.clave` (nombre sin acentos, sin mayusculas y sin
@@ -782,10 +792,13 @@ inscripcion sigue estando en el badge de cada fila y en el filtro.
 El Viejo Molino no cobra la entrada por las personas con discapacidad; el seguro, la
 bolsita y lo demas si (`20261025_personas_con_discapacidad.sql`).
 
-- **Se marca en el bloque de Pago** del modal de `/admin/registro-inscripciones` ("Persona
-  con discapacidad"), **aparte** de la opcion de pago: puede pagar los $25.000, ser gratis,
-  etc. Se guarda en `participantes.discapacidad`. La palabra es "persona con discapacidad",
-  nunca "discapacitado".
+- **Es una opcion mas del bloque de Pago** del modal de `/admin/registro-inscripciones`
+  ("Persona con discapacidad", al lado de "Inscripción gratis"), no un interruptor aparte:
+  antes habia que marcar "gratis" **y** "con discapacidad" y la tarjeta contaba a la misma
+  persona dos veces ("4 · 2" cuando eran 2 y 2). Elegirla guarda `pago_estado = 'gratis'`
+  (no paga la inscripcion, asi que finanzas y el estimador la siguen contando como sin
+  cargo) y `participantes.discapacidad = true`. En la tarjeta del registro cuenta **solo**
+  como "con discapacidad". La palabra es "persona con discapacidad", nunca "discapacitado".
 - **Cada gasto por persona dice si se paga por ellas** ("¿Las personas con discapacidad
   pagan esto?"): en el alta y en el detalle del gasto de `/admin/gastos`, que se puede
   cambiar en produccion. Se guarda en `gastos.cobra_discapacidad`.
@@ -824,6 +837,12 @@ Reglas del dashboard:
 - Localidades y grupos se agrupan ignorando acentos y mayusculas: los datos se cargan a mano y
   "CONCORDIA"/"Concordia" o "Paysandu"/"Paysandú" son lo mismo. Sin eso, 32 localidades crudas se
   mostraban como 32 cuando son 19.
+- **La misma regla vale en todo el panel** y sale de `lib/agruparTexto.ts` (`claveTexto`,
+  `nombrePropio`, `agruparTextos`; test `e2e/unit/agrupar-texto.spec.ts`): el dashboard, el filtro
+  "Ciudad" de `/admin/registro-inscripciones` (una opcion por ciudad; filtra con `.in()` sobre
+  todas las variantes tal cual estan en la base) y `/admin/ciclos`. **La base no se corrige**:
+  cada uno queda como lo escribio y la agrupacion se hace al mostrar. Se muestra la variante
+  con acento, como nombre propio ("Concepción del Uruguay").
 - Las listas de nombres van siempre en `ListaModal`, nunca escritas en la fila.
 - Un grafico, una unidad: no mezclar pesos con cantidad de personas en el mismo eje.
 - Fecha de nacimiento que no da una edad creible (3 a 100 anios) no se cuenta en edades ni en
