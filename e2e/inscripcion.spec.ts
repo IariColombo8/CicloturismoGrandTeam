@@ -57,9 +57,19 @@ test.describe("Inscripción · avisos al entrar", () => {
   test("si no quedan medallas, también lo dice", async ({ page }) => {
     await silenciarAvisoDeVersion(page)
     // El conteo de inscriptos llega por el header content-range de Supabase.
+    // Supabase es otro dominio: sin los headers de CORS el navegador descarta la
+    // respuesta inventada, el conteo queda en null y el aviso (con razon) no sale.
     await page.route("**/rest/v1/participantes**", (route) =>
       route.request().method() === "HEAD"
-        ? route.fulfill({ status: 200, headers: { "content-range": "*/500" }, body: "" })
+        ? route.fulfill({
+            status: 200,
+            headers: {
+              "content-range": "*/500",
+              "access-control-allow-origin": "*",
+              "access-control-expose-headers": "content-range",
+            },
+            body: "",
+          })
         : route.continue(),
     )
     await page.goto("/inscripcion")
