@@ -287,6 +287,8 @@ de "Mi QR" se veia igual que el de la inscripcion y no se entendia cual era cual
 /sorteos                     -> Pagina unica de los sorteos: premios por jerarquia y ganadores (en vivo)
 /roles                       -> Quien hace que el dia del evento. NO esta en el menu: se llega por el link
 /grand-team/dashboard        -> Stats Grand Team
+/privacidad                  -> Politica de Privacidad (Google la pide para publicar la app OAuth de Gmail)
+/terminos                    -> Terminos y Condiciones (resumen del deslinde de ReviewStep.tsx: si cambia uno, cambia el otro)
 ```
 
 ### Rutas Admin (Protegidas)

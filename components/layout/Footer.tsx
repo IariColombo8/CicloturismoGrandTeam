@@ -204,15 +204,15 @@ export default function Footer() {
               &copy; {currentYear} <span className="text-yellow-400 font-semibold">Grand Team Bike</span>. Todos los derechos reservados.
             </p>
             <div className="flex flex-wrap justify-center gap-6">
-              <a href="#" className="hover:text-yellow-400 transition-colors">
+              <Link href="/privacidad" className="hover:text-yellow-400 transition-colors">
                 Privacidad
-              </a>
-              <a href="#" className="hover:text-yellow-400 transition-colors">
+              </Link>
+              <Link href="/terminos" className="hover:text-yellow-400 transition-colors">
                 Términos
-              </a>
-              <a href="#" className="hover:text-yellow-400 transition-colors">
+              </Link>
+              <Link href="/privacidad#cookies" className="hover:text-yellow-400 transition-colors">
                 Cookies
-              </a>
+              </Link>
             </div>
           </div>
           

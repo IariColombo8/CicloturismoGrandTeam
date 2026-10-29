@@ -26,6 +26,8 @@ const RUTAS = [
   "/sorteos",
   "/roles",
   "/inscripcion/exito",
+  "/privacidad",
+  "/terminos",
 ]
 
 /**
