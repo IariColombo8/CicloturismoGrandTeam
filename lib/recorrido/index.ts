@@ -88,6 +88,23 @@ export function posicionEnRuta(puntos: Punto[], acumulados: number[], metros: nu
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 }
 
+/**
+ * A cuantos metros de la salida queda un lugar (el punto de la ruta mas cercano) y a que
+ * distancia de la ruta esta. Con esto la bici sabe donde frenar en la hidratacion.
+ */
+export function ubicarEnRuta(puntos: Punto[], acumulados: number[], lugar: Punto): { metros: number; distancia: number } {
+  let distancia = Infinity
+  let metros = 0
+  puntos.forEach((p, i) => {
+    const d = distanciaM(p, lugar)
+    if (d < distancia) {
+      distancia = d
+      metros = acumulados[i]
+    }
+  })
+  return { metros, distancia }
+}
+
 /** Link de Google Maps para llegar a un punto (la salida). */
 export function linkComoLlegar([lat, lon]: Punto): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`

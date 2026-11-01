@@ -908,3 +908,215 @@
 .leaflet-tooltip-top.gt-mapa-etiqueta::before {
   border-top-color: #000 !important;
 }
+
+/* ── Parada en la hidratacion: la bici frena y aparece un globo con agua y fruta ── */
+/* Solo transform y opacity. El globo se muestra con una transicion de clase (su estado
+   final es visible), no con un keyframe: con "reducir movimiento" la regla global deja
+   las animaciones en 0,01 ms y un keyframe lo habria escondido al instante. */
+.gt-mapa-ciclista {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.gt-mapa-globo {
+  position: absolute;
+  bottom: 42px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px 5px;
+  border-radius: 14px;
+  background: #000;
+  border: 2px solid #ffd700;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(-50%, 10px, 0) scale(0.6);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 0.25s ease,
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* La colita del globo, apuntando a la bici */
+.gt-mapa-globo::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: #000;
+  border-right: 2px solid #ffd700;
+  border-bottom: 2px solid #ffd700;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.gt-mapa-parando .gt-mapa-globo {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0) scale(1);
+}
+
+.gt-mapa-globo-titulo {
+  color: #ffd700;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.gt-mapa-globo-items {
+  display: flex;
+  gap: 4px;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.gt-mapa-globo-items i {
+  font-style: normal;
+  display: inline-block;
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.3);
+}
+
+/* Agua y frutas van saliendo de a una, con un saltito */
+@keyframes gt-mapa-item {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: translate3d(0, -5px, 0) scale(1.25);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.gt-mapa-parando .gt-mapa-globo-items i {
+  animation: gt-mapa-item 0.45s ease-out both;
+}
+
+.gt-mapa-parando .gt-mapa-globo-items i:nth-child(1) {
+  animation-delay: 0.3s;
+}
+.gt-mapa-parando .gt-mapa-globo-items i:nth-child(2) {
+  animation-delay: 0.65s;
+}
+.gt-mapa-parando .gt-mapa-globo-items i:nth-child(3) {
+  animation-delay: 1s;
+}
+.gt-mapa-parando .gt-mapa-globo-items i:nth-child(4) {
+  animation-delay: 1.35s;
+}
+
+/* La bici da unos saltitos de contenta mientras toma agua */
+@keyframes gt-mapa-festejo {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+.gt-mapa-parando .gt-mapa-bici {
+  animation: gt-mapa-festejo 0.5s ease-in-out 6;
+}
+
+.leaflet-tooltip.gt-mapa-etiqueta {
+  transition: opacity 0.2s ease;
+}
+
+.gt-mapa-en-parada .leaflet-tooltip.gt-mapa-etiqueta {
+  opacity: 0 !important;
+}
+
+/* Globo al costado de la bici (cuando arriba no entra, en el celular) */
+.gt-mapa-globo-costado .gt-mapa-globo {
+  bottom: auto;
+  top: 50%;
+  left: 40px;
+  transform: translate3d(-10px, -50%, 0) scale(0.6);
+  transform-origin: 0 50%;
+}
+
+.gt-mapa-globo-costado.gt-mapa-parando .gt-mapa-globo {
+  transform: translate3d(0, -50%, 0) scale(1);
+}
+
+.gt-mapa-globo-costado .gt-mapa-globo::after {
+  bottom: auto;
+  top: 50%;
+  left: -7px;
+  border-right: none;
+  border-bottom: none;
+  border-left: 2px solid #ffd700;
+  border-bottom: 2px solid #ffd700;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+/* ── Lluvia de la hidratacion: gotas y fruta cayendo sobre todo el mapa ── */
+.gt-mapa-lluvia {
+  position: absolute;
+  inset: 0;
+  z-index: 700; /* arriba de los mosaicos y la ruta, abajo de los controles (1000) */
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.gt-mapa-en-parada .gt-mapa-lluvia {
+  opacity: 1;
+}
+
+.gt-mapa-lluvia span {
+  position: absolute;
+  top: -32px;
+  line-height: 1;
+  opacity: 0;
+}
+
+@keyframes gt-mapa-gota {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-8deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 560px, 0) rotate(8deg);
+  }
+}
+
+/* Solo cae durante la parada: fuera de ella no hay ninguna animacion corriendo. */
+.gt-mapa-en-parada .gt-mapa-lluvia span {
+  animation-name: gt-mapa-gota;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+
+/* La regla global de "reducir movimiento" deja todo en 0,01 ms y una sola vez: la lluvia
+   se veria apagada justo en el celular con ahorro de bateria. Se suaviza, no se apaga
+   (misma idea que la cinta de palabras). Va dentro de @layer base porque ahi vive la regla
+   global, y un !important de una capa le gana a uno suelto: afuera no hacia nada. */
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    .gt-mapa-en-parada .gt-mapa-lluvia span {
+      animation-duration: 2.2s !important;
+      animation-iteration-count: infinite !important;
+    }
+  }
+}

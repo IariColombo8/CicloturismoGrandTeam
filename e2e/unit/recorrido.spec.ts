@@ -8,6 +8,7 @@ import {
   distanciaM,
   posicionEnRuta,
   sentidoHorizontal,
+  ubicarEnRuta,
   type Punto,
 } from "../../lib/recorrido"
 
@@ -95,4 +96,11 @@ test.describe("sentidoHorizontal (hacia donde mira la bici)", () => {
     ]
     expect(sentidoHorizontal(norte, acumularDistancias(norte), 500)).toBeNull()
   })
+})
+
+test("ubicarEnRuta: la hidratacion queda pegada a la ruta", () => {
+  const acumulados = acumularDistancias(PUNTOS_RUTA)
+  const { metros, distancia } = ubicarEnRuta(PUNTOS_RUTA, acumulados, PUNTOS_HIDRATACION[0].posicion)
+  expect(distancia).toBeLessThan(100)
+  expect(metros).toBeGreaterThan(0)
 })

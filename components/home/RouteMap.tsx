@@ -42,10 +42,9 @@ export default function RouteMap() {
 
   const servicios = [
     "Hidratación a mitad del recorrido",
-    "Asistencia médica en ruta",
+    "Asistencia médica en ruta (ambulancia)",
     "Apoyo mecánico móvil",
     "Señalización completa",
-    "Vehículo de escoba",
     "Seguro de accidentes",
   ]
 
@@ -96,33 +95,34 @@ export default function RouteMap() {
 
         {/* Linea de tiempo del dia: se dibuja sola al llegar con el scroll */}
         <Revelar className="max-w-5xl mx-auto mb-8 sm:mb-12">
-          <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-6 sm:px-8 sm:py-8">
+          <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/40 px-2.5 py-5 sm:px-8 sm:py-8">
             {/* Riel de fondo y linea dorada que lo va cubriendo */}
             <div className="relative mb-6 h-1 rounded-full bg-zinc-800" aria-hidden="true">
               <div className="gt-linea absolute inset-0 rounded-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-500" />
             </div>
 
-            <ol className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+            {/* Las 3 en una fila tambien en el celular: salida, hidratacion y llegada se leen como un recorrido. */}
+            <ol className="grid grid-cols-3 gap-2 sm:gap-6">
               {routeDetails.map((detail) => {
                 const IconComponent = detail.icon
                 return (
                   <li
                     key={detail.title}
-                    className={`bg-gradient-to-br ${detail.gradient} border border-zinc-800 rounded-xl p-4 sm:p-5 transition-all duration-300 hover:border-yellow-400/30 hover:-translate-y-1 group`}
+                    className={`bg-gradient-to-br ${detail.gradient} border border-zinc-800 rounded-xl p-2.5 sm:p-5 transition-all duration-300 hover:border-yellow-400/30 hover:-translate-y-1 group`}
                   >
-                    <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="flex flex-col items-center text-center gap-1.5 sm:flex-row sm:items-start sm:text-left sm:gap-4">
                       <div
-                        className={`${detail.color} w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-1 group-hover:scale-125 transition-transform flex-shrink-0`}
+                        className={`${detail.color} w-3 h-3 sm:w-4 sm:h-4 rounded-full sm:mt-1 group-hover:scale-125 transition-transform flex-shrink-0`}
                         aria-hidden="true"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-col items-center gap-1 mb-1 sm:flex-row sm:gap-2">
                           <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 flex-shrink-0" aria-hidden="true" />
-                          <h3 className="text-white font-bold text-sm sm:text-base md:text-lg">{detail.title}</h3>
+                          <h3 className="text-white font-bold text-xs leading-tight sm:text-base md:text-lg">{detail.title}</h3>
                         </div>
-                        <p className="text-gray-300 text-xs sm:text-sm mb-1">{detail.description}</p>
-                        <p className="text-gray-500 text-[10px] sm:text-xs flex items-center gap-1">
-                          <Clock className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                        <p className="text-gray-300 text-[11px] leading-snug sm:text-sm mb-1 break-words">{detail.description}</p>
+                        <p className="text-gray-500 text-[10px] sm:text-xs flex items-center justify-center sm:justify-start gap-1">
+                          <Clock className="hidden sm:block w-3 h-3 flex-shrink-0" aria-hidden="true" />
                           {detail.time}
                         </p>
                       </div>

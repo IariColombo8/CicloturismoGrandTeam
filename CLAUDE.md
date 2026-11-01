@@ -270,7 +270,21 @@ export de Mi Fitness del 01/11/2026). **No se edita el JSON a mano**: se corre
   seccion se acerca a la pantalla. Mosaicos **sin clave**: OpenStreetMap y satelite de Esri
   (CARTO pide API key y pone marca de agua).
 - Una bici recorre la ruta con `requestAnimationFrame` (Leaflet la ubica con `transform`), con
-  boton de pausa; se frena fuera de pantalla y con "reducir movimiento" va mas lenta.
+  boton de pausa y se frena fuera de pantalla. **Misma velocidad en PC y celular** (`VUELTA_S`):
+  con "reducir movimiento" iba mas lenta y el ahorro de bateria del telefono lo activa solo.
+  El dibujo se da vuelta cuando la ruta va al oeste (`sentidoHorizontal()`), si no parecia ir
+  en contramano.
+- **Una sola parada de hidratacion**: Escuela N° 6 Martin Rodriguez (`PUNTOS_HIDRATACION`, de
+  OpenStreetMap; coincide con la parada del GPX, a mitad de camino). Ahi la bici frena
+  `PARADA_S` segundos y sale un globo "¡A hidratarse!" con agua y fruta (clases `gt-mapa-*` de
+  `globals.css`). El globo aparece por **transicion de clase**, no por keyframe: la regla global
+  de "reducir movimiento" deja los keyframes en 0,01 ms y lo habria escondido. Si arriba de la
+  bici no entra (celular), sale al costado. Mientras dura la parada **llueven gotas, bananas y
+  naranjas sobre todo el mapa** (`.gt-mapa-lluvia`). Su excepcion de "reducir movimiento" va
+  **dentro de `@layer base`**, donde esta la regla global: un `!important` suelto pierde contra
+  uno de una capa y en el celular con ahorro de bateria la lluvia no se veia.
+- Las 3 tarjetas de la linea del dia (salida, hidratacion, llegada) van en **una fila tambien en
+  el celular**.
 - En el celular un dedo scrollea la pagina, no arrastra el mapa (`dragging: !L.Browser.mobile`).
 
 ### Vista previa al compartir un link (Open Graph)
