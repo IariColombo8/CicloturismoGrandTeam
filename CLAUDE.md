@@ -263,8 +263,9 @@ export de Mi Fitness del 01/11/2026). **No se edita el JSON a mano**: se corre
 - El script **saca las idas y vueltas por el mismo camino** (la del km 27, donde se volvio ~500 m
   para atras, y una chica en el km 1,4) y los retrocesos de pocos metros del ruido del GPS: en el
   mapa la ruta va siempre "derecho". `e2e/unit/recorrido.spec.ts` falla si aparece una vuelta en U.
-- Ojo con la distancia: el track limpio mide **~42,7 km** (el reloj dijo 44,3 con la ida y
-  vuelta). La pagina sigue diciendo 50 km: si hay que cambiarlo, es una decision del equipo.
+- **La pagina dice 50 km y se queda en 50 km** (pedido del usuario, 01/11/2026). El track
+  limpio mide menos (~42,7 km), pero esa cifra **no se muestra en ningun lado**: no agregar la
+  distancia del GPX (`distanciaKm` de `ruta.json`) a la pagina ni cambiar los "50 km".
 - `MapaRecorrido.tsx` baja Leaflet (`MapaLeaflet.tsx`, `next/dynamic` sin SSR) recien cuando la
   seccion se acerca a la pantalla. Mosaicos **sin clave**: OpenStreetMap y satelite de Esri
   (CARTO pide API key y pone marca de agua).
