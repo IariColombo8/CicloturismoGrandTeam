@@ -135,7 +135,7 @@ export default function AboutTeam() {
     {
       icon: Camera,
       title: "Con paradas",
-      description: "Hidratación cada 15 km y tiempo para la foto en las Ruinas.",
+      description: "Una parada de hidratación a mitad de camino y tiempo para la foto en las Ruinas.",
       gradient: "from-emerald-500/10 to-teal-500/10",
       iconColor: "text-emerald-400",
       hoverGradient: "group-hover:from-emerald-500/25 group-hover:to-teal-500/25",

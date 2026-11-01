@@ -19,8 +19,8 @@ export default function RouteMap() {
       icon: Droplet,
       color: "bg-blue-500",
       title: "Hidratación",
-      description: "Km 15, 30 y 40",
-      time: "Cada 15 km",
+      description: "Escuela N° 6 Martín Rodríguez",
+      time: "A mitad del recorrido",
       gradient: "from-blue-500/20 to-blue-600/5",
     },
     {
@@ -41,7 +41,7 @@ export default function RouteMap() {
   ]
 
   const servicios = [
-    "Hidratación cada 15 km",
+    "Hidratación a mitad del recorrido",
     "Asistencia médica en ruta",
     "Apoyo mecánico móvil",
     "Señalización completa",
@@ -143,7 +143,7 @@ export default function RouteMap() {
                   Mapa del recorrido
                 </CardTitle>
                 <CardDescription className="text-gray-400 text-xs sm:text-sm md:text-base">
-                  El camino del paseo, con salida y llegada en el mismo lugar. La bici te muestra el sentido de la vuelta.
+                  El camino del paseo, con salida y llegada en el mismo lugar y la parada de hidratación en la Escuela N° 6. La bici te muestra el sentido de la vuelta.
                 </CardDescription>
               </CardHeader>
 

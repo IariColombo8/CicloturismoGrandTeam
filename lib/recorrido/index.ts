@@ -7,6 +7,41 @@ export type Punto = [lat: number, lon: number]
 
 export const PUNTOS_RUTA = ruta.puntos as Punto[]
 
+export type PuntoDeInteres = { nombre: string; detalle: string; posicion: Punto }
+
+/**
+ * Puntos de hidratacion marcados en el mapa. La ubicacion sale de OpenStreetMap
+ * (nodo 9147104297) y coincide con la parada de 8 minutos del GPX grabado.
+ */
+export const PUNTOS_HIDRATACION: PuntoDeInteres[] = [
+  {
+    nombre: "Escuela N° 6 Martín Rodríguez",
+    detalle: "Punto de hidratación",
+    posicion: [-32.2433329, -58.3370694],
+  },
+]
+
+/**
+ * Hacia donde mira la bici: "izquierda" si en los proximos/ultimos `ventanaM` metros
+ * avanza hacia el oeste, "derecha" si va al este. En tramos casi norte-sur (menos de
+ * `minimoM` metros de avance este-oeste) devuelve null: se deja como venia, asi no
+ * parpadea en cada curva.
+ */
+export function sentidoHorizontal(
+  puntos: Punto[],
+  acumulados: number[],
+  metros: number,
+  ventanaM = 120,
+  minimoM = 25,
+): "izquierda" | "derecha" | null {
+  const antes = posicionEnRuta(puntos, acumulados, metros - ventanaM)
+  const despues = posicionEnRuta(puntos, acumulados, metros + ventanaM)
+  const este = (despues[1] - antes[1]) * RAD * Math.cos(antes[0] * RAD) * RADIO_TIERRA_M
+  if (este <= -minimoM) return "izquierda"
+  if (este >= minimoM) return "derecha"
+  return null
+}
+
 /** GPX limpio para descargar (Strava, Garmin, Wikiloc...). Lo genera el mismo script. */
 export const URL_GPX = "/recorrido-grand-team.gpx"
 

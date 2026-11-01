@@ -7,7 +7,7 @@
 import "leaflet/dist/leaflet.css"
 import { useEffect, useRef } from "react"
 import L from "leaflet"
-import { PUNTOS_RUTA, acumularDistancias, posicionEnRuta } from "@/lib/recorrido"
+import { PUNTOS_HIDRATACION, PUNTOS_RUTA, acumularDistancias, posicionEnRuta, sentidoHorizontal } from "@/lib/recorrido"
 
 /** Segundos que tarda la bici en dar la vuelta entera. */
 const VUELTA_S = 32
@@ -80,6 +80,22 @@ export default function MapaLeaflet({ enMovimiento, onListo }: Props) {
       .addTo(mapa)
       .bindPopup("<strong>Salida y llegada</strong><br/>Camping El Molino")
 
+    for (const punto of PUNTOS_HIDRATACION) {
+      L.marker(punto.posicion, {
+        title: `${punto.detalle}: ${punto.nombre}`,
+        icon: L.divIcon({
+          className: "",
+          html: `<div class="gt-mapa-agua" aria-hidden="true">💧</div>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+        }),
+        keyboard: true,
+      })
+        .addTo(mapa)
+        .bindTooltip(punto.detalle, { permanent: true, direction: "top", offset: [0, -16], className: "gt-mapa-etiqueta" })
+        .bindPopup(`<strong>${punto.detalle}</strong><br/>${punto.nombre}`)
+    }
+
     bici.current = L.marker(salida, {
       interactive: false,
       keyboard: false,
@@ -116,6 +132,7 @@ export default function MapaLeaflet({ enMovimiento, onListo }: Props) {
     let anterior = 0
     let indiceEstela = 0
     let cuadro = 0
+    let mirando: "izquierda" | "derecha" = "derecha"
 
     const paso = (ahora: number) => {
       cuadro = requestAnimationFrame(paso)
@@ -131,6 +148,14 @@ export default function MapaLeaflet({ enMovimiento, onListo }: Props) {
       }
       const pos = posicionEnRuta(PUNTOS_RUTA, acumulados, metros)
       bici.current.setLatLng(pos)
+
+      // El dibujo de la bici mira a la derecha: cuando la ruta va hacia el oeste se da
+      // vuelta, si no parece que pedalea para atras. Solo se toca la clase al cambiar.
+      const sentido = sentidoHorizontal(PUNTOS_RUTA, acumulados, metros)
+      if (sentido && sentido !== mirando) {
+        mirando = sentido
+        bici.current.getElement()?.querySelector(".gt-mapa-bici")?.classList.toggle("gt-mapa-bici-izquierda", sentido === "izquierda")
+      }
 
       // La estela se actualiza solo cuando la bici pasa un punto nuevo, no en cada cuadro.
       let nuevo = indiceEstela
@@ -149,7 +174,7 @@ export default function MapaLeaflet({ enMovimiento, onListo }: Props) {
       ref={contenedor}
       className="h-full w-full"
       role="region"
-      aria-label="Mapa interactivo del recorrido, con salida y llegada en el Camping El Molino"
+      aria-label="Mapa interactivo del recorrido, con salida y llegada en el Camping El Molino y el punto de hidratación en la Escuela N° 6 Martín Rodríguez"
     />
   )
 }

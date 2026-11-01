@@ -1,7 +1,15 @@
 import { test, expect } from "@playwright/test"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { PUNTOS_RUTA, acumularDistancias, distanciaM, posicionEnRuta, type Punto } from "../../lib/recorrido"
+import {
+  PUNTOS_HIDRATACION,
+  PUNTOS_RUTA,
+  acumularDistancias,
+  distanciaM,
+  posicionEnRuta,
+  sentidoHorizontal,
+  type Punto,
+} from "../../lib/recorrido"
 
 test.describe("ruta del mapa (generada desde el GPX)", () => {
   test("sale y llega al mismo lugar", () => {
@@ -46,5 +54,45 @@ test.describe("posicionEnRuta", () => {
 
   test("justo en un vertice", () => {
     expect(posicionEnRuta(puntos, acumulados, acumulados[1])).toEqual([0, 1])
+  })
+})
+
+test.describe("parada de hidratacion", () => {
+  test("una sola, en la Escuela N° 6, pegada a la ruta y a mitad de camino", () => {
+    expect(PUNTOS_HIDRATACION).toHaveLength(1)
+    const escuela = PUNTOS_HIDRATACION[0].posicion
+    const acumulados = acumularDistancias(PUNTOS_RUTA)
+    let cerca = Infinity
+    let enMetros = 0
+    PUNTOS_RUTA.forEach((p, i) => {
+      const d = distanciaM(p, escuela)
+      if (d < cerca) {
+        cerca = d
+        enMetros = acumulados[i]
+      }
+    })
+    expect(cerca).toBeLessThan(50)
+    const fraccion = enMetros / acumulados[acumulados.length - 1]
+    expect(fraccion).toBeGreaterThan(0.4)
+    expect(fraccion).toBeLessThan(0.6)
+  })
+})
+
+test.describe("sentidoHorizontal (hacia donde mira la bici)", () => {
+  const acumulados = acumularDistancias(PUNTOS_RUTA)
+  const total = acumulados[acumulados.length - 1]
+
+  // La primera mitad de la vuelta va hacia el oeste y la segunda hacia el este.
+  test("al 30% va a la izquierda y al 65% a la derecha", () => {
+    expect(sentidoHorizontal(PUNTOS_RUTA, acumulados, total * 0.3)).toBe("izquierda")
+    expect(sentidoHorizontal(PUNTOS_RUTA, acumulados, total * 0.65)).toBe("derecha")
+  })
+
+  test("en un tramo norte-sur no decide (no parpadea)", () => {
+    const norte: Punto[] = [
+      [0, 0],
+      [0.01, 0],
+    ]
+    expect(sentidoHorizontal(norte, acumularDistancias(norte), 500)).toBeNull()
   })
 })
