@@ -37,7 +37,7 @@ export default function RouteMap() {
     { icon: Route, label: "Distancia total", value: "50 km", color: "text-yellow-400" },
     { icon: Clock, label: "Tiempo estimado", value: "3-4 hrs", color: "text-blue-400" },
     { icon: Bike, label: "Exigencia", value: "Tranquila", color: "text-green-400" },
-    { icon: Heart, label: "Puntos de apoyo", value: "5 estaciones", color: "text-red-400" },
+    { icon: Heart, label: "Puntos de apoyo", value: "3 estaciones", color: "text-red-400" },
   ]
 
   const servicios = [
