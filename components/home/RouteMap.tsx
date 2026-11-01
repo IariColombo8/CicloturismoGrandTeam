@@ -1,8 +1,9 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { MapPin, Navigation, Flag, Droplet, Route, Clock, Bike, Heart } from "lucide-react"
+import { MapPin, Flag, Droplet, Route, Clock, Bike, Heart } from "lucide-react"
 import { Revelar } from "@/components/ui/Revelar"
+import MapaRecorrido from "@/components/home/MapaRecorrido"
 
 export default function RouteMap() {
   const routeDetails = [
@@ -142,43 +143,12 @@ export default function RouteMap() {
                   Mapa del recorrido
                 </CardTitle>
                 <CardDescription className="text-gray-400 text-xs sm:text-sm md:text-base">
-                  Con los puntos de hidratación y las zonas de apoyo
+                  El camino del paseo, con salida y llegada en el mismo lugar. La bici te muestra el sentido de la vuelta.
                 </CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-                <div className="w-full h-64 sm:h-96 md:h-[500px] bg-zinc-900 rounded-xl border-2 border-yellow-400/20 flex items-center justify-center relative overflow-hidden group hover:border-yellow-400/40 transition-all">
-                  <div className="text-center z-10 relative px-4">
-                    <div className="mb-4 sm:mb-6 relative gt-aura inline-flex rounded-full p-3">
-                      <Navigation
-                        className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-yellow-400 mx-auto"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <p className="text-white font-bold text-lg sm:text-xl md:text-2xl mb-1 sm:mb-2">Mapa interactivo</p>
-                    <p className="text-gray-400 text-sm sm:text-base md:text-lg mb-2 sm:mb-4">Disponible próximamente</p>
-                    <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full">
-                      <span className="text-xs sm:text-sm text-yellow-400">Lo estamos preparando</span>
-                    </div>
-                  </div>
-
-                  {/* Fondo decorativo */}
-                  <div className="absolute inset-0 opacity-10 hidden sm:block" aria-hidden="true">
-                    <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-yellow-400 rounded-full blur-3xl animate-float" />
-                    <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-amber-500 rounded-full blur-3xl animate-float-delayed" />
-                  </div>
-
-                  {/* Cuadricula, como un mapa */}
-                  <div
-                    className="absolute inset-0 bg-[linear-gradient(rgba(255,215,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,215,0,0.03)_1px,transparent_1px)] bg-[size:50px_50px] opacity-20"
-                    aria-hidden="true"
-                  />
-
-                  {/* Ciclista cruzando el mapa */}
-                  <div className="pointer-events-none absolute bottom-6 left-0 right-0 opacity-30" aria-hidden="true">
-                    <Bike className="gt-ciclista w-8 h-8 text-yellow-400" />
-                  </div>
-                </div>
+                <MapaRecorrido />
 
                 {/* Que esta incluido */}
                 <div className="bg-zinc-900/50 border border-yellow-400/20 rounded-xl p-4 sm:p-6">

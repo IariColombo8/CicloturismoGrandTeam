@@ -253,6 +253,25 @@ de `event_settings.precio`, los cupos de `useCuposRestantes`, la fecha de
 `lib/constants.ts` (tambien la del JSON-LD de `app/layout.tsx`). Si el dato
 todavia no llego se muestra una etiqueta sin cifra, nunca un numero de relleno.
 
+### Mapa del recorrido (seccion "Recorrido" de la home)
+
+El mapa sale del GPX grabado en la vuelta de prueba (`datos/recorrido-grand-team-original.gpx`,
+export de Mi Fitness del 01/11/2026). **No se edita el JSON a mano**: se corre
+`node scripts/gpx-a-recorrido.mjs`, que genera `lib/recorrido/ruta.json` (los puntos del mapa) y
+`public/recorrido-grand-team.gpx` (el boton "Descargar el recorrido").
+
+- El script **saca las idas y vueltas por el mismo camino** (la del km 27, donde se volvio ~500 m
+  para atras, y una chica en el km 1,4) y los retrocesos de pocos metros del ruido del GPS: en el
+  mapa la ruta va siempre "derecho". `e2e/unit/recorrido.spec.ts` falla si aparece una vuelta en U.
+- Ojo con la distancia: el track limpio mide **~42,7 km** (el reloj dijo 44,3 con la ida y
+  vuelta). La pagina sigue diciendo 50 km: si hay que cambiarlo, es una decision del equipo.
+- `MapaRecorrido.tsx` baja Leaflet (`MapaLeaflet.tsx`, `next/dynamic` sin SSR) recien cuando la
+  seccion se acerca a la pantalla. Mosaicos **sin clave**: OpenStreetMap y satelite de Esri
+  (CARTO pide API key y pone marca de agua).
+- Una bici recorre la ruta con `requestAnimationFrame` (Leaflet la ubica con `transform`), con
+  boton de pausa; se frena fuera de pantalla y con "reducir movimiento" va mas lenta.
+- En el celular un dedo scrollea la pagina, no arrastra el mapa (`dragging: !L.Browser.mobile`).
+
 ### Vista previa al compartir un link (Open Graph)
 
 Cada pagina publica tiene **su propia imagen y su propio texto**: estos links se
