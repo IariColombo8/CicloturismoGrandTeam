@@ -28,7 +28,10 @@ export function nombrePropio(valor: string): string {
     .toLowerCase()
     .split(" ")
     .map((palabra, i) =>
-      i > 0 && MENORES.has(palabra) ? palabra : palabra.charAt(0).toUpperCase() + palabra.slice(1),
+      i > 0 && MENORES.has(palabra)
+        ? palabra
+        : // Tambien despues de un guion: "coronda -santa fe" -> "Coronda -Santa Fe".
+          palabra.replace(/(^|-)(\p{L})/gu, (_, guion: string, letra: string) => guion + letra.toUpperCase()),
     )
     .join(" ")
 }
@@ -78,4 +81,123 @@ export function agruparTextos(valores: (string | null | undefined)[]): GrupoText
       }
     })
     .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, "es"))
+}
+
+// ---------------------------------------------------------------------------
+// Agrupar "parecidos": ademas de mayusculas y acentos, junta los errores de
+// tipeo y los agregados ("Concepción del uruguayo", "CONCEPCION DRL URUGUAY",
+// "Concepción del Uruguay (3260)", "Federación Entre Rios", "Grand theam").
+// Lo usa el registro de inscripciones para los filtros de ciudad y de grupo.
+// ---------------------------------------------------------------------------
+
+/** Abreviaturas que no se parecen en nada a lo que abrevian. */
+const ALIAS_CIUDAD: Record<string, string> = {
+  cdelu: "concepciondeluruguay",
+  cdu: "concepciondeluruguay",
+}
+
+/** Respuestas que en el campo "grupo" quieren decir que no tiene grupo. */
+const SIN_GRUPO = new Set(["singrupo", "no", "solo", "sola", "ninguno", "ninguna", "nada", "independiente"])
+
+/** Palabras de relleno en los nombres de grupo ("La heroica montan bike" = "La heroica bike"). */
+const RELLENO_GRUPO = new Set(["la", "las", "los", "el", "bike", "bikes", "bikers", "montan", "mountain"])
+
+/** Largo minimo para que un nombre pueda "contener" a otro o tener un error de tipeo. */
+const LARGO_MINIMO_PARECIDO = 6
+
+export type TipoParecido = "ciudad" | "grupo"
+
+/** Clave compacta: solo letras, sin acentos, sin espacios ni signos. */
+export function claveCompacta(valor: string | null | undefined, tipo: TipoParecido): string {
+  let palabras = claveTexto(valor)
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+  if (tipo === "grupo") {
+    const sinRelleno = palabras.filter((p) => !RELLENO_GRUPO.has(p))
+    if (sinRelleno.length > 0) palabras = sinRelleno
+  }
+  const compacta = palabras.join("")
+  if (tipo === "ciudad") return ALIAS_CIUDAD[compacta] ?? compacta
+  return SIN_GRUPO.has(compacta) ? "singrupo" : compacta
+}
+
+/** true si las dos claves difieren en a lo sumo una letra (cambiada, sobrante o faltante). */
+function difierenEnUnaLetra(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) > 1) return false
+  let i = 0
+  while (i < a.length && i < b.length && a[i] === b[i]) i++
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1)
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1)
+}
+
+/**
+ * Dos claves compactas son "la misma" si son iguales, si una empieza con la
+ * otra ("federacionentrerios" / "federacion") o si difieren en una letra
+ * ("gualeguychu" / "gualeguaychu"). Para lo de "empieza con" y el error de
+ * tipeo la mas corta tiene que tener 6 letras o mas: asi "Colón" no se come a
+ * "Colonia".
+ */
+export function sonParecidas(a: string, b: string): boolean {
+  if (a === b) return true
+  const [corta, larga] = a.length <= b.length ? [a, b] : [b, a]
+  if (corta.length < LARGO_MINIMO_PARECIDO) return false
+  return larga.startsWith(corta) || difierenEnUnaLetra(a, b)
+}
+
+/** "Grand Team Bike CdelU" se respeta; "GRAND TEAM" o "grand team" se ordenan. */
+function etiquetaGrupo(valor: string): string {
+  const limpio = valor.trim().replace(/\s+/g, " ")
+  return limpio === limpio.toUpperCase() || limpio === limpio.toLowerCase() ? nombrePropio(limpio) : limpio
+}
+
+/**
+ * Como `agruparTextos`, pero ademas junta los parecidos (ver `sonParecidas`).
+ * La etiqueta es la forma mas usada: la ciudad que la mayoria escribio bien le
+ * pone el nombre al grupo entero. Ordenado alfabeticamente por la etiqueta.
+ */
+export function agruparParecidos(
+  valores: (string | null | undefined)[],
+  tipo: TipoParecido,
+): GrupoTexto[] {
+  // Primero lo exacto (mayusculas/acentos), mas usados primero: el mas usado
+  // de cada familia es el que le da el nombre.
+  const exactos = agruparTextos(valores).sort((a, b) => b.cantidad - a.cantidad)
+  const familias: { compactas: string[]; miembros: GrupoTexto[] }[] = []
+
+  for (const grupo of exactos) {
+    const compacta = claveCompacta(grupo.clave, tipo)
+    const familia = familias.find((f) => f.compactas.some((c) => sonParecidas(c, compacta)))
+    if (familia) {
+      familia.miembros.push(grupo)
+      if (!familia.compactas.includes(compacta)) familia.compactas.push(compacta)
+    } else {
+      familias.push({ compactas: [compacta], miembros: [grupo] })
+    }
+  }
+
+  return familias
+    .map(({ miembros }) => {
+      const [principal] = miembros
+      const sinGrupo = tipo === "grupo" && claveCompacta(principal.clave, tipo) === "singrupo"
+      return {
+        clave: principal.clave,
+        etiqueta: sinGrupo
+          ? "Sin grupo"
+          : tipo === "grupo"
+            ? etiquetaGrupo(varianteElegida(principal))
+            : principal.etiqueta,
+        variantes: miembros.flatMap((m) => m.variantes),
+        cantidad: miembros.reduce((suma, m) => suma + m.cantidad, 0),
+      }
+    })
+    .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, "es"))
+}
+
+/**
+ * La variante tal cual se escribio que dio la etiqueta de `agruparTextos`.
+ * En los grupos se usa esa y no la etiqueta, para respetar "Grand Team Bike CdelU".
+ */
+function varianteElegida(grupo: GrupoTexto): string {
+  return grupo.variantes.find((v) => nombrePropio(v) === grupo.etiqueta) ?? grupo.variantes[0]
 }

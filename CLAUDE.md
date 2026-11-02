@@ -846,6 +846,17 @@ bolsita y lo demas si (`20261025_personas_con_discapacidad.sql`).
   a pedido: no en otra tarjeta), con "ver" para la lista. Tienen badge propio en la grilla
   y filtro "Con discapacidad".
 
+**Filtros de ciudad y grupo del registro: los parecidos son uno.** `agruparParecidos()`
+(`lib/agruparTexto.ts`) junta, ademas de mayusculas y acentos, los errores de tipeo de una
+letra, lo agregado al final ("Federación Entre Rios", "(3260)") y alias como "cdelu"; en
+grupos ignora "la/los/bike/bikers" y toma "No"/"Solo" como "Sin grupo". Para "contener" o
+tener un error de tipeo, el nombre mas corto tiene que tener 6 letras o mas (asi "Colón" no
+se come a "Colonia"). La base no se toca: el filtro consulta con `.in(...)` todas las
+variantes. El dashboard sigue con `claveTexto` (solo mayusculas y acentos).
+El filtro **Edad** ordena por `fecha_nacimiento` (texto ISO) y muestra mas chico, mas grande,
+edad mas repetida y promedio de todo lo filtrado (`lib/edades.ts`, mismas edades creibles
+que el dashboard). Tests: `e2e/unit/agrupar-texto.spec.ts`.
+
 ### Dashboard Admin
 
 `/admin/dashboard` tiene tres secciones, y todas se calculan sobre **todas** las filas de la

@@ -135,7 +135,7 @@ const EDAD_MINIMA_CREIBLE = 3
 const EDAD_MAXIMA_CREIBLE = 100
 
 /** Edad cumplida al dia de hoy, o null si la fecha no da una edad creible. */
-function calcularEdad(nacimiento: Date | null): number | null {
+export function calcularEdad(nacimiento: Date | null): number | null {
   if (!nacimiento) return null
   const hoy = new Date()
   let edad = hoy.getFullYear() - nacimiento.getFullYear()

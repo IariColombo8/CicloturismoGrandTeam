@@ -11,7 +11,8 @@ import { SIN_NUMERO } from "@/lib/numeroInscripcion"
 import { reproducirAviso } from "@/lib/sonidoAviso"
 import NotificacionesPush from "@/components/admin/NotificacionesPush"
 import NotasCaja from "@/components/admin/NotasCaja"
-import { agruparTextos, type GrupoTexto } from "@/lib/agruparTexto"
+import { agruparParecidos, type GrupoTexto } from "@/lib/agruparTexto"
+import { edadDeFecha, resumirEdades, type ResumenEdades } from "@/lib/edades"
 import {
   Users,
   CheckCircle,
@@ -94,6 +95,8 @@ interface FiltrosAvanzados {
   /** all | problemas | alergias | celiaco */
   salud: string
   conNota: boolean
+  /** all | chicos (del mas chico al mas grande) | grandes (al reves) */
+  edad: string
   /** Precio de lista, para resolver "pago otro precio". */
   precioLista: number
 }
@@ -106,6 +109,7 @@ const FILTROS_VACIOS: FiltrosAvanzados = {
   pago: "all",
   salud: "all",
   conNota: false,
+  edad: "all",
   precioLista: PRECIO_FALLBACK,
 }
 
@@ -234,6 +238,10 @@ export default function RegistroInscripciones() {
   const [filtroPago, setFiltroPago] = useState("all")
   const [filtroSalud, setFiltroSalud] = useState("all")
   const [soloConNota, setSoloConNota] = useState(false)
+  // Orden por edad: "chicos" = del mas chico al mas grande.
+  const [filtroEdad, setFiltroEdad] = useState("all")
+  // Mas chico, mas grande y edad mas repetida de lo que esta filtrado.
+  const [resumenEdades, setResumenEdades] = useState<ResumenEdades | null>(null)
 
   // Aviso flotante de inscripcion nueva (realtime).
   const [avisoInscripcion, setAvisoInscripcion] = useState<{
@@ -246,16 +254,28 @@ export default function RegistroInscripciones() {
     paises: string[]
     /** Una por ciudad aunque este escrita de varias formas (ver lib/agruparTexto.ts). */
     ciudades: GrupoTexto[]
-    grupos: string[]
+    /** Igual que las ciudades: "Grand theam" y "Grand Team bike" son un solo grupo. */
+    grupos: GrupoTexto[]
     sangres: string[]
   }>({ paises: [], ciudades: [], grupos: [], sangres: [] })
-  // El filtro de ciudad guarda la clave comun; para consultar hacen falta los
-  // textos tal cual estan en la base. Va por ref para que las consultas (que
-  // son useCallback) siempre vean las opciones vigentes.
+  // Los filtros de ciudad y de grupo guardan la clave comun; para consultar
+  // hacen falta los textos tal cual estan en la base. Va por ref para que las
+  // consultas (que son useCallback) siempre vean las opciones vigentes.
   const ciudadesRef = useRef<GrupoTexto[]>([])
   ciudadesRef.current = opcionesFiltro.ciudades
   const variantesDeCiudad = (clave: string) =>
     ciudadesRef.current.find((c) => c.clave === clave)?.variantes ?? [clave]
+  const gruposRef = useRef<GrupoTexto[]>([])
+  gruposRef.current = opcionesFiltro.grupos
+  const variantesDeGrupo = (clave: string) =>
+    gruposRef.current.find((g) => g.clave === clave)?.variantes ?? [clave]
+  // La grilla muestra la ciudad unificada ("Concepción del Uruguay"), no lo
+  // que tipeo cada uno. El detalle sigue mostrando el dato tal cual.
+  const ciudadUnificada = useMemo(() => {
+    const mapa = new Map<string, string>()
+    for (const c of opcionesFiltro.ciudades) for (const v of c.variantes) mapa.set(v, c.etiqueta)
+    return (valor: string) => mapa.get(valor) ?? valor
+  }, [opcionesFiltro.ciudades])
 
   // Paginacion server-side
   const [currentPage, setCurrentPage] = useState(1)
@@ -341,7 +361,7 @@ export default function RegistroInscripciones() {
       const from = (page - 1) * perPage
       const to = from + perPage - 1
 
-      const buildQuery = (columns: string, conOrdenEstado = true) => {
+      const buildQuery = (columns: string, conOrdenEstado = true, conRango = true) => {
         // Orden: pendientes arriba, despues las confirmadas del numero mas
         // grande al 1 (el #1 queda ultimo, incluso con varias paginas) y las
         // rechazadas al final. Se ordena en el servidor porque la lista esta
@@ -351,7 +371,15 @@ export default function RegistroInscripciones() {
           .select(columns, { count: "exact" })
           .contains("anios", [EDICION_ACTUAL])
 
-        if (conOrdenEstado) {
+        // Orden por edad: manda sobre el de estado. fecha_nacimiento es texto
+        // "AAAA-MM-DD", que ordenado como texto queda en orden de fecha: la
+        // fecha mas nueva es el mas chico.
+        if (filtros.edad !== "all") {
+          query = query.order("fecha_nacimiento", {
+            ascending: filtros.edad === "grandes",
+            nullsFirst: false,
+          })
+        } else if (conOrdenEstado) {
           query = query.order("orden_estado", { ascending: true })
         }
 
@@ -373,7 +401,7 @@ export default function RegistroInscripciones() {
         // --- Filtros avanzados ---
         if (filtros.pais !== "all") query = query.eq("pais", filtros.pais)
         if (filtros.ciudad !== "all") query = query.in("localidad", variantesDeCiudad(filtros.ciudad))
-        if (filtros.grupo !== "all") query = query.eq("grupo_ciclistas", filtros.grupo)
+        if (filtros.grupo !== "all") query = query.in("grupo_ciclistas", variantesDeGrupo(filtros.grupo))
         // El grupo sanguineo se cargo con distinta grafia ("a+", "A+"), por eso ilike.
         if (filtros.sangre !== "all") query = query.ilike("grupo_sanguineo", filtros.sangre)
 
@@ -419,7 +447,18 @@ export default function RegistroInscripciones() {
             break
         }
 
-        return query.range(from, to)
+        return conRango ? query.range(from, to) : query
+      }
+
+      // Resumen de edades de TODO lo filtrado (no solo de esta hoja). Solo se
+      // pide con el filtro de edad puesto. Si falla, la grilla igual carga.
+      if (filtros.edad !== "all") {
+        buildQuery("nombre, apellido, fecha_nacimiento", false, false).then(({ data: filasEdad, error: errEdad }) => {
+          if (errEdad) console.error("Error cargando el resumen de edades:", errEdad)
+          setResumenEdades(errEdad ? null : resumirEdades((filasEdad as any[]) ?? []))
+        })
+      } else {
+        setResumenEdades(null)
       }
 
       const primaryResult = await buildQuery(INSCRIPCIONES_COLUMNS)
@@ -489,6 +528,7 @@ export default function RegistroInscripciones() {
           metodoPago: d.metodo_pago,
           numeroReferencia: d.numero_referencia,
           fechaNacimiento: d.fecha_nacimiento,
+          edad: edadDeFecha(d.fecha_nacimiento),
           grupoSanguineo: d.grupo_sanguineo,
           tipoSangre: d.grupo_sanguineo,
           telefono: d.telefono,
@@ -640,9 +680,11 @@ export default function RegistroInscripciones() {
       pago: filtroPago,
       salud: filtroSalud,
       conNota: soloConNota,
+      edad: filtroEdad,
       precioLista: precioInscripcion,
     }),
     [
+      filtroEdad,
       filtroPais,
       filtroCiudad,
       filtroGrupo,
@@ -662,9 +704,11 @@ export default function RegistroInscripciones() {
     (filtroSangre !== "all" ? 1 : 0) +
     (filtroPago !== "all" ? 1 : 0) +
     (filtroSalud !== "all" ? 1 : 0) +
-    (soloConNota ? 1 : 0)
+    (soloConNota ? 1 : 0) +
+    (filtroEdad !== "all" ? 1 : 0)
 
   const limpiarFiltros = () => {
+    setFiltroEdad("all")
     setSearchTerm("")
     setStatusFilter("all")
     setFiltroPais("all")
@@ -697,10 +741,11 @@ export default function RegistroInscripciones() {
 
       setOpcionesFiltro({
         paises: unicos(data.map((d: any) => d.pais)),
-        // "concepcion del uruguay" y "CONCEPCIÓN DEL URUGUAY" son una sola
-        // opcion; la base queda como la escribio cada uno.
-        ciudades: agruparTextos(data.map((d: any) => d.localidad)),
-        grupos: unicos(data.map((d: any) => d.grupo_ciclistas)),
+        // "concepcion del uruguay", "CONCEPCIÓN DEL URUGUAY" y "Concepción del
+        // uruguayo" son una sola opcion (lo mismo con los grupos); la base
+        // queda como la escribio cada uno.
+        ciudades: agruparParecidos(data.map((d: any) => d.localidad), "ciudad"),
+        grupos: agruparParecidos(data.map((d: any) => d.grupo_ciclistas), "grupo"),
         // El grupo sanguineo se normaliza a mayusculas para no repetir "a+"/"A+".
         sangres: unicos(data.map((d: any) => (d.grupo_sanguineo || "").toUpperCase())),
       })
@@ -1307,7 +1352,11 @@ export default function RegistroInscripciones() {
       .from("participantes")
       .select(INSCRIPCIONES_COLUMNS)
       .contains("anios", [EDICION_ACTUAL])
-      .order("orden_estado", { ascending: true })
+    query =
+      filtrosAvanzados.edad !== "all"
+        ? query.order("fecha_nacimiento", { ascending: filtrosAvanzados.edad === "grandes", nullsFirst: false })
+        : query.order("orden_estado", { ascending: true })
+    query = query
       .order("numero_inscripcion", { ascending: false, nullsFirst: false })
       .order("fecha_inscripcion", { ascending: false })
 
@@ -1324,7 +1373,7 @@ export default function RegistroInscripciones() {
     const f = filtrosAvanzados
     if (f.pais !== "all") query = query.eq("pais", f.pais)
     if (f.ciudad !== "all") query = query.in("localidad", variantesDeCiudad(f.ciudad))
-    if (f.grupo !== "all") query = query.eq("grupo_ciclistas", f.grupo)
+    if (f.grupo !== "all") query = query.in("grupo_ciclistas", variantesDeGrupo(f.grupo))
     if (f.sangre !== "all") query = query.ilike("grupo_sanguineo", f.sangre)
     if (f.conNota) query = query.not("nota_estado", "is", null).neq("nota_estado", "")
 
@@ -1832,7 +1881,17 @@ export default function RegistroInscripciones() {
                     set: setFiltroGrupo,
                     opciones: [
                       { v: "all", t: "Todos los grupos" },
-                      ...opcionesFiltro.grupos.map((g) => ({ v: g, t: g })),
+                      ...opcionesFiltro.grupos.map((g) => ({ v: g.clave, t: g.etiqueta })),
+                    ],
+                  },
+                  {
+                    etiqueta: "Edad",
+                    value: filtroEdad,
+                    set: setFiltroEdad,
+                    opciones: [
+                      { v: "all", t: "Sin orden por edad" },
+                      { v: "chicos", t: "Edad: del más chico al más grande" },
+                      { v: "grandes", t: "Edad: del más grande al más chico" },
                     ],
                   },
                 ].map((filtro) => (
@@ -1897,6 +1956,55 @@ export default function RegistroInscripciones() {
                 </span>
               </div>
             )}
+
+            {/* Resumen del filtro de edad: sale de todo lo filtrado, no de esta hoja. */}
+            {filtroEdad !== "all" && resumenEdades && (
+              <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2">
+                {[
+                  {
+                    titulo: "Más chico",
+                    valor: resumenEdades.masChicos[0] ? `${resumenEdades.masChicos[0].edad} años` : "-",
+                    detalle: resumenEdades.masChicos.map((p) => p.nombre).join(", "),
+                  },
+                  {
+                    titulo: "Más grande",
+                    valor: resumenEdades.masGrandes[0] ? `${resumenEdades.masGrandes[0].edad} años` : "-",
+                    detalle: resumenEdades.masGrandes.map((p) => p.nombre).join(", "),
+                  },
+                  {
+                    titulo: "Edad más repetida",
+                    valor: resumenEdades.modas.length
+                      ? `${resumenEdades.modas.join(", ")} años`
+                      : "-",
+                    detalle: resumenEdades.cantidadModa
+                      ? `${resumenEdades.cantidadModa} persona${resumenEdades.cantidadModa !== 1 ? "s" : ""}${
+                          resumenEdades.modas.length > 1 ? " cada una" : ""
+                        }`
+                      : "",
+                  },
+                  {
+                    titulo: "Promedio",
+                    valor: resumenEdades.promedio != null ? `${resumenEdades.promedio} años` : "-",
+                    detalle:
+                      `${resumenEdades.conEdad} con edad` +
+                      (resumenEdades.sinEdad > 0 ? ` · ${resumenEdades.sinEdad} con fecha dudosa` : ""),
+                  },
+                ].map((dato) => (
+                  <div
+                    key={dato.titulo}
+                    className="rounded-lg border border-yellow-400/20 bg-zinc-800/60 px-3 py-2 min-w-0"
+                  >
+                    <div className="text-[11px] text-gray-400">{dato.titulo}</div>
+                    <div className="text-lg font-bold text-yellow-400">{dato.valor}</div>
+                    {dato.detalle && (
+                      <div className="text-xs text-gray-400 truncate" title={dato.detalle}>
+                        {dato.detalle}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Table */}
@@ -1933,10 +2041,21 @@ export default function RegistroInscripciones() {
                         <div className="font-semibold text-yellow-400 text-sm truncate md:whitespace-normal">
                           {insc.nombres} {insc.apellidos}
                         </div>
+                        {filtroEdad !== "all" && (
+                          <div className="text-xs text-gray-300">
+                            {insc.edad != null ? (
+                              `${insc.edad} años`
+                            ) : (
+                              <span className="text-amber-300" title={insc.fechaNacimiento || "Sin fecha de nacimiento"}>
+                                Fecha de nacimiento dudosa
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="text-xs text-gray-500 md:hidden truncate">{insc.email}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.email}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{insc.ciudad}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{ciudadUnificada(insc.ciudad)}</td>
                       <td className="px-2 py-3 sm:px-4">
                         {/* En celular los dos badges van en linea (solo iconos);
                             en desktop se apilan con su texto. */}
