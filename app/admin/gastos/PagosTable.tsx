@@ -108,6 +108,10 @@ export function PagosTable({
                       >
                         Otra forma
                       </Badge>
+                    ) : insc.pagoEstado === "colaboracion" ? (
+                      <Badge className="bg-teal-500/20 text-teal-300" title="No va al evento: no cuenta en los gastos por persona">
+                        Colaboración
+                      </Badge>
                     ) : insc.pagoEstado === "gratis" ? (
                       <Badge className="bg-blue-500/20 text-blue-400">Gratis</Badge>
                     ) : diferencia === 0 ? (

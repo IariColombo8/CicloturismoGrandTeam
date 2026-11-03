@@ -33,7 +33,7 @@ export interface SaldoEsperado {
   inscripcionesPendientes: number
   ingresosCobrados: number
   gastosPagados: number
-  /** Cantidad de inscriptos confirmados (los gastos por participante los usan). */
+  /** Cantidad de inscriptos confirmados, sin colaboraciones (los gastos por participante los usan). */
   confirmados: number
   /** Cuantas inscripciones esperan verificacion. */
   pendientes: number
@@ -76,6 +76,12 @@ export async function calcularSaldoEsperado(): Promise<SaldoEsperado | null> {
 
     for (const p of participantes) {
       if (p.estado === "confirmada") {
+        // Colaboracion: entra la plata pero no va al evento, asi que no cuenta
+        // en los gastos por persona (mismo criterio que cuentaEnGastos()).
+        if (p.pago_estado === "colaboracion") {
+          inscripcionesConfirmadas += p.monto_pagado != null ? Number(p.monto_pagado) : precio
+          continue
+        }
         confirmados += 1
         if (p.discapacidad === true) confirmadosConDiscapacidad += 1
         // Una inscripcion confirmada pero impaga, gratis, o pagada de una forma

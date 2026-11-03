@@ -43,6 +43,7 @@ import {
   MailX,
   StickyNote,
   FileText,
+  HandHeart,
   type LucideIcon,
 } from "lucide-react"
 
@@ -82,7 +83,9 @@ const PRECIO_FALLBACK = 25000
 // plata hasta que se lo pase a "pagado" o "otro monto".
 // "discapacidad": persona con discapacidad. No paga la inscripcion (se guarda
 // como gratis) y por ella no se paga el lugar del evento (discapacidad = true).
-type OpcionPago = "pagado" | "falta" | "otro" | "gratis" | "otra-forma" | "discapacidad"
+// "colaboracion": pone la plata (precio de lista) pero no va al evento. Suma
+// como ingreso y no cuenta en ningun gasto por persona (lugar, seguro...).
+type OpcionPago = "pagado" | "falta" | "otro" | "gratis" | "otra-forma" | "discapacidad" | "colaboracion"
 
 /** Filtros que viajan a la query de Supabase junto con estado y busqueda. */
 interface FiltrosAvanzados {
@@ -90,7 +93,7 @@ interface FiltrosAvanzados {
   ciudad: string
   grupo: string
   sangre: string
-  /** all | sin-pagar | otro-precio | gratis | pagado | otra-forma | discapacidad */
+  /** all | sin-pagar | otro-precio | gratis | pagado | otra-forma | discapacidad | colaboracion */
   pago: string
   /** all | problemas | alergias | celiaco */
   salud: string
@@ -193,6 +196,10 @@ interface ResumenPagos {
   distintos: PagoDistinto[]
   /** Pagaron de una forma que no entro a la caja (con su nota). */
   otraForma: InscriptoSimple[]
+  /** Colaboraciones: entra la plata, pero no van al evento. */
+  colaboraciones: InscriptoSimple[]
+  /** Lo que entro por las colaboraciones. */
+  cobradoColaboraciones: number
 }
 
 const RESUMEN_PAGOS_VACIO: ResumenPagos = {
@@ -206,6 +213,8 @@ const RESUMEN_PAGOS_VACIO: ResumenPagos = {
   conDiscapacidad: [],
   distintos: [],
   otraForma: [],
+  colaboraciones: [],
+  cobradoColaboraciones: 0,
 }
 
 export default function RegistroInscripciones() {
@@ -432,6 +441,9 @@ export default function RegistroInscripciones() {
           case "discapacidad":
             query = query.eq("discapacidad", true)
             break
+          case "colaboracion":
+            query = query.eq("pago_estado", "colaboracion")
+            break
         }
 
         switch (filtros.salud) {
@@ -600,10 +612,25 @@ export default function RegistroInscripciones() {
       conDiscapacidad: [],
       distintos: [],
       otraForma: [],
+      colaboraciones: [],
+      cobradoColaboraciones: 0,
     }
 
     for (const p of pagosData as any[]) {
       const nombreCompleto = `${p.nombre ?? ""} ${p.apellido ?? ""}`.trim()
+
+      // Colaboracion: la plata entra, pero no es un inscripto que pago (no va).
+      if (p.pago_estado === "colaboracion") {
+        const monto = p.monto_pagado != null ? Number(p.monto_pagado) : precioInscripcion
+        resumen.cobradoColaboraciones += monto
+        resumen.colaboraciones.push({
+          id: p.id,
+          nombre: nombreCompleto,
+          dni: p.dni ?? "",
+          nota: `Colaboración de ${formatearMonto(monto)}: no va al evento`,
+        })
+        continue
+      }
 
       // Con discapacidad se cuenta una sola vez: en la base queda como gratis
       // (no paga la inscripcion), pero no se suma tambien a los "gratis".
@@ -900,6 +927,20 @@ export default function RegistroInscripciones() {
       )
     }
 
+    // Colaboracion: pone la plata pero no va al evento.
+    if (insc.pagoEstado === "colaboracion") {
+      return (
+        <span
+          title="Colaboración: no va al evento ni cuenta en los gastos por persona"
+          className={`${clases} bg-teal-500/15 text-teal-300 border-teal-500/30`}
+        >
+          <HandHeart className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Colaboración</span>
+          <span className="sr-only">Colaboración</span>
+        </span>
+      )
+    }
+
     if (insc.pagoEstado !== "pagado") {
       return (
         <span
@@ -992,6 +1033,9 @@ export default function RegistroInscripciones() {
     } else if (insc.pagoEstado === "otro") {
       setPagoOpcion("otra-forma")
       setMontoOtro("")
+    } else if (insc.pagoEstado === "colaboracion") {
+      setPagoOpcion("colaboracion")
+      setMontoOtro("")
     } else if (insc.pagoEstado === "pagado") {
       const esPrecioDeLista = monto == null || monto === precioInscripcion
       setPagoOpcion(esPrecioDeLista ? "pagado" : "otro")
@@ -1016,6 +1060,15 @@ export default function RegistroInscripciones() {
       return { pago_estado: "gratis", monto_pagado: 0, pago_nota: null }
     if (pagoOpcion === "pagado")
       return { pago_estado: "pagado", monto_pagado: precioInscripcion, pago_nota: null }
+    // Colaboracion: entra el precio de lista como ingreso, sin contar en gastos.
+    if (pagoOpcion === "colaboracion") {
+      // Si ya era colaboracion con otro monto, se respeta lo guardado.
+      const guardado =
+        selectedInscripcion?.pagoEstado === "colaboracion" && selectedInscripcion?.montoPagado != null
+          ? Number(selectedInscripcion.montoPagado)
+          : precioInscripcion
+      return { pago_estado: "colaboracion", monto_pagado: guardado, pago_nota: null }
+    }
 
     // Pago que no entro a la caja: no suma plata, pero queda anotado como pago.
     if (pagoOpcion === "otra-forma") {
@@ -1392,6 +1445,8 @@ export default function RegistroInscripciones() {
       query = query.eq("pago_estado", "otro")
     } else if (f.pago === "discapacidad") {
       query = query.eq("discapacidad", true)
+    } else if (f.pago === "colaboracion") {
+      query = query.eq("pago_estado", "colaboracion")
     }
 
     if (f.salud === "problemas") query = query.in("tiene_problemas_salud", ["si", "true"])
@@ -1422,7 +1477,9 @@ export default function RegistroInscripciones() {
             ? "Pagado"
             : d.pago_estado === "otro"
               ? "Pago de otra forma"
-              : "Falta pagar",
+              : d.pago_estado === "colaboracion"
+                ? "Colaboracion (no va)"
+                : "Falta pagar",
       "Monto Pagado": d.monto_pagado != null ? Number(d.monto_pagado) : "",
       "Nota del Pago": d.pago_nota || "",
       Discapacidad: d.discapacidad === true ? "Si" : "",
@@ -1537,6 +1594,29 @@ export default function RegistroInscripciones() {
             descripcion: "Ya pagaron, pero esa plata todavía no entró a la caja",
             items: resumenPagos.otraForma,
           }),
+      })
+    }
+
+    if (resumenPagos.colaboraciones.length > 0) {
+      // Pusieron la plata pero no vienen: no cuentan en los gastos por persona.
+      lista.push({
+        id: "colaboracion",
+        titulo: "Colaboraciones",
+        valor: resumenPagos.colaboraciones.length,
+        icono: HandHeart,
+        color: "text-teal-400",
+        pie: `${formatearMonto(resumenPagos.cobradoColaboraciones)} cobrado`,
+        colorPie: "text-teal-400",
+        onVer: () =>
+          setListaModal({
+            titulo: "Colaboraciones",
+            descripcion: "Suman como ingreso, pero no van al evento ni cuentan en los gastos por persona",
+            items: resumenPagos.colaboraciones,
+          }),
+        onFiltrar: () => {
+          setFiltroPago("colaboracion")
+          setCurrentPage(1)
+        },
       })
     }
 
@@ -1834,6 +1914,7 @@ export default function RegistroInscripciones() {
                       { v: "otra-forma", t: "Pagaron de otra forma" },
                       { v: "gratis", t: "Inscripcion gratis" },
                       { v: "discapacidad", t: "Con discapacidad" },
+                      { v: "colaboracion", t: "Colaboración (no viene)" },
                       { v: "pagado", t: "Pagados" },
                     ],
                   },
@@ -2463,6 +2544,7 @@ export default function RegistroInscripciones() {
                               { id: "gratis", label: "Inscripción gratis" },
                               { id: "otra-forma", label: "Pagó de otra forma (con nota)" },
                               { id: "discapacidad", label: "Persona con discapacidad" },
+                              { id: "colaboracion", label: `Colaboración (${formatearMonto(precioInscripcion)}, no viene)` },
                             ] as { id: OpcionPago; label: string }[]
                           ).map((opcion) => (
                             <button
@@ -2522,7 +2604,9 @@ export default function RegistroInscripciones() {
                                   ? "Queda registrado que pagó, con tu nota, pero no suma plata a la caja hasta que lo pases a «Pagó $…» u «otro monto»."
                                   : pagoOpcion === "discapacidad"
                                     ? "No paga la inscripción y no se paga por ella el lugar del evento; el seguro y lo demás, sí."
-                                    : "Precio de lista actual del evento."}
+                                    : pagoOpcion === "colaboracion"
+                                      ? "Suma como ingreso, pero no va al evento: no cuenta en el lugar (El Viejo Molino), el seguro ni ningún gasto por persona."
+                                      : "Precio de lista actual del evento."}
                         </p>
                       </div>
                     )}

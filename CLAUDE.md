@@ -803,6 +803,12 @@ sale siempre de `participantes.pago_estado` + `participantes.monto_pagado`:
   transfirio a alguien del equipo. Suma 0 hasta que se lo pase a 'pagado'. La aclaracion
   va en `pago_nota` ("Pago 700 uruguayos, Lore nos transfiere esa plata") y se ve en el
   badge de la grilla, en el modal, en finanzas y en los exports.
+- `pago_estado = 'colaboracion'` -> **pone la plata pero no va al evento**
+  (`20261103_pago_colaboracion.sql`). Suma `monto_pagado` (el precio de lista al elegirla en el
+  modal) como ingreso y **no cuenta en ningun gasto por persona** (lugar, seguro, bolsita):
+  `cuentaEnGastos()` la saca de `resumen.confirmados` en `useFinanzas` y
+  `lib/finanzas/saldoEsperado.ts` hace lo mismo. Tiene tarjeta propia en el registro (solo si
+  hay alguna), badge, filtro y fila aparte en Movimientos, dashboard y PDF/Excel.
 
 Las listas de nombres (quienes no pagaron, quienes pagaron otro monto) **no se escriben
 en la fila**: la fila dice la cantidad y los nombres se abren con el boton "ver"

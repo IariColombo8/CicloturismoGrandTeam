@@ -141,6 +141,21 @@ function filasInscripciones(
     })
   }
 
+  if (d.colaboracion.cantidad > 0) {
+    filas.push({
+      descripcion: con(
+        `Colaboraciones, no van al evento (${cuantos(d.colaboracion.cantidad)})`,
+        d.colaboracion.items.map(
+          (i) => `${i.nombre} ${i.apellido} ${formatARS(i.montoPagado ?? precioBase)}`,
+        ),
+      ),
+      categoria: "inscripciones",
+      monto: d.colaboracion.total,
+      estado: "cobrado",
+      fecha: "-",
+    })
+  }
+
   return filas
 }
 
@@ -398,6 +413,10 @@ export async function exportarFinanzasExcel(
       Valor: `${d.otraForma.cantidad} · ${formatARS(d.otraForma.total)}`,
     },
     { Indicador: "Inscripciones sin cargo", Valor: `${d.gratis.cantidad}` },
+    {
+      Indicador: "Colaboraciones (no van al evento ni cuentan en los gastos por persona)",
+      Valor: `${d.colaboracion.cantidad} · ${formatARS(d.colaboracion.total)}`,
+    },
     {
       Indicador: "Personas con discapacidad (no pagan el lugar del evento)",
       Valor: `${resumen.conDiscapacidad?.length ?? 0}`,

@@ -50,8 +50,15 @@ export interface Ingreso {
  * Como esta el pago de una inscripcion (columna pago_estado de participantes).
  * "otro" = pago de una forma que no entro a la caja (otra moneda, se lo dio a
  * alguien del equipo); la aclaracion va en `pagoNota`.
+ * "colaboracion" = pone la plata (`montoPagado`) pero no va al evento: suma
+ * como ingreso y no cuenta en ningun gasto por persona (lugar, seguro...).
  */
-export type EstadoPago = "pagado" | "pendiente" | "gratis" | "otro"
+export type EstadoPago = "pagado" | "pendiente" | "gratis" | "otro" | "colaboracion"
+
+/** Las colaboraciones ponen plata pero no son una persona mas en los gastos. */
+export function cuentaEnGastos(inscripcion: Pick<InscripcionPago, "pagoEstado">): boolean {
+  return inscripcion.pagoEstado !== "colaboracion"
+}
 
 export interface InscripcionPago {
   id: string
@@ -91,6 +98,11 @@ export interface DesglosePagos {
   otraForma: { cantidad: number; total: number; items: InscripcionPago[] }
   /** Inscripciones sin cargo. */
   gratis: { cantidad: number; items: InscripcionPago[] }
+  /**
+   * Colaboraciones: entra la plata pero no van al evento, asi que no cuentan
+   * en los gastos por persona.
+   */
+  colaboracion: { cantidad: number; total: number; items: InscripcionPago[] }
 }
 
 /**
@@ -143,7 +155,7 @@ export function formatARS(monto: number): string {
  * este confirmada: confirmar no es cobrar.
  */
 export function montoCobrado(inscripcion: InscripcionPago, precioBase: number): number {
-  if (inscripcion.pagoEstado !== "pagado") return 0
+  if (inscripcion.pagoEstado !== "pagado" && inscripcion.pagoEstado !== "colaboracion") return 0
   return inscripcion.montoPagado ?? precioBase
 }
 
@@ -153,7 +165,8 @@ export function montoCobrado(inscripcion: InscripcionPago, precioBase: number): 
  */
 export function montoEsperado(inscripcion: InscripcionPago, precioBase: number): number {
   if (inscripcion.pagoEstado === "gratis") return 0
-  if (inscripcion.pagoEstado === "pagado") return inscripcion.montoPagado ?? precioBase
+  if (inscripcion.pagoEstado === "pagado" || inscripcion.pagoEstado === "colaboracion")
+    return inscripcion.montoPagado ?? precioBase
   // Pendiente de pago, o pago que no entro a la caja: se espera el precio de
   // lista (el 0 guardado al confirmar significa "no entro", no "paga cero").
   return precioBase

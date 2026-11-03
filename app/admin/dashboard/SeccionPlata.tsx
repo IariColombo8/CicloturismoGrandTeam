@@ -98,6 +98,17 @@ export function SeccionPlata({ precio, habilitado }: { precio: number; habilitad
       },
       monto: 0,
     },
+    {
+      conteo: {
+        label: "Colaboraciones",
+        cantidad: d.colaboracion.cantidad,
+        items: d.colaboracion.items.map(
+          (i) => `${i.nombre} ${i.apellido} — ${formatARS(i.montoPagado ?? precio)}`,
+        ),
+      },
+      monto: d.colaboracion.total,
+      nota: "no van al evento",
+    },
   ].filter((f) => f.conteo.cantidad > 0)
 
   const notasSinResolver = notas.filter((n) => !n.resuelta)

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import type { DesglosePagos, EstadoPago, Gasto, Ingreso, InscripcionPago, Movimiento } from "./tipos"
 import {
+  cuentaEnGastos,
   detallePersonas,
   formatARS,
   montoCobrado,
@@ -43,9 +44,12 @@ interface UseFinanzasResult {
 }
 
 export interface ResumenFinanciero {
-  /** Inscripciones con estado "confirmada". */
+  /**
+   * Inscripciones con estado "confirmada", sin las colaboraciones (ponen plata
+   * pero no van): es la cantidad por la que se pagan los gastos por persona.
+   */
   confirmados: number
-  /** Confirmadas + pendientes (proyeccion si todos confirman). */
+  /** Confirmadas + pendientes (proyeccion si todos confirman), sin colaboraciones. */
   inscriptosTotales: number
   /**
    * Confirmados con discapacidad: no pagan los gastos por persona que no se
@@ -132,7 +136,10 @@ function mapIngreso(i: any): Ingreso {
 
 function mapInscripcion(i: any): InscripcionPago {
   const pagoEstado: EstadoPago =
-    i.pago_estado === "pagado" || i.pago_estado === "gratis" || i.pago_estado === "otro"
+    i.pago_estado === "pagado" ||
+    i.pago_estado === "gratis" ||
+    i.pago_estado === "otro" ||
+    i.pago_estado === "colaboracion"
       ? i.pago_estado
       : ESTADO_PENDIENTE
   return {
@@ -213,8 +220,10 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
 
   const resumen = useMemo<ResumenFinanciero>(() => {
     const confirmadas = inscripciones.filter((i) => i.estado === ESTADO_CONFIRMADA)
-    const confirmados = confirmadas.length
-    const inscriptosTotales = inscripciones.length
+    // Las colaboraciones ponen plata pero no van al evento: no son una persona
+    // mas en los gastos por participante (lugar, seguro, bolsita...).
+    const confirmados = confirmadas.filter(cuentaEnGastos).length
+    const inscriptosTotales = inscripciones.filter(cuentaEnGastos).length
     const conDiscapacidad = confirmadas.filter((i) => i.discapacidad)
     const disc = conDiscapacidad.length
     const inscriptosConDiscapacidad = inscripciones.filter((i) => i.discapacidad).length
@@ -234,9 +243,16 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       sinPagar: { cantidad: 0, total: 0, items: [] },
       otraForma: { cantidad: 0, total: 0, items: [] },
       gratis: { cantidad: 0, items: [] },
+      colaboracion: { cantidad: 0, total: 0, items: [] },
     }
 
     for (const insc of confirmadas) {
+      if (insc.pagoEstado === "colaboracion") {
+        desglosePagos.colaboracion.cantidad += 1
+        desglosePagos.colaboracion.total += montoCobrado(insc, precioBase)
+        desglosePagos.colaboracion.items.push(insc)
+        continue
+      }
       if (insc.pagoEstado === "gratis") {
         desglosePagos.gratis.cantidad += 1
         desglosePagos.gratis.items.push(insc)
@@ -446,6 +462,26 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
         listado: {
           titulo: "Inscripciones sin cargo",
           items: d.gratis.items.map((i) => `${i.nombre} ${i.apellido}`),
+        },
+      })
+    }
+
+    if (d.colaboracion.cantidad > 0) {
+      deInscripciones.push({
+        id: "inscripciones-colaboracion",
+        tipo: "ingreso",
+        descripcion: "Colaboraciones (no van al evento)",
+        detalle: `${d.colaboracion.cantidad} colaboraci${d.colaboracion.cantidad === 1 ? "ón" : "ones"}`,
+        categoria: "inscripciones",
+        monto: d.colaboracion.total,
+        estado: "cobrado",
+        fecha: null,
+        origen: null,
+        listado: {
+          titulo: "Colaboraciones",
+          items: d.colaboracion.items.map(
+            (i) => `${i.nombre} ${i.apellido} — ${formatARS(montoCobrado(i, precioBase))}`,
+          ),
         },
       })
     }

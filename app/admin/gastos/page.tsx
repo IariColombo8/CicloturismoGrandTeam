@@ -139,14 +139,22 @@ export default function GastosPage() {
       // El estado de pago acompaña al monto: si se carga una plata entrada, la
       // inscripción queda pagada; si se pone en 0, vuelve a "falta pagar".
       // Sin esto, editar el monto acá no movía los totales.
-      const pagoEstado = montoPagado === null || montoPagado > 0 ? "pagado" : "pendiente"
+      // Una colaboracion sigue siendo colaboracion aunque se corrija el monto:
+      // pasarla a "pagado" la haria contar en los gastos por persona.
+      const esColaboracion = inscripciones.find((i) => i.id === id)?.pagoEstado === "colaboracion"
+      const pagoEstado =
+        montoPagado === null || montoPagado > 0
+          ? esColaboracion
+            ? "colaboracion"
+            : "pagado"
+          : "pendiente"
       const { error: errorUpdate } = await supabase
         .from("participantes")
         .update({ monto_pagado: montoPagado, pago_estado: pagoEstado })
         .eq("id", id)
       if (errorUpdate) throw errorUpdate
       toast({
-        title: pagoEstado === "pagado" ? "Pago actualizado" : "Marcado como pendiente de pago",
+        title: pagoEstado !== "pendiente" ? "Pago actualizado" : "Marcado como pendiente de pago",
         description:
           montoPagado === null
             ? "Se restableció al precio base del evento"
@@ -207,6 +215,8 @@ export default function GastosPage() {
                 {resumen.inscriptosTotales} inscriptos
                 {resumen.conDiscapacidad.length > 0 &&
                   ` · ${resumen.conDiscapacidad.length} con discapacidad`}
+                {resumen.desglosePagos.colaboracion.cantidad > 0 &&
+                  ` · ${resumen.desglosePagos.colaboracion.cantidad} colaboración (no cuentan en los gastos)`}
               </p>
             </div>
           </div>
@@ -279,6 +289,10 @@ export default function GastosPage() {
                     )})`}
                   {resumen.desglosePagos.gratis.cantidad > 0 &&
                     ` · ${resumen.desglosePagos.gratis.cantidad} gratis`}
+                  {resumen.desglosePagos.colaboracion.cantidad > 0 &&
+                    ` · ${resumen.desglosePagos.colaboracion.cantidad} colaboración (${formatARS(
+                      resumen.desglosePagos.colaboracion.total,
+                    )})`}
                 </p>
                 {resumen.desglosePagos.sinPagar.cantidad > 0 && (
                   <p className="text-[10px] sm:text-xs text-orange-400 mt-1">

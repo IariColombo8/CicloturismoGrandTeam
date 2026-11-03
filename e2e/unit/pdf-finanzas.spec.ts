@@ -133,6 +133,11 @@ const RESUMEN: ResumenFinanciero = {
       ],
     },
     gratis: { cantidad: 3, items: [inscripcion("Nico", { pagoEstado: "gratis", montoPagado: 0 })] },
+    colaboracion: {
+      cantidad: 1,
+      total: 25000,
+      items: [inscripcion("Ana", { pagoEstado: "colaboracion", montoPagado: 25000 })],
+    },
   },
   ingresosCobrados: 301547.75,
   ingresosPorCobrar: 150000,
@@ -228,6 +233,7 @@ test("sin gastos ni ingresos no explota (evento recién arrancado)", async () =>
       sinPagar: { cantidad: 0, total: 0, items: [] },
       otraForma: { cantidad: 0, total: 0, items: [] },
       gratis: { cantidad: 0, items: [] },
+      colaboracion: { cantidad: 0, total: 0, items: [] },
     },
     totalIngresos: 0,
   }
