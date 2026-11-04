@@ -171,7 +171,13 @@ export function SeccionPlata({ precio, habilitado }: { precio: number; habilitad
           titulo="Balance"
           valor={formatARS(resumen.balance)}
           title={formatARS(resumen.balance)}
-          detalle={`Proyectado: ${formatARS(resumen.balanceProyectado)}`}
+          // Mismos dos numeros que /admin/gastos: lo que sobra hoy y lo que queda al final.
+          detalle={
+            `${resumen.balance >= 0 ? "Sobra" : "Falta"} hoy, pagando todos los gastos` +
+            (resumen.porCobrar > 0
+              ? `. Al final, cobrando lo que falta: ${formatARS(resumen.balanceFinal)}`
+              : "")
+          }
           icono={<Banknote className="w-4 h-4 text-yellow-400" />}
           tono={resumen.balance >= 0 ? "dorado" : "rojo"}
           cargando={cargando}
