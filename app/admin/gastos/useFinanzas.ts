@@ -86,6 +86,10 @@ export interface ResumenFinanciero {
   balance: number
   /** Balance considerando proyecciones y gastos pendientes. */
   balanceProyectado: number
+  /** Lo que falta cobrar (confirmados sin pagar, pagos de otra forma, ingresos por cobrar). */
+  porCobrar: number
+  /** Balance + lo que falta cobrar - gastos sin aprobar. */
+  balanceFinal: number
   /** Plata real disponible ahora: ingresos ya cobrados menos gastos ya pagados. */
   plataEnBanco: number
   /** Inscriptos confirmados que pagaron distinto al precio base. */
@@ -313,6 +317,11 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
     const pagosDiferentes = desglosePagos.otroMonto.items
     const diferenciaPagos = pagosDiferentes.reduce((sum, i) => sum + ((i.montoPagado ?? 0) - precioBase), 0)
 
+    // Lo que falta entrar: confirmados sin pagar, pagos de otra forma que todavia
+    // no llegaron a la caja e ingresos por cobrar.
+    const porCobrar = desglosePagos.sinPagar.total + desglosePagos.otraForma.total + ingresosPorCobrar
+    const balance = totalIngresos - gastosAprobados
+
     return {
       confirmados,
       inscriptosTotales,
@@ -330,7 +339,12 @@ export function useFinanzas(precioBase: number, habilitado: boolean): UseFinanza
       gastosPendientes,
       gastosAprobadosPagados,
       gastosAprobadosSinPagar,
-      balance: totalIngresos - gastosAprobados,
+      balance,
+      porCobrar,
+      // Lo que quedaria al final: cobrando todo lo que falta y pagando tambien
+      // los gastos sin aprobar. Es lo mismo que "Ingresos menos egresos" de la
+      // lista de Movimientos sin filtros.
+      balanceFinal: balance + porCobrar - gastosPendientes,
       balanceProyectado: totalIngresosProyectado - gastosAprobadosProyectado - gastosPendientes,
       plataEnBanco: totalIngresos - gastosAprobadosPagados,
       pagosDiferentes,

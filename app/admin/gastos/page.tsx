@@ -67,7 +67,7 @@ export default function GastosPage() {
 
   // Ingresos y egresos por separado, como en el PDF: mezclados en una sola
   // lista no se entendia de donde salia la plata ni en que se fue.
-  const { movIngresos, movGastos, totalIngresos, totalGastos, ingresosPorCobrar, gastosSinAprobar } = useMemo(() => {
+  const { movIngresos, movGastos, totalIngresos, totalGastos } = useMemo(() => {
     const movIngresos = movimientosFiltrados.filter((m) => m.tipo === "ingreso")
     const movGastos = movimientosFiltrados.filter((m) => m.tipo === "gasto")
     // Un gasto rechazado se lista pero no resta: nunca se va a pagar.
@@ -78,13 +78,6 @@ export default function GastosPage() {
       totalIngresos: movIngresos.reduce((s, m) => s + m.monto, 0),
       // Los gastos vienen en negativo: se muestra el valor absoluto.
       totalGastos: gastosQueCuentan.reduce((s, m) => s + Math.abs(m.monto), 0),
-      // Lo que el Balance de arriba NO cuenta (solo cuenta lo cobrado y lo aprobado).
-      ingresosPorCobrar: movIngresos
-        .filter((m) => m.estado === "por_cobrar")
-        .reduce((s, m) => s + m.monto, 0),
-      gastosSinAprobar: gastosQueCuentan
-        .filter((m) => m.estado === "pendiente")
-        .reduce((s, m) => s + Math.abs(m.monto), 0),
     }
   }, [movimientosFiltrados])
 
@@ -380,12 +373,14 @@ export default function GastosPage() {
                   {formatARS(Math.abs(resumen.balance))}
                 </div>
                 <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                  {resumen.balance >= 0 ? "A favor" : "En déficit"} · ingresos menos gastos
+                  {resumen.balance >= 0 ? "Sobra hoy" : "Falta hoy"} · pagando todos los gastos
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
-                  Proyectado: {resumen.balanceProyectado < 0 ? "-" : ""}
-                  {formatARS(Math.abs(resumen.balanceProyectado))}
-                </p>
+                {resumen.porCobrar > 0 && (
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
+                    Al final, cobrando lo que falta: {resumen.balanceFinal < 0 ? "-" : ""}
+                    {formatARS(Math.abs(resumen.balanceFinal))}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -543,35 +538,68 @@ export default function GastosPage() {
                   </section>
                 )}
 
-                {/* Diferencia de lo que se esta mirando, con los filtros puestos. */}
-                <div
-                  className={`rounded-lg border p-3 text-center ${
-                    totalIngresos - totalGastos >= 0
-                      ? "border-yellow-400/30 bg-yellow-400/10"
-                      : "border-red-500/40 bg-red-500/10"
-                  }`}
-                >
-                  <p className="text-xs text-gray-400">Ingresos menos egresos (con estos filtros)</p>
-                  <p
-                    className={`text-xl font-bold ${
-                      totalIngresos - totalGastos >= 0 ? "text-yellow-400" : "text-red-500"
+                {/* Sin filtros: los mismos dos numeros que la tarjeta Balance
+                    (lo que sobra hoy y lo que queda al final). Con filtros: la
+                    diferencia de lo que se esta mirando. */}
+                {filtroTipo === "todos" && filtroEstado === "todos" ? (
+                  <div
+                    className={`rounded-lg border p-3 ${
+                      resumen.balance >= 0
+                        ? "border-yellow-400/30 bg-yellow-400/10"
+                        : "border-red-500/40 bg-red-500/10"
                     }`}
                   >
-                    {totalIngresos - totalGastos < 0 ? "-" : ""}
-                    {formatARS(Math.abs(totalIngresos - totalGastos))}
-                  </p>
-                  {/* Por que no coincide con el Balance de arriba: aca entra lo
-                      que todavia no se cobro y los gastos sin aprobar. */}
-                  {(ingresosPorCobrar > 0 || gastosSinAprobar > 0) && (
-                    <p className="text-[11px] text-gray-500 mt-1">
-                      {ingresosPorCobrar > 0 &&
-                        `Incluye ${formatARS(ingresosPorCobrar)} por cobrar, que todavía no entró. `}
-                      {gastosSinAprobar > 0 &&
-                        `Resta ${formatARS(gastosSinAprobar)} de gastos sin aprobar. `}
-                      El Balance de arriba cuenta solo lo cobrado.
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center">
+                      <div>
+                        <p className="text-xs text-gray-400">
+                          {resumen.balance >= 0 ? "Sobra hoy" : "Falta hoy"} · pagando todos los gastos
+                        </p>
+                        <p
+                          className={`text-xl font-bold ${resumen.balance >= 0 ? "text-yellow-400" : "text-red-500"}`}
+                        >
+                          {resumen.balance < 0 ? "-" : ""}
+                          {formatARS(Math.abs(resumen.balance))}
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          Cobrado {formatARS(resumen.totalIngresos)} − gastos{" "}
+                          {formatARS(resumen.gastosAprobados)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Al final, cobrando lo que falta</p>
+                        <p
+                          className={`text-xl font-bold ${resumen.balanceFinal >= 0 ? "text-green-500" : "text-red-500"}`}
+                        >
+                          {resumen.balanceFinal < 0 ? "-" : ""}
+                          {formatARS(Math.abs(resumen.balanceFinal))}
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          Hoy + {formatARS(resumen.porCobrar)} que falta cobrar
+                          {resumen.gastosPendientes > 0 &&
+                            ` − ${formatARS(resumen.gastosPendientes)} de gastos sin aprobar`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={`rounded-lg border p-3 text-center ${
+                      totalIngresos - totalGastos >= 0
+                        ? "border-yellow-400/30 bg-yellow-400/10"
+                        : "border-red-500/40 bg-red-500/10"
+                    }`}
+                  >
+                    <p className="text-xs text-gray-400">Ingresos menos egresos (con estos filtros)</p>
+                    <p
+                      className={`text-xl font-bold ${
+                        totalIngresos - totalGastos >= 0 ? "text-yellow-400" : "text-red-500"
+                      }`}
+                    >
+                      {totalIngresos - totalGastos < 0 ? "-" : ""}
+                      {formatARS(Math.abs(totalIngresos - totalGastos))}
                     </p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
