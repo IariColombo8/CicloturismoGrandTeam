@@ -67,15 +67,24 @@ export default function GastosPage() {
 
   // Ingresos y egresos por separado, como en el PDF: mezclados en una sola
   // lista no se entendia de donde salia la plata ni en que se fue.
-  const { movIngresos, movGastos, totalIngresos, totalGastos } = useMemo(() => {
+  const { movIngresos, movGastos, totalIngresos, totalGastos, ingresosPorCobrar, gastosSinAprobar } = useMemo(() => {
     const movIngresos = movimientosFiltrados.filter((m) => m.tipo === "ingreso")
     const movGastos = movimientosFiltrados.filter((m) => m.tipo === "gasto")
+    // Un gasto rechazado se lista pero no resta: nunca se va a pagar.
+    const gastosQueCuentan = movGastos.filter((m) => estadoMovimiento(m) !== "rechazado")
     return {
       movIngresos,
       movGastos,
       totalIngresos: movIngresos.reduce((s, m) => s + m.monto, 0),
       // Los gastos vienen en negativo: se muestra el valor absoluto.
-      totalGastos: movGastos.reduce((s, m) => s + Math.abs(m.monto), 0),
+      totalGastos: gastosQueCuentan.reduce((s, m) => s + Math.abs(m.monto), 0),
+      // Lo que el Balance de arriba NO cuenta (solo cuenta lo cobrado y lo aprobado).
+      ingresosPorCobrar: movIngresos
+        .filter((m) => m.estado === "por_cobrar")
+        .reduce((s, m) => s + m.monto, 0),
+      gastosSinAprobar: gastosQueCuentan
+        .filter((m) => m.estado === "pendiente")
+        .reduce((s, m) => s + Math.abs(m.monto), 0),
     }
   }, [movimientosFiltrados])
 
@@ -551,6 +560,15 @@ export default function GastosPage() {
                     {totalIngresos - totalGastos < 0 ? "-" : ""}
                     {formatARS(Math.abs(totalIngresos - totalGastos))}
                   </p>
+                  {/* Por que no coincide con el Balance de arriba: aca entra lo
+                      que todavia no se cobro y los gastos sin aprobar. */}
+                  {(ingresosPorCobrar > 0 || gastosSinAprobar > 0) && (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Incluye {formatARS(ingresosPorCobrar)} por cobrar
+                      {gastosSinAprobar > 0 && ` y ${formatARS(gastosSinAprobar)} de gastos sin aprobar`}.
+                      El Balance de arriba cuenta solo lo cobrado y los gastos aprobados.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
