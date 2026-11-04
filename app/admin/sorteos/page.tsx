@@ -24,8 +24,9 @@ import {
   Users,
 } from "lucide-react"
 import {
+  bolilleroDelSorteo,
   ganadores,
-  participantesElegibles,
+  numeroHasta,
   slotsSinReclamar,
   slotsSinTirar,
   type Sorteo,
@@ -279,7 +280,8 @@ export default function AdminSorteosPage() {
               {datos.sorteos.map((sorteo) => {
                 const delSorteo = datos.resultados.filter((r) => r.sorteo_id === sorteo.id)
                 const premiosDelSorteo = datos.premios.filter((p) => p.sorteo_id === sorteo.id)
-                const elegibles = participantesElegibles(datos.participantes, sorteo)
+                const elegibles = bolilleroDelSorteo(datos.participantes, sorteo)
+                const tope = numeroHasta(sorteo)
                 return (
                   <li
                     key={sorteo.id}
@@ -312,7 +314,7 @@ export default function AdminSorteosPage() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3.5 w-3.5 text-yellow-400/70" aria-hidden="true" />
-                            {elegibles.length} participan
+                            {tope !== null ? `Números del 1 al ${tope}` : `${elegibles.length} participan`}
                           </span>
                           <span className="flex items-center gap-1">
                             <Gift className="h-3.5 w-3.5 text-yellow-400/70" aria-hidden="true" />

@@ -31,6 +31,13 @@ export interface Sorteo {
   incluir_participantes: string[]
   solo_confirmados: boolean
   solo_acreditados: boolean
+  /**
+   * Sorteo por numeros: el bolillero saca numeros del 1 a este valor (gana
+   * quien tenga ese numero en la mano) y no mira las inscripciones.
+   * Vacio = sorteo por nombres, como siempre. Opcional porque las copias
+   * guardadas en el telefono antes de la columna no lo traen.
+   */
+  numero_hasta?: number | null
 }
 
 /**
@@ -229,6 +236,55 @@ export function participantesElegibles(filas: FilaParticipante[], sorteo: Sorteo
     }))
 }
 
+// ── Sorteo por numeros ────────────────────────────────────────
+// Un numero es un Candidato mas (id "numero:57", nombre "Número 57"), asi
+// todas las reglas del bolillero (rondas, repesca, slots) valen igual. En la
+// base se guarda sin participante_id: el numero se recupera del nombre.
+
+const PREFIJO_NUMERO = "numero:"
+const NOMBRE_NUMERO = /^Número (\d+)$/
+
+/** Tope del sorteo por numeros, o null si el sorteo es por nombres. */
+export function numeroHasta(sorteo: Pick<Sorteo, "numero_hasta">): number | null {
+  const tope = Math.floor(Number(sorteo.numero_hasta))
+  return Number.isFinite(tope) && tope >= 1 ? tope : null
+}
+
+/** El candidato que representa a un numero. */
+export function candidatoNumero(numero: number): Candidato {
+  return { id: `${PREFIJO_NUMERO}${numero}`, nombre: `Número ${numero}`, localidad: null, grupo: null }
+}
+
+/** Los numeros del 1 al tope, como candidatos del bolillero. */
+export function candidatosNumericos(hasta: number): Candidato[] {
+  return Array.from({ length: Math.max(0, Math.floor(hasta)) }, (_, i) => candidatoNumero(i + 1))
+}
+
+/** true si el candidato es un numero (y no una persona de la base). */
+export function esCandidatoNumero(id: string): boolean {
+  return id.startsWith(PREFIJO_NUMERO)
+}
+
+/** El numero que salio en una tirada, o null si salio una persona. */
+export function numeroDeResultado(fila: Pick<Resultado, "participante_id" | "nombre">): number | null {
+  if (fila.participante_id) return null
+  const coincide = NOMBRE_NUMERO.exec(fila.nombre ?? "")
+  return coincide ? Number(coincide[1]) : null
+}
+
+/** Id de candidato de una tirada: la persona, o el numero que salio. */
+function idDeResultado(fila: Resultado): string {
+  if (fila.participante_id) return fila.participante_id
+  const numero = numeroDeResultado(fila)
+  return numero !== null ? `${PREFIJO_NUMERO}${numero}` : ""
+}
+
+/** Lo que entra al bolillero de un sorteo: numeros del 1 al tope, o la gente. */
+export function bolilleroDelSorteo(filas: FilaParticipante[], sorteo: Sorteo): Candidato[] {
+  const tope = numeroHasta(sorteo)
+  return tope !== null ? candidatosNumericos(tope) : participantesElegibles(filas, sorteo)
+}
+
 /**
  * Plan de premios: que premio le toca a cada tirada del sorteo original.
  *
@@ -269,7 +325,7 @@ function aparicionesPorPersona(resultados: Resultado[], vuelta: number): Map<str
   const conteo = new Map<string, number>()
   for (const fila of resultados) {
     if (fila.vuelta !== vuelta) continue
-    const id = fila.participante_id ?? ""
+    const id = idDeResultado(fila)
     conteo.set(id, (conteo.get(id) ?? 0) + 1)
   }
   return conteo
@@ -280,7 +336,7 @@ function conPremioDeOtraVuelta(resultados: Resultado[], vuelta: number): Set<str
   return new Set(
     resultados
       .filter((r) => r.vuelta !== vuelta && (r.estado === "reclamado" || r.estado === "pendiente"))
-      .map((r) => r.participante_id ?? ""),
+      .map(idDeResultado),
   )
 }
 
@@ -359,11 +415,12 @@ export function candidatosRepesca(resultados: Resultado[], elegibles: Candidato[
   const vistos = new Set<string>()
 
   for (const fila of slotsSinReclamar(resultados)) {
-    const id = fila.participante_id
+    const id = idDeResultado(fila)
     if (!id || vistos.has(id)) continue
     vistos.add(id)
     // Si la persona ya no esta en el bolillero (la excluyeron despues) igual se
     // la respeta con los datos de la tirada en la que salio.
+    // (Un numero tambien cae aca: su candidato se rearma igual desde la tirada.)
     candidatos.push(porId.get(id) ?? { id, nombre: fila.nombre, localidad: fila.localidad, grupo: fila.grupo })
   }
 

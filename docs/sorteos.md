@@ -63,6 +63,21 @@ repesca las maneja `ronda`, igual que en el sorteo original.
 
 El editor muestra en vivo cuánta gente queda adentro.
 
+## Sorteo por números
+
+En "Cómo se sortea" cada tanda elige **Por nombres** (lo de arriba) o **Por
+números**: el bolillero saca un número del 1 al que se elija
+(`sorteos.numero_hasta`) y gana quien tenga ese número en la mano. No se mira la
+lista de inscriptos: con 300 inscriptos se puede sortear del 1 al 230. Los
+filtros de "Quién entra" no aplican y se ocultan.
+
+Cada número es un `Candidato` más (`candidatosNumericos()`, id `numero:N`), así
+que valen las mismas reglas: no se repite hasta que salieron todos, repesca y
+slots. La tirada se guarda **sin `participante_id`** y con nombre `Número N`;
+`numeroDeResultado()` recupera el número y el bolillero lo muestra grande.
+`numero_hasta` NULL = por nombres (las tandas viejas no cambian). Migración:
+`20261103_sorteo_por_numeros.sql`.
+
 ## Premios
 
 No hace falta cargarlos todos: con los importantes alcanza. Cada premio tiene
@@ -137,7 +152,8 @@ quién se dejó afuera).
 ```
 public.sorteos            -> nombre, descripcion, total_sorteos, estado, publico, orden,
                              excluir_grupos TEXT[], excluir_participantes UUID[],
-                             incluir_participantes UUID[], solo_confirmados, solo_acreditados
+                             incluir_participantes UUID[], solo_confirmados, solo_acreditados,
+                             numero_hasta (NULL = por nombres)
 public.sorteo_premios     -> sorteo_id, nombre, descripcion, imagen_url, cantidad, visible, orden,
                              nivel: "principal" | "segundo" | "otro" (jerarquia en la web)
 public.sorteo_resultados  -> sorteo_id, premio_id, premio_nombre, orden, slot, ronda, vuelta,

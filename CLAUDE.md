@@ -172,7 +172,8 @@ public.notas_caja            -> texto, resuelta, creada_por, creada_en
   RLS: solo admin/grandteam (sin lectura publica: dice quien no pago)
 public.sorteos               -> nombre, descripcion, total_sorteos, estado, publico, orden,
                                 excluir_grupos TEXT[], excluir_participantes UUID[],
-                                incluir_participantes UUID[], solo_confirmados, solo_acreditados
+                                incluir_participantes UUID[], solo_confirmados, solo_acreditados,
+                                numero_hasta (NULL = por nombres; N = se sortean los numeros 1..N)
   Una tanda de sorteo ("Sorteo de premios", "La bici"). RLS: SELECT publico solo si publico=true,
   ALL solo admin/grandteam. El rol anon no tiene permiso sobre las columnas de exclusiones.
 public.sorteo_premios        -> sorteo_id, nombre, descripcion, imagen_url, cantidad, visible, orden,
@@ -570,6 +571,9 @@ Reglas del bolillero, todas en `lib/sorteos.ts` (puro, cubierto por `e2e/unit/so
   sin dueño. "Rehacer el sorteo de los que no reclamaron" sortea solo esos nombres, por esos
   premios; los que ya ganaron no vuelven a entrar. Se puede repescar cuantas veces haga falta.
 - Cada tanda arranca de cero: salir en el sorteo de premios no saca a nadie del de la bici.
+- **Por numeros** (`numero_hasta`): el bolillero saca del 1 al N elegido, sin mirar inscriptos.
+  Cada numero es un `Candidato` (`candidatosNumericos()`) con las mismas reglas; la tirada va
+  sin `participante_id` y con nombre "Número N" (`numeroDeResultado()` lo recupera).
 - Cada tirada resuelve un **slot** (puesto 1..total_sorteos) y vale el ultimo resultado de ese
   slot. Es lo que garantiza que ningun premio se pierda al repescar en cualquier orden.
 

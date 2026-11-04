@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   Gift,
+  Hash,
   ImageIcon,
   Loader2,
   Medal,
@@ -24,9 +25,10 @@ import {
   X,
 } from "lucide-react"
 import {
+  bolilleroDelSorteo,
   claveTexto,
   nivelDePremio,
-  participantesElegibles,
+  numeroHasta,
   tiradasDePremios,
   NIVELES_PREMIO,
   PREMIO_PLACEHOLDER,
@@ -62,6 +64,7 @@ const SORTEO_VACIO: SorteoEditable = {
   incluir_participantes: [],
   solo_confirmados: true,
   solo_acreditados: false,
+  numero_hasta: null,
 }
 
 interface Props {
@@ -135,11 +138,13 @@ export default function EditorSorteo({
     return [...conteo.values()].sort((a, b) => b.cantidad - a.cantidad)
   }, [participantes])
 
-  // Cuanta gente entra con la configuracion actual.
+  // Cuanta gente (o cuantos numeros) entra con la configuracion actual.
   const elegibles = useMemo(
-    () => participantesElegibles(participantes, { ...datos, id: datos.id ?? "" } as Sorteo),
+    () => bolilleroDelSorteo(participantes, { ...datos, id: datos.id ?? "" } as Sorteo),
     [participantes, datos],
   )
+  // null = por nombres; un numero (aunque sea 0 mientras se escribe) = por numeros.
+  const porNumeros = datos.numero_hasta !== null && datos.numero_hasta !== undefined
 
   const tiradasConPremio = tiradasDePremios(listaPremios)
 
@@ -165,6 +170,11 @@ export default function EditorSorteo({
       return
     }
 
+    if (porNumeros && numeroHasta(datos) === null) {
+      setError("Elegí hasta qué número se sortea (1 o más).")
+      return
+    }
+
     setGuardando(true)
     setError(null)
 
@@ -179,6 +189,7 @@ export default function EditorSorteo({
       incluir_participantes: datos.incluir_participantes ?? [],
       solo_confirmados: datos.solo_confirmados,
       solo_acreditados: datos.solo_acreditados,
+      numero_hasta: porNumeros ? numeroHasta(datos) : null,
     }
 
     const { error: errorDb } = esNuevo
@@ -190,7 +201,9 @@ export default function EditorSorteo({
     if (errorDb) {
       console.error("Error guardando el sorteo:", errorDb)
       setError(
-        errorDb.message?.includes("sorteos")
+        errorDb.message?.includes("numero_hasta")
+          ? "No se pudo guardar: falta la migración 20261103_sorteo_por_numeros.sql en Supabase."
+          : errorDb.message?.includes("sorteos")
           ? "No se pudo guardar. Si es la primera vez, corré la migración 20261015_sorteos.sql en Supabase."
           : "No se pudo guardar el sorteo. ¿Hay internet?",
       )
@@ -395,7 +408,80 @@ export default function EditorSorteo({
             </label>
           </section>
 
+          {/* ── Como se sortea: nombres o numeros ─────── */}
+          <section className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+            <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-yellow-400">
+              <Hash className="h-4 w-4" aria-hidden="true" />
+              Cómo se sortea
+            </h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { numeros: false, titulo: "Por nombres", ayuda: "Sale una persona de las inscripciones." },
+                { numeros: true, titulo: "Por números", ayuda: "Sale un número del 1 al que elijas." },
+              ].map((opcion) => {
+                const activo = porNumeros === opcion.numeros
+                return (
+                  <button
+                    key={opcion.titulo}
+                    type="button"
+                    aria-pressed={activo}
+                    onClick={() =>
+                      setDatos({
+                        ...datos,
+                        numero_hasta: opcion.numeros ? (datos.numero_hasta ?? elegibles.length) || 1 : null,
+                      })
+                    }
+                    className={[
+                      "rounded-lg border p-3 text-left transition-colors",
+                      activo
+                        ? "border-yellow-400 bg-yellow-400/15"
+                        : "border-zinc-800 bg-zinc-900/60 hover:border-yellow-400/40",
+                    ].join(" ")}
+                  >
+                    <span className={activo ? "block text-sm font-bold text-yellow-300" : "block text-sm font-bold text-zinc-200"}>
+                      {opcion.titulo}
+                    </span>
+                    <span className="block text-xs text-zinc-500">{opcion.ayuda}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {porNumeros && (
+              <div>
+                <Label htmlFor="sorteo-hasta" className="text-zinc-300">
+                  Del 1 al…
+                </Label>
+                <Input
+                  id="sorteo-hasta"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  value={datos.numero_hasta || ""}
+                  onChange={(e) =>
+                    setDatos({ ...datos, numero_hasta: Number.parseInt(e.target.value || "0", 10) || 0 })
+                  }
+                  className="mt-1 max-w-[10rem] border-zinc-700 bg-zinc-900 text-white"
+                />
+                <p className="mt-1 text-xs text-zinc-500">
+                  Gana quien tenga el número que sale. No se mira la lista de inscriptos: si hay
+                  300 y elegís 230, se sortea del 1 al 230.
+                </p>
+              </div>
+            )}
+          </section>
+
           {/* ── Quien entra al bolillero ──────────────── */}
+          {porNumeros ? (
+            <p className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-sm font-semibold text-yellow-300">
+              Entran {elegibles.length} números al bolillero
+              {datos.total_sorteos > elegibles.length && elegibles.length > 0 && (
+                <span className="ml-1 font-normal text-yellow-200/80">
+                  · hay más sorteos que números: cuando salgan todos, arranca una ronda nueva
+                </span>
+              )}
+            </p>
+          ) : (
           <section className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
             <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-yellow-400">
               <Users className="h-4 w-4" aria-hidden="true" />
@@ -492,6 +578,7 @@ export default function EditorSorteo({
               )}
             </p>
           </section>
+          )}
 
           {/* ── Premios ───────────────────────────────── */}
           <section className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">

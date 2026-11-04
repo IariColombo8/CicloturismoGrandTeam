@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import {
+  bolilleroDelSorteo,
   candidatosRepesca,
   estadoBolillero,
   etiquetaPremio,
@@ -502,5 +503,59 @@ test.describe("tiradaEnEspera", () => {
   test("sin tiradas sin resolver no hay nadie esperando", () => {
     const resultados = [resultado({ participante_id: "a", slot: 1, estado: "no_reclamo" })]
     expect(tiradaEnEspera(resultados)).toBeNull()
+  })
+})
+
+// ──────────────────────────────────────────────────────────────
+// Sorteo por numeros (del 1 al que se elija)
+// ──────────────────────────────────────────────────────────────
+
+test.describe("sorteo por numeros", () => {
+  const filas = ["a", "b", "c", "d"].map((id) => persona({ id }))
+  const porNumeros: Sorteo = { ...SORTEO_BASE, numero_hasta: 3 }
+
+  /** Una tirada de numero tal como la guarda el bolillero: sin participante_id. */
+  function tiradaNumero(numero: number, over: Partial<Resultado> & { slot: number }): Resultado {
+    return { ...resultado({ participante_id: "x", ...over }), participante_id: null, nombre: `Número ${numero}` }
+  }
+
+  test("el bolillero son los numeros del 1 al tope, no la gente", () => {
+    expect(bolilleroDelSorteo(filas, porNumeros).map((c) => c.nombre)).toEqual([
+      "Número 1",
+      "Número 2",
+      "Número 3",
+    ])
+  })
+
+  test("sin tope sigue siendo por nombres", () => {
+    expect(bolilleroDelSorteo(filas, { ...SORTEO_BASE, numero_hasta: null }).length).toBe(4)
+    expect(bolilleroDelSorteo(filas, SORTEO_BASE).length).toBe(4)
+  })
+
+  test("un numero no sale dos veces hasta que salieron todos", () => {
+    const elegibles = bolilleroDelSorteo(filas, porNumeros)
+    const resultados = [tiradaNumero(1, { slot: 1 }), tiradaNumero(2, { slot: 2 })]
+    const tirada = prepararTirada({
+      elegibles,
+      resultados,
+      premios: [],
+      total: 5,
+      vuelta: VUELTA_SORTEO,
+      aleatorio: primero,
+    })
+    expect(tirada?.candidato.nombre).toBe("Número 3")
+
+    const ronda2 = estadoBolillero(elegibles, [...resultados, tiradaNumero(3, { slot: 3 })], VUELTA_SORTEO)
+    expect(ronda2.rondaNueva).toBe(true)
+    expect(ronda2.disponibles.length).toBe(3)
+  })
+
+  test("la repesca sortea solo los numeros que no reclamaron", () => {
+    const elegibles = bolilleroDelSorteo(filas, porNumeros)
+    const resultados = [
+      tiradaNumero(1, { slot: 1, estado: "no_reclamo" }),
+      tiradaNumero(2, { slot: 2, estado: "reclamado" }),
+    ]
+    expect(candidatosRepesca(resultados, elegibles).map((c) => c.nombre)).toEqual(["Número 1"])
   })
 })

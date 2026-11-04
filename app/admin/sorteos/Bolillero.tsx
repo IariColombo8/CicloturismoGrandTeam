@@ -18,11 +18,14 @@ import {
   X,
 } from "lucide-react"
 import {
+  bolilleroDelSorteo,
   candidatosRepesca,
+  esCandidatoNumero,
   estadoBolillero,
   etiquetaPremio,
   ganadores,
-  participantesElegibles,
+  numeroDeResultado,
+  numeroHasta,
   planDePremios,
   prepararTirada,
   slotsSinReclamar,
@@ -81,10 +84,12 @@ export default function Bolillero({ sorteo, premios, participantes, resultados, 
     () => resultados.filter((r) => r.sorteo_id === sorteo.id),
     [resultados, sorteo.id],
   )
+  // Gente de la base, o los numeros del 1 al tope si el sorteo es por numeros.
   const elegibles = useMemo(
-    () => participantesElegibles(participantes, sorteo),
+    () => bolilleroDelSorteo(participantes, sorteo),
     [participantes, sorteo],
   )
+  const tope = numeroHasta(sorteo)
 
   const enEspera = useMemo(() => tiradaEnEspera(delSorteo), [delSorteo])
   const premiados = useMemo(() => ganadores(delSorteo), [delSorteo])
@@ -155,7 +160,8 @@ export default function Bolillero({ sorteo, premios, participantes, resultados, 
         slot: tirada.slot,
         ronda: tirada.ronda,
         vuelta: tirada.vuelta,
-        participante_id: tirada.candidato.id,
+        // Un numero no es una persona de la base: va sin participante_id.
+        participante_id: esCandidatoNumero(tirada.candidato.id) ? null : tirada.candidato.id,
         nombre: tirada.candidato.nombre,
         localidad: tirada.candidato.localidad,
         grupo: tirada.candidato.grupo,
@@ -221,7 +227,8 @@ export default function Bolillero({ sorteo, premios, participantes, resultados, 
 
         <span className="ml-auto flex items-center gap-1.5 text-xs text-zinc-400">
           <Users className="h-3.5 w-3.5 text-yellow-400" aria-hidden="true" />
-          {bolillero.disponibles.length} en el bolillero
+          {bolillero.disponibles.length} {tope !== null ? "números en" : "en"} el bolillero
+          {tope !== null && <span className="text-zinc-500">· del 1 al {tope}</span>}
           {bolillero.ronda > 1 && <span className="text-yellow-400">· ronda {bolillero.ronda}</span>}
         </span>
       </div>
@@ -276,9 +283,18 @@ export default function Bolillero({ sorteo, premios, participantes, resultados, 
                 {enEspera.vuelta === VUELTA_REPESCA && <span className="text-amber-300">· repesca</span>}
               </p>
 
-              <p className="font-heading text-3xl font-black leading-tight text-white sm:text-5xl">
-                {enEspera.nombre}
-              </p>
+              {numeroDeResultado(enEspera) !== null ? (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Número</p>
+                  <p className="font-heading text-7xl font-black leading-none text-white sm:text-9xl">
+                    {numeroDeResultado(enEspera)}
+                  </p>
+                </div>
+              ) : (
+                <p className="font-heading text-3xl font-black leading-tight text-white sm:text-5xl">
+                  {enEspera.nombre}
+                </p>
+              )}
 
               <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-zinc-400">
                 {enEspera.localidad && (
@@ -336,7 +352,9 @@ export default function Bolillero({ sorteo, premios, participantes, resultados, 
                   </Button>
                   <p className="text-xs text-zinc-500">
                     {bolillero.disponibles.length === 0
-                      ? "No hay nadie en el bolillero: revisá los filtros en Configuración."
+                      ? tope !== null
+                        ? "No quedan números en el bolillero."
+                        : "No hay nadie en el bolillero: revisá los filtros en Configuración."
                       : bolillero.rondaNueva
                         ? "Salieron todos: arranca una ronda nueva con todos adentro otra vez."
                         : "También podés tocar la barra espaciadora."}
