@@ -1,0 +1,26 @@
+-- 04/11/2026: se cargaron en `participantes` 294 personas de otro cicloturismo
+-- (export `participantes_rows.csv`, 630 filas), solo para que si se inscriben el
+-- formulario se les autocomplete (GET /api/lookup-participant).
+--
+-- Se hizo con INSERT desde un script local (service_role), no con esta migracion:
+-- son datos personales (email, telefono, salud) y no van al repo. Este archivo
+-- solo documenta el cambio.
+--
+-- Como quedaron las filas nuevas:
+--   anios = '{}'               -> NO son de esta edicion: no aparecen en el registro,
+--                                 finanzas, dashboard, cupos ni sorteos.
+--   estado = 'pendiente', numero_inscripcion = NULL, token_qr = NULL
+--   Datos: nombre, apellido, email, telefono, pais, telefono_emergencia,
+--   fecha_nacimiento, localidad, grupo_sanguineo, grupo_ciclistas, es_celiaco,
+--   tiene_problemas_salud / condicion_salud.
+--
+-- Lo que NO se cargo:
+--   - 322 DNI que ya estaban en la tabla: no se tocaron (INSERT, nunca UPSERT).
+--   - 8 filas con un DNI que no tiene 7-8 digitos (eran telefonos u otro documento).
+--   - 6 personas con el mismo nombre que alguien ya cargado y un DNI casi igual
+--     (DNI mal tipeado en uno de los dos lados).
+--
+-- Si despues se inscriben, /api/inscripcion/submit les agrega 2026 a `anios`
+-- y les asigna token_qr como a cualquier reinscripcion.
+
+SELECT 1;
