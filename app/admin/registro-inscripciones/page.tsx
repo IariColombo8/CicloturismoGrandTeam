@@ -805,7 +805,18 @@ export default function RegistroInscripciones() {
           // Alta nueva: ademas de refrescar, se avisa en pantalla. El push al
           // celular lo manda el servidor desde /api/inscripcion/submit.
           if (payload.eventType === "INSERT") {
-            const nuevo = payload.new as { nombre?: string; apellido?: string; localidad?: string }
+            const nuevo = payload.new as {
+              nombre?: string
+              apellido?: string
+              localidad?: string
+              anios?: number[] | null
+            }
+
+            // Una fila sin esta edicion en `anios` no es una inscripcion: es
+            // alguien de otra edicion u otro evento que se carga solo para que
+            // el formulario se autocomplete. No aparece en este registro, asi
+            // que ni se avisa ni se recarga (una carga de 300 sonaba 300 veces).
+            if (!(nuevo.anios ?? []).includes(EDICION_ACTUAL)) return
             const nombre = `${nuevo.nombre ?? ""} ${nuevo.apellido ?? ""}`.trim() || "Alguien"
 
             setAvisoInscripcion({ nombre, localidad: nuevo.localidad || "" })
