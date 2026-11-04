@@ -1,4 +1,4 @@
--- 04/11/2026: se cargaron en `participantes` 294 personas de otro cicloturismo
+-- 04/11/2026: se cargaron en `participantes` 307 personas de otro cicloturismo
 -- (export `participantes_rows.csv`, 630 filas), solo para que si se inscriben el
 -- formulario se les autocomplete (GET /api/lookup-participant).
 --
@@ -15,10 +15,15 @@
 --   tiene_problemas_salud / condicion_salud.
 --
 -- Lo que NO se cargo:
---   - 322 DNI que ya estaban en la tabla: no se tocaron (INSERT, nunca UPSERT).
---   - 8 filas con un DNI que no tiene 7-8 digitos (eran telefonos u otro documento).
---   - 6 personas con el mismo nombre que alguien ya cargado y un DNI casi igual
---     (DNI mal tipeado en uno de los dos lados).
+--   - 323 DNI que ya estaban en la tabla: no se tocaron (INSERT, nunca UPSERT).
+--
+-- En una segunda pasada (a pedido) se cargaron 13 mas, igual que el resto:
+--   - 7 con un "DNI" que no tiene 7-8 digitos (telefonos u otro documento): se
+--     guardaron tal cual vinieron. El formulario busca por 7-8 digitos, asi que a
+--     ellos no se les autocompleta hasta que alguien corrija el DNI.
+--   - 6 con el mismo nombre que alguien ya cargado y un DNI casi igual (un DNI mal
+--     tipeado en uno de los dos lados): quedan las dos filas.
+-- Total cargado: 307 filas.
 --
 -- Si despues se inscriben, /api/inscripcion/submit les agrega 2026 a `anios`
 -- y les asigna token_qr como a cualquier reinscripcion.
