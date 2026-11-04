@@ -564,9 +564,11 @@ export default function GastosPage() {
                       que todavia no se cobro y los gastos sin aprobar. */}
                   {(ingresosPorCobrar > 0 || gastosSinAprobar > 0) && (
                     <p className="text-[11px] text-gray-500 mt-1">
-                      Incluye {formatARS(ingresosPorCobrar)} por cobrar
-                      {gastosSinAprobar > 0 && ` y ${formatARS(gastosSinAprobar)} de gastos sin aprobar`}.
-                      El Balance de arriba cuenta solo lo cobrado y los gastos aprobados.
+                      {ingresosPorCobrar > 0 &&
+                        `Incluye ${formatARS(ingresosPorCobrar)} por cobrar, que todavía no entró. `}
+                      {gastosSinAprobar > 0 &&
+                        `Resta ${formatARS(gastosSinAprobar)} de gastos sin aprobar. `}
+                      El Balance de arriba cuenta solo lo cobrado.
                     </p>
                   )}
                 </div>
