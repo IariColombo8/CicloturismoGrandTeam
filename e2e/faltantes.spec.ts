@@ -187,21 +187,15 @@ test.describe("Qué falta para seguir", () => {
     await siguiente(page)
 
     const modal = page.getByRole("dialog")
-    await expect(modal.getByText(/faltan 2 datos/i)).toBeVisible()
+    // El comprobante es opcional: lo único que falta es el nombre.
+    await expect(modal.getByText(/falta un dato/i)).toBeVisible()
     await expect(modal.getByText("Nombre de quien transfirió", { exact: true })).toBeVisible()
-    await expect(modal.getByText("Comprobante de pago", { exact: true })).toBeVisible()
+    await expect(modal.getByText("Comprobante de pago", { exact: true })).toHaveCount(0)
 
-    // Se completa uno y el aviso ya solo nombra el que falta.
+    // Con el nombre y SIN comprobante, avanza al último paso (donde el
+    // deslinde se abre solo, así que lo que se ve es ese modal).
     await modal.getByText("Nombre de quien transfirió", { exact: true }).click()
     await page.fill("#numeroReferencia", "Juan Perez")
-    await siguiente(page)
-    await expect(page.getByRole("dialog").getByText(/falta un dato/i)).toBeVisible()
-    await expect(page.getByRole("dialog").getByText("Comprobante de pago", { exact: true })).toBeVisible()
-
-    // Y con el comprobante, avanza al último paso (donde el deslinde se abre
-    // solo, así que lo que se ve es ese modal).
-    await page.getByRole("dialog").getByRole("button", { name: /^cerrar$/i }).click()
-    await page.setInputFiles("#comprobante", comprobanteDePrueba())
     await siguiente(page)
     await expect(page.getByRole("button", { name: /acepto el deslinde/i })).toBeVisible()
   })

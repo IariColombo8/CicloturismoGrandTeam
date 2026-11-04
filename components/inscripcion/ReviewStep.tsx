@@ -59,22 +59,22 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-4 mb-6">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
+      <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg p-3 sm:p-4">
         <p className="text-sm text-gray-300">
           <strong className="text-yellow-400">Revisá tu información:</strong> asegurate de que todos los datos sean
           correctos antes de enviar tu inscripción.
         </p>
       </div>
 
-      <Card className="bg-zinc-900 border-yellow-400/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
+      <Card className="bg-zinc-900 border-yellow-400/20 py-4 gap-3 sm:py-6 sm:gap-6">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-white text-base sm:text-lg leading-snug">
             <User className="w-5 h-5 text-yellow-400" />
             Información Personal
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 px-4 sm:px-6 text-sm [&>div]:min-w-0 [&_p]:break-words">
           <div>
             <p className="text-gray-400">Nombre Completo</p>
             <p className="text-white font-medium">{formData.nombre} {formData.apellido}</p>
@@ -106,14 +106,14 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-yellow-400/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
+      <Card className="bg-zinc-900 border-yellow-400/20 py-4 gap-3 sm:py-6 sm:gap-6">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-white text-base sm:text-lg leading-snug">
             <Heart className="w-5 h-5 text-red-500" />
             Contacto de Emergencia
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 px-4 sm:px-6 text-sm [&>div]:min-w-0 [&_p]:break-words">
           <div>
             <p className="text-gray-400">Nombre</p>
             <p className="text-white font-medium">{formData.nombreEmergencia}</p>
@@ -131,14 +131,14 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-yellow-400/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
+      <Card className="bg-zinc-900 border-yellow-400/20 py-4 gap-3 sm:py-6 sm:gap-6">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-white text-base sm:text-lg leading-snug">
             <Award className="w-5 h-5 text-yellow-400" />
             Experiencia e Información Médica
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 px-4 sm:px-6 text-sm [&>div]:min-w-0 [&_p]:break-words">
           <div>
             <p className="text-gray-400">¿Ha recorrido 50 km antes?</p>
             <Badge className={`mt-1 ${formData.haRecorridoDistancia === "si" ? "bg-green-500/20 text-green-400" : "bg-orange-500/20 text-orange-400"}`}>
@@ -186,14 +186,14 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-yellow-400/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
+      <Card className="bg-zinc-900 border-yellow-400/20 py-4 gap-3 sm:py-6 sm:gap-6">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-white text-base sm:text-lg leading-snug">
             <CreditCard className="w-5 h-5 text-green-500" />
             Información de Pago
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 px-4 sm:px-6 text-sm [&>div]:min-w-0 [&_p]:break-words">
           <div>
             <p className="text-gray-400">Método de Pago</p>
             <p className="text-white font-medium">Transferencia Bancaria</p>
@@ -210,12 +210,18 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
           </div>
           <div>
             <p className="text-gray-400">Comprobante</p>
-            <p className="text-green-500 font-medium">{formData.comprobanteFile?.name || "Cargado"}</p>
+            {formData.comprobanteFile?.name ? (
+              <p className="text-green-500 font-medium">{formData.comprobanteFile.name}</p>
+            ) : (
+              <p className="text-gray-300 font-medium">
+                Sin comprobante <span className="text-gray-500 font-normal">(el equipo te lo pide después)</span>
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="bg-blue-500/10 border border-blue-400/40 rounded-lg p-4 flex gap-3">
+      <div className="bg-blue-500/10 border border-blue-400/40 rounded-lg p-3 sm:p-4 flex gap-3">
         <Shirt className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
         <p className="text-sm text-gray-200">
           <strong>No incluye la remera.</strong> Para pedir remera{" "}
@@ -230,21 +236,21 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
         </p>
       </div>
 
-      <div className="bg-red-500/15 border-2 border-red-500/60 rounded-lg p-4 flex gap-3">
+      <div className="bg-red-500/15 border-2 border-red-500/60 rounded-lg p-3 sm:p-4 flex gap-3">
         <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0" />
-        <p className="text-sm sm:text-base font-black text-red-200 uppercase">
+        <p className="min-w-0 text-sm sm:text-base font-black text-red-200 uppercase break-words">
           Una vez hecha la inscripción, no se reintegra el dinero.
         </p>
       </div>
 
-      <Card className="bg-zinc-900 border-yellow-400/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
+      <Card className="bg-zinc-900 border-yellow-400/20 py-4 gap-3 sm:py-6 sm:gap-6">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-white text-base sm:text-lg leading-snug">
             <ShieldAlert className="w-5 h-5 text-yellow-400" />
             Deslinde de Responsabilidad
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 sm:px-6">
           <p className="text-sm text-gray-300">
             Antes de enviar tu inscripción, leé y aceptá el deslinde de responsabilidad del evento.
           </p>
@@ -252,7 +258,7 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
             type="button"
             variant="outline"
             onClick={() => setModalOpen(true)}
-            className="border-yellow-400/50 text-yellow-400 hover:bg-yellow-400 hover:text-black bg-transparent"
+            className="w-full sm:w-auto h-auto min-h-9 whitespace-normal border-yellow-400/50 text-yellow-400 hover:bg-yellow-400 hover:text-black bg-transparent"
           >
             Leer Deslinde de Responsabilidad
           </Button>
@@ -281,9 +287,9 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
       </Card>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="bg-zinc-900 border-yellow-400/30 text-white max-w-2xl">
+        <DialogContent className="bg-zinc-900 border-yellow-400/30 text-white max-w-[calc(100%-1.5rem)] max-h-[calc(100svh-1.5rem)] flex flex-col gap-3 p-4 sm:p-6 sm:gap-4">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
+            <DialogTitle className="flex items-center gap-2 text-white text-left text-base sm:text-lg pr-6">
               <ShieldAlert className="w-5 h-5 text-yellow-400" />
               Deslinde de Responsabilidad
             </DialogTitle>
@@ -292,7 +298,7 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="max-h-[50vh] overflow-y-auto pr-2 text-sm text-gray-300 space-y-3 border border-zinc-700 rounded-lg p-4"
+            className="min-h-0 flex-1 max-h-[55svh] overflow-y-auto text-sm text-gray-300 space-y-3 border border-zinc-700 rounded-lg p-3 sm:p-4"
           >
             <p>
               Por medio del presente documento, declaro bajo mi exclusiva responsabilidad que me encuentro en
@@ -357,7 +363,7 @@ export default function ReviewStep({ formData, eventConfig, aceptaTerminos, onAc
               type="button"
               onClick={handleAceptarEnModal}
               disabled={!scrolledToEnd}
-              className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto h-auto min-h-10 whitespace-normal bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Acepto el Deslinde de Responsabilidad
             </Button>

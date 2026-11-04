@@ -86,7 +86,7 @@ export default function DatosTransferenciaCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border border-yellow-400/30 bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-400/5 p-4 ${className}`}
+      className={`relative overflow-hidden rounded-xl border border-yellow-400/30 bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-400/5 p-3 sm:p-4 ${className}`}
     >
       {/* Brillo decorativo en la esquina */}
       <div
@@ -94,7 +94,7 @@ export default function DatosTransferenciaCard({
         className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-yellow-400/10 blur-2xl"
       />
 
-      <div className="relative flex items-start justify-between gap-3 mb-3">
+      <div className="relative flex flex-wrap items-center justify-between gap-2 mb-3">
         <h4 className="text-white font-semibold flex items-center gap-2">
           <Building2 className="w-4 h-4 text-yellow-400" />
           Datos para transferir
@@ -122,10 +122,10 @@ export default function DatosTransferenciaCard({
 
       {/* Alias: el dato estrella, grande y en amarillo */}
       {datos.alias && (
-        <div className="relative mb-2 flex items-center justify-between gap-3 rounded-lg border border-yellow-400/40 bg-yellow-400/10 p-3">
+        <div className="relative mb-2 flex items-center justify-between gap-2 sm:gap-3 rounded-lg border border-yellow-400/40 bg-yellow-400/10 p-2.5 sm:p-3">
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-wide text-yellow-400/70">Alias</p>
-            <p className="break-all text-lg font-bold text-yellow-400 sm:text-xl">{datos.alias}</p>
+            <p className="break-all text-base font-bold text-yellow-400 min-[360px]:text-lg sm:text-xl">{datos.alias}</p>
           </div>
           <button
             type="button"
@@ -155,10 +155,10 @@ export default function DatosTransferenciaCard({
           return (
             <div
               key={fila.clave}
-              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-700/80 bg-black/40 p-2.5 transition-colors hover:border-yellow-400/30"
+              className="flex items-center justify-between gap-2 sm:gap-3 rounded-lg border border-zinc-700/80 bg-black/40 p-2.5 transition-colors hover:border-yellow-400/30"
             >
-              <div className="flex min-w-0 items-center gap-2.5">
-                <Icono className="h-4 w-4 flex-shrink-0 text-yellow-400/70" aria-hidden="true" />
+              <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+                <Icono className="hidden min-[360px]:block h-4 w-4 flex-shrink-0 text-yellow-400/70" aria-hidden="true" />
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-wide text-gray-500">
                     {fila.etiqueta}

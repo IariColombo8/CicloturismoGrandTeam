@@ -93,19 +93,22 @@ export default function PaymentStep({
     bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
       {/* Payment Amount */}
-      <Card className="bg-gradient-to-r from-yellow-400/10 to-amber-600/10 border-yellow-400/30">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
+      <Card className="bg-gradient-to-r from-yellow-400/10 to-amber-600/10 border-yellow-400/30 py-0">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-gray-400 text-sm">Costo de Inscripción</p>
-              <p className="text-4xl font-black text-yellow-400">
-                ${eventConfig.costoInscripcion.toLocaleString('es-AR')} ARS
+              {/* El monto se achica con el ancho: en un celular de 320 px el
+                  text-4xl fijo se salia de la tarjeta. */}
+              <p className="text-[clamp(1.75rem,9vw,2.25rem)] leading-tight font-black text-yellow-400 break-words">
+                ${eventConfig.costoInscripcion.toLocaleString('es-AR')}{" "}
+                <span className="whitespace-nowrap">ARS</span>
               </p>
-              <p className="text-gray-500 text-sm mt-1">La remera no está incluida y se solicita por separado</p>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1">La remera no está incluida y se solicita por separado</p>
             </div>
-            <DollarSign className="w-16 h-16 text-yellow-400/30" />
+            <DollarSign className="hidden min-[400px]:block w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 text-yellow-400/30" aria-hidden="true" />
           </div>
         </CardContent>
       </Card>
@@ -118,7 +121,7 @@ export default function PaymentStep({
           <Label className="text-gray-300">
             Transferencia Bancaria <span className="text-red-500">*</span>
           </Label>
-          <div className="bg-zinc-900 border border-yellow-400/30 rounded-lg p-4">
+          <div className="bg-zinc-900 border border-yellow-400/30 rounded-lg p-3 sm:p-4">
             <p className="text-white font-medium">Transferencia Bancaria</p>
             <p className="text-gray-400 text-sm mt-1">
               Realiza tu transferencia a la cuenta indicada abajo
@@ -131,8 +134,8 @@ export default function PaymentStep({
 
         {/* Cuenta uruguaya: SOLO si el pais elegido es Uruguay */}
         {formData.pais === "Uruguay" && (
-          <Card className="bg-zinc-900 border-sky-400/30">
-            <CardContent className="p-4">
+          <Card className="bg-zinc-900 border-sky-400/30 py-0">
+            <CardContent className="p-3 sm:p-4">
               <h4 className="text-white font-semibold mb-1 flex items-center gap-2">
                 <span aria-hidden="true">🇺🇾</span>
                 Si sos uruguayo
@@ -143,7 +146,7 @@ export default function PaymentStep({
 
               {/* El monto en pesos uruguayos, bien grande: es la duda numero uno
                   de los que transfieren desde Uruguay. */}
-              <div className="mb-4 rounded-lg border border-sky-400/40 bg-sky-400/10 p-4 text-center">
+              <div className="mb-4 rounded-lg border border-sky-400/40 bg-sky-400/10 p-3 sm:p-4 text-center">
                 <p className="text-sky-200 text-xs uppercase tracking-wide">Monto a transferir</p>
                 <p className="text-4xl sm:text-5xl font-black text-sky-300 leading-tight">
                   $700
@@ -155,7 +158,7 @@ export default function PaymentStep({
                 {CUENTA_URUGUAY.map((dato, i) => (
                   <div
                     key={dato.etiqueta}
-                    className="flex items-center justify-between gap-3 bg-sky-400/5 border border-sky-400/20 rounded-lg p-3"
+                    className="flex items-center justify-between gap-2 sm:gap-3 bg-sky-400/5 border border-sky-400/20 rounded-lg p-2.5 sm:p-3"
                   >
                     <div className="min-w-0">
                       <p className="text-gray-400 text-xs">{dato.etiqueta}</p>
@@ -193,7 +196,7 @@ export default function PaymentStep({
                   href={WHATSAPP_IARA}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold bg-green-600 text-white hover:bg-green-500 transition-colors"
+                  className="mt-2 inline-flex w-full min-[400px]:w-auto justify-center items-center gap-2 px-4 py-2.5 rounded-lg font-bold bg-green-600 text-white hover:bg-green-500 transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" aria-hidden="true" />
                   Iara
@@ -223,7 +226,7 @@ export default function PaymentStep({
       {/* Upload Proof */}
       <div className="space-y-2" data-campo>
         <Label htmlFor="comprobante" className="text-gray-300">
-          Comprobante de Pago <span className="text-red-500">*</span>
+          Comprobante de Pago <span className="text-gray-500 font-normal">(opcional)</span>
         </Label>
         <div className="relative">
           <input
@@ -244,7 +247,7 @@ export default function PaymentStep({
                 ) : (
                   <FileCheck className="h-6 w-6 flex-shrink-0 text-green-500" aria-hidden="true" />
                 )}
-                <span className="min-w-0 break-words text-sm text-white sm:text-base">
+                <span className="min-w-0 max-w-full break-all text-sm text-white sm:text-base">
                   {fileName}
                   {formData.comprobanteFile?.size ? (
                     <span className="text-gray-500"> · {pesoLegible(formData.comprobanteFile.size)}</span>
@@ -271,12 +274,28 @@ export default function PaymentStep({
           </p>
         )}
         <p className="text-sm text-gray-500">
-          Sacale una foto o subí el PDF. No importa cuánto pese: lo achicamos nosotros.
+          Sacale una foto o subí el PDF. No importa cuánto pese: lo achicamos nosotros. Si ahora no lo tenés,
+          podés seguir igual: la inscripción se envía sin el comprobante y el equipo te lo pide después.
         </p>
+        {fileName && (
+          <button
+            type="button"
+            onClick={() => {
+              setFileName("")
+              updateFormData({ comprobanteFile: null })
+              onComprobante?.(null)
+              const input = document.getElementById("comprobante") as HTMLInputElement | null
+              if (input) input.value = ""
+            }}
+            className="text-sm text-gray-400 underline underline-offset-2 hover:text-white"
+          >
+            Quitar el comprobante
+          </button>
+        )}
       </div>
 
       {/* Important Notice */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 sm:p-4">
         <p className="text-sm text-gray-300">
           <strong className="text-blue-400">Importante:</strong> Tu inscripción será revisada por nuestro equipo
           administrativo. Recibirás un correo de confirmación una vez aprobado el pago. Esto puede tomar entre 24-48

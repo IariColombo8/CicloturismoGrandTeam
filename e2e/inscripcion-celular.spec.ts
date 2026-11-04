@@ -201,6 +201,58 @@ test.describe("Inscripción en celular", () => {
     }))
     expect(ancho, "la página se puede arrastrar para los costados en el celular").toBeLessThanOrEqual(ventana + 1)
   })
+
+  test("en un celular diminuto (320 px) se inscribe SIN comprobante y nada se sale de la pantalla", async ({ page }) => {
+    const { excepciones } = vigilarErrores(page)
+    await page.setViewportSize({ width: 320, height: 568 })
+    await stubRed(page)
+
+    let cuerpo: Record<string, unknown> | null = null
+    await page.route("**/api/inscripcion/submit", async (route) => {
+      cuerpo = route.request().postDataJSON()
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, tokenQR: "token-de-prueba", numeroInscripcion: null }),
+      })
+    })
+    await abrirInscripcion(page)
+
+    const sinDesborde = async (donde: string) => {
+      const { ancho, ventana } = await page.evaluate(() => ({
+        ancho: document.documentElement.scrollWidth,
+        ventana: window.innerWidth,
+      }))
+      expect(ancho, `${donde}: la página se puede arrastrar para los costados`).toBeLessThanOrEqual(ventana + 1)
+    }
+
+    await completarPaso1(page)
+    await siguiente(page)
+    await completarPaso2(page)
+    await siguiente(page)
+
+    // Paso 3: solo el nombre, sin comprobante.
+    await expect(page.getByRole("heading", { name: /método de pago/i })).toBeVisible()
+    await sinDesborde("paso de pago")
+    await page.fill("#numeroReferencia", datos.numeroReferencia)
+    await siguiente(page)
+
+    // Paso 4: el deslinde entra en la pantalla y se puede aceptar.
+    const aceptar = page.getByRole("button", { name: /acepto el deslinde/i })
+    await expect(aceptar).toBeInViewport()
+    await aceptar.click()
+    await sinDesborde("paso de revisión")
+    await expect(page.getByText(/sin comprobante/i)).toBeVisible()
+
+    await page.getByRole("button", { name: /enviar inscripción/i }).click()
+    await page.waitForURL("**/inscripcion/exito", { timeout: 30_000 })
+
+    // Viaja sin archivo y con la nota para que el panel muestre "Falta comprobante".
+    expect(cuerpo).not.toBeNull()
+    expect(cuerpo!.comprobanteBase64).toBe("")
+    expect(String(cuerpo!.comprobanteNota)).toMatch(/no adjuntó comprobante/i)
+    expect(excepciones, `Excepciones de JS:\n${excepciones.join("\n")}`).toEqual([])
+  })
 })
 
 test.describe("Inscripción · nada puede frenarla", () => {

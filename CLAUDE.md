@@ -419,9 +419,12 @@ Test: `e2e/unit/cierre-inscripciones.spec.ts`.
    `<input type="date">`: el selector nativo no abre en el navegador de
    Instagram ni en varios Android y dejaba la inscripcion trabada en este paso.
 2. **CategoryStep** -> experiencia, talla remera, datos medicos
-3. **PaymentStep** -> metodo pago, referencia, comprobante. Se acepta cualquier
+3. **PaymentStep** -> metodo pago, referencia, comprobante. **El comprobante es opcional**
+   (04/11/2026): solo se pide el nombre de quien transfirio. Sin archivo la inscripcion entra
+   con `comprobante_nota` y el panel la marca "Falta comprobante". Se acepta cualquier
    archivo de cualquier tamaño y se comprime **al elegirlo** con
-   `lib/inscripcion/comprobante.ts` (no al enviar, que era donde fallaba).
+   `lib/inscripcion/comprobante.ts` (no al enviar, que era donde fallaba). Los pasos de Pago
+   y Revision estan probados en 320 px (`e2e/inscripcion-celular.spec.ts`).
 4. **ReviewStep** -> resumen y envio
 5. -> Supabase insert + Crea registro en `participantes` con `token_qr` (UUID) + Email confirmacion con QR (EmailJS + api.qrserver.com) -> `/inscripcion/exito`
 

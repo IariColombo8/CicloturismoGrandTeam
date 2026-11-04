@@ -276,16 +276,15 @@ export default function InscripcionPage() {
     if (draft) {
       const comprobante = loadComprobanteDraft()
       if (comprobante) elegirComprobante(comprobante)
-      // Sin comprobante no se puede pasar del paso 3: lo dejamos ahí para
-      // que lo vuelva a adjuntar en vez de mandarlo a un paso 4 que falla.
-      const step = !comprobante && draft.step > 3 ? 3 : draft.step
+      // El comprobante es opcional: se retoma en el paso donde quedó.
+      const step = draft.step
       setFormData({ ...draft.data, comprobanteFile: comprobante })
       setCurrentStep(step)
       toast({
         title: "Borrador restaurado",
         description:
-          step === 3 && !comprobante
-            ? "Continuamos donde lo dejaste. Volvé a adjuntar el comprobante de pago para seguir."
+          !comprobante && step >= 3
+            ? "Continuamos donde lo dejaste. Si tenés el comprobante de pago, volvé a adjuntarlo (es opcional)."
             : "Continuamos donde lo dejaste. Revisá los datos antes de enviar.",
       })
     }
@@ -521,11 +520,9 @@ export default function InscripcionPage() {
         etiqueta: "Nombre de quien transfirió",
         ayuda: "El nombre que figura en la transferencia",
       })
-      pedir(formData.comprobanteFile, {
-        id: "comprobante",
-        etiqueta: "Comprobante de pago",
-        ayuda: "La foto o el PDF de la transferencia",
-      })
+      // El comprobante NO es obligatorio (pedido del usuario, 04/11/2026): si
+      // no se adjunta, la inscripcion entra igual con una nota en
+      // participantes.comprobante_nota y el panel la marca "Falta comprobante".
     }
 
     return falta
@@ -784,8 +781,8 @@ export default function InscripcionPage() {
 
       {/* <main>: la pagina no tenia landmark principal, asi que un lector de
           pantalla no podia saltar directo al formulario. */}
-      <main className="container mx-auto px-4 py-24 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
+      <main className="container mx-auto px-3 py-24 min-[360px]:px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto min-w-0">
           {/* Aviso de sin conexión: el borrador se sigue guardando localmente */}
           {!isOnline && (
             <div
@@ -841,8 +838,8 @@ export default function InscripcionPage() {
           )}
 
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="font-heading text-h2 text-white mb-4">
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="font-heading text-h2 text-white mb-4 break-words">
               Formulario de <span className="gradient-text">Inscripción</span>
             </h1>
             <p className="text-gray-300 text-body-fluid">Completa los siguientes pasos para asegurar tu lugar en el evento</p>
@@ -859,7 +856,7 @@ export default function InscripcionPage() {
               aria-label={`Paso ${currentStep} de ${steps.length}`}
               className="h-2 mb-6"
             />
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1 sm:gap-2">
               {steps.map((step) => {
                 // Solo los pasos ya completados son clickeables (volver atrás
                 // sin perder datos). No se permite saltar hacia adelante sin
@@ -879,7 +876,7 @@ export default function InscripcionPage() {
                     }`}
                   >
                     <div
-                      className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center text-xl font-bold transition-all ${
+                      className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 rounded-full flex items-center justify-center text-lg sm:text-xl font-bold transition-all ${
                         isCompleted
                           ? "bg-green-500 text-white"
                           : isCurrent
@@ -887,7 +884,7 @@ export default function InscripcionPage() {
                             : "bg-zinc-800 text-gray-500"
                       }`}
                     >
-                      {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : step.number}
+                      {isCompleted ? <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" /> : step.number}
                     </div>
                     <p className="text-xs text-gray-400 hidden sm:block">{step.title}</p>
                   </button>
@@ -901,17 +898,17 @@ export default function InscripcionPage() {
           </div>
 
           {/* Form Card */}
-          <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white text-2xl">{steps[currentStep - 1].title}</CardTitle>
+          <Card className="bg-black/50 border-yellow-400/20 backdrop-blur-sm py-4 gap-4 sm:py-6 sm:gap-6">
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="text-white text-xl sm:text-2xl">{steps[currentStep - 1].title}</CardTitle>
               <CardDescription className="text-gray-400">
                 {currentStep === 1 && "Proporciona tu información personal y de contacto de emergencia"}
                 {currentStep === 2 && "Información adicional sobre experiencia y salud"}
-                {currentStep === 3 && "Completa el pago y sube tu comprobante"}
+                {currentStep === 3 && "Completá el pago y, si lo tenés, subí el comprobante"}
                 {currentStep === 4 && "Revisa toda tu información antes de enviar"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 min-[360px]:px-4 sm:px-6">
               {/* Step Content */}
               {currentStep === 1 && (
                 <PersonalInfoStep
@@ -943,12 +940,14 @@ export default function InscripcionPage() {
               )}
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between mt-8 pt-6 border-t border-yellow-400/20">
+              {/* En pantallas muy angostas los botones van uno abajo del otro (el de
+                  avanzar arriba, que es el que se busca) y ocupan todo el ancho. */}
+              <div className="flex flex-col-reverse gap-3 min-[400px]:flex-row min-[400px]:justify-between mt-8 pt-6 border-t border-yellow-400/20">
                 <Button
                   variant="outline"
                   onClick={handlePrevious}
                   disabled={currentStep === 1}
-                  className="border-yellow-400/50 text-yellow-400 hover:bg-yellow-400 hover:text-black bg-transparent"
+                  className="w-full min-[400px]:w-auto border-yellow-400/50 text-yellow-400 hover:bg-yellow-400 hover:text-black bg-transparent"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Anterior
@@ -957,7 +956,7 @@ export default function InscripcionPage() {
                 {currentStep < totalSteps ? (
                   <Button
                     onClick={handleNext}
-                    className="bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:scale-105 transition-transform"
+                    className="w-full min-[400px]:w-auto bg-gradient-to-r from-yellow-400 to-amber-600 text-black hover:scale-105 transition-transform"
                   >
                     Siguiente
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -970,7 +969,7 @@ export default function InscripcionPage() {
                     // qué hacer. Se puede tocar, y si falta aceptar se explica
                     // en el modal y se la lleva hasta la casilla.
                     disabled={isSubmitting}
-                    className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="w-full min-[400px]:w-auto bg-gradient-to-r from-green-500 to-green-600 text-white hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {isSubmitting ? "Enviando..." : "Enviar Inscripción"}
                     <CheckCircle2 className="w-4 h-4 ml-2" />
