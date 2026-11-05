@@ -214,6 +214,37 @@ test.describe("Aviso de versión nueva", () => {
     await expect(page.getByRole("dialog").getByText(/faltan? \d* ?datos? para seguir/i)).toBeVisible()
   })
 
+  test("el cartel no tapa el boton de la ventana 'Antes de inscribirte'", async ({ page }) => {
+    // Pantalla baja de celular (iPhone SE con Safari): la ventana llega hasta
+    // abajo y su boton "Entendido" queda justo donde aparece el cartel.
+    await page.setViewportSize({ width: 375, height: 553 })
+    await page.route("**/api/version", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: "una-version-mas-nueva" }),
+      }),
+    )
+    // Este test cierra la ventana a mano: el handler del beforeEach la cerraria
+    // solo y no probaria nada.
+    const ventana = page.getByRole("dialog", { name: "Antes de inscribirte" })
+    await page.removeLocatorHandler(ventana)
+
+    await page.goto("/inscripcion")
+    await expect(ventana).toBeVisible()
+    // Se espera a que el cartel este en pantalla: el problema era justamente
+    // que quedaba encima de la ventana y se comia el clic.
+    await expect(page.getByText(/hicimos actualizaciones/i)).toBeAttached({ timeout: 30_000 })
+
+    // Clic real (sin force): falla si otra cosa intercepta el puntero.
+    await ventana.getByRole("button", { name: "Entendido" }).click({ timeout: 10_000 })
+    await expect(ventana).toHaveCount(0)
+    // Cerrada la ventana, el cartel vuelve a estar al frente y se puede usar.
+    await expect(page.getByText(/hicimos actualizaciones/i)).toBeVisible()
+    await page.getByRole("button", { name: /cerrar el aviso/i }).click()
+    await expect(page.getByText(/hicimos actualizaciones/i)).toHaveCount(0)
+  })
+
   test("no molesta cuando la versión es la correcta", async ({ page }) => {
     await page.goto("/")
     await page.waitForTimeout(3_000)

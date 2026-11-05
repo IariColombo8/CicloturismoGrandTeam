@@ -113,9 +113,15 @@ export default function AvisoVersion() {
     // ocupa todo el ancho de la pantalla, y sin esto se comía los clics de lo
     // que estuviera debajo. Pasó de verdad: tapaba el botón "Siguiente" del
     // formulario de inscripción y no se podía avanzar.
+    //
+    // z-40 y no mas: las ventanas modales (Dialog) van en z-50. Con z-[100] el
+    // cartel quedaba ENCIMA de la ventana "Antes de inscribirte" y en pantallas
+    // bajas tapaba su boton "Entendido": no se podia cerrar y la inscripcion
+    // quedaba trabada. Asi, con una ventana abierta el cartel queda detras del
+    // fondo oscuro y vuelve a estar al frente cuando se cierra.
     <div
       role="status"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] px-3 pb-3 sm:px-4 sm:pb-4"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 sm:px-4 sm:pb-4"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
       <div className="pointer-events-auto mx-auto flex max-w-xl flex-col gap-3 rounded-xl border border-yellow-400/40 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur sm:flex-row sm:items-center">
