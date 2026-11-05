@@ -400,7 +400,7 @@ Las rutas `/api/email/**` exigen sesion de Supabase con rol `admin` o `grandteam
 
 ### Flujo de Inscripcion (4 pasos)
 
-**Cierre: 5 de noviembre a las 8:00 (hora argentina)**, en `lib/inscripcion/cierre.ts`
+**Cierre: 5 de noviembre a las 20:00 (hora argentina; extendido desde las 8:00)**, en `lib/inscripcion/cierre.ts`
 (`CIERRE_INSCRIPCIONES`, con `-03:00` explicito porque Vercel corre en UTC). Desde esa hora
 `POST /api/inscripcion/submit` devuelve 403 con `cerrada: true`, la cola offline no lo encola y
 borra los pendientes que reciban ese rechazo, y `/inscripcion` muestra "Inscripciones cerradas"
