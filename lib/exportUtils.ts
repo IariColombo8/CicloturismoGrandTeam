@@ -64,3 +64,35 @@ export const formatInscripcionForExport = (inscripcion: Record<string, unknown>)
     "Fecha Inscripción": formatDate(inscripcion.fechaInscripcion as string | null | undefined),
   }
 }
+
+/**
+ * Exporta filas a un Excel de verdad (.xlsx), no a un CSV.
+ * El CSV se abria con las columnas corridas o los acentos rotos segun la
+ * configuracion regional de Excel. `xlsx` se carga recien al exportar.
+ */
+export const exportToXLSX = async (
+  data: Record<string, unknown>[],
+  filename: string,
+  nombreHoja = "Hoja1",
+) => {
+  if (!data || data.length === 0) return
+  const XLSX = await import("xlsx")
+  const hoja = XLSX.utils.json_to_sheet(data)
+  // Ancho de cada columna segun el texto mas largo (con tope), para que se lea sin estirar.
+  const headers = Object.keys(data[0] || {})
+  hoja["!cols"] = headers.map((h) => ({
+    wch: Math.min(
+      50,
+      Math.max(h.length, ...data.map((fila) => String(fila[h] ?? "").length)) + 2,
+    ),
+  }))
+  const libro = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(libro, hoja, nombreHoja.slice(0, 31))
+  XLSX.writeFile(libro, `${filename}.xlsx`)
+}
+
+/** "1951-11-24" -> "24/11/1951", sin pasar por Date (que corre un dia por la zona horaria). */
+export const fechaISOaAR = (fecha: unknown): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(fecha ?? "").trim())
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(fecha ?? "")
+}

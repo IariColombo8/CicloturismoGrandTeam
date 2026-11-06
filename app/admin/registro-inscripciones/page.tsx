@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useSupabaseContext } from "@/components/providers/SupabaseProvider"
 import { useIsMobile } from "@/components/ui/use-mobile"
-import { exportToCSV } from "@/lib/exportUtils"
+import { exportToXLSX, fechaISOaAR } from "@/lib/exportUtils"
 import { emailService } from "@/lib/emailService"
 import { SIN_NUMERO } from "@/lib/numeroInscripcion"
 import { reproducirAviso } from "@/lib/sonidoAviso"
@@ -1414,7 +1414,11 @@ export default function RegistroInscripciones() {
     // Mismo orden que la grilla, para que el CSV se lea igual que la pantalla.
     let query = supabase
       .from("participantes")
-      .select(INSCRIPCIONES_COLUMNS)
+      // La planilla lleva tambien el contacto de emergencia, que la grilla no usa.
+      .select(
+        INSCRIPCIONES_COLUMNS +
+          ", nombre_emergencia, telefono_emergencia, relacion_emergencia, ha_recorrido_distancia",
+      )
       .contains("anios", [EDICION_ACTUAL])
     query =
       filtrosAvanzados.edad !== "all"
@@ -1472,12 +1476,19 @@ export default function RegistroInscripciones() {
       DNI: d.dni || "",
       Email: d.email || "",
       Telefono: d.telefono || "",
+      "Fecha Nacimiento": fechaISOaAR(d.fecha_nacimiento),
+      Edad: edadDeFecha(d.fecha_nacimiento) ?? "",
       Pais: d.pais || "",
       Localidad: d.localidad || "",
       "Grupo Ciclistas": d.grupo_ciclistas || "Sin grupo",
       "Es Celiaco": d.es_celiaco === true ? "Si" : d.es_celiaco === false ? "No" : "",
       "Grupo Sanguineo": (d.grupo_sanguineo || "").toUpperCase(),
       "Condicion de Salud": d.condicion_salud || "",
+      Alergias: d.alergias || "",
+      "Contacto Emergencia": d.nombre_emergencia || "",
+      "Telefono Emergencia": d.telefono_emergencia || "",
+      "Relacion Emergencia": d.relacion_emergencia || "",
+      "Recorrio la distancia": d.ha_recorrido_distancia || "",
       "Metodo Pago": d.metodo_pago || "",
       "N Referencia": d.numero_referencia || "",
       Estado: d.estado || "pendiente",
@@ -1495,11 +1506,12 @@ export default function RegistroInscripciones() {
       "Nota del Pago": d.pago_nota || "",
       Discapacidad: d.discapacidad === true ? "Si" : "",
       Nota: d.nota_estado || "",
+      Comprobante: d.comprobante_pago_url || d.comprobante_nota || "",
       "Fecha Inscripcion": d.fecha_inscripcion
         ? new Date(d.fecha_inscripcion).toLocaleDateString("es-AR")
         : "",
     }))
-    exportToCSV(datos, `inscripciones_${new Date().toISOString().slice(0, 10)}`)
+    await exportToXLSX(datos, `inscripciones_${new Date().toISOString().slice(0, 10)}`, "Inscripciones")
   }
 
   // --- Tarjetas de resumen ---
@@ -1879,10 +1891,10 @@ export default function RegistroInscripciones() {
                 <button
                   onClick={exportarCSV}
                   className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 border border-yellow-400/20 text-yellow-400 hover:bg-zinc-700 transition-all text-sm"
-                  title={`Exportar inscripciones a CSV`}
+                  title="Descargar las inscripciones filtradas en Excel"
                 >
                   <Download className="w-4 h-4" />
-                  Exportar CSV
+                  Exportar Excel
                 </button>
               </div>
             </div>
