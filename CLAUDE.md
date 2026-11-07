@@ -430,12 +430,34 @@ Test: `e2e/unit/cierre-inscripciones.spec.ts`.
 
 ### Flujo de Check-in (dia del evento)
 
-1. Admin va a `/admin/check-in` -> escaner QR o busqueda manual por DNI
-2. Participante muestra QR recibido por email (contiene `token_qr` UUID)
-3. Escaner lee el QR -> busca en `participantes` por `token_qr`
-4. Si encuentra y no esta checked_in -> marca `checked_in = true`, `checked_in_at = now()`
-5. Si ya esta checked_in -> muestra advertencia de duplicado
-6. Busqueda manual: ingresa DNI -> busca en `participantes` por `dni`
+Logica en `lib/checkin.ts` (sin React, el cliente de Supabase entra por parametro), pantalla en
+`app/admin/check-in/page.tsx`. Tests: `e2e/unit/checkin.spec.ts` (79, incluida la carrera de
+2/3/5/10 celulares) y `e2e/check-in.spec.ts` (varios celulares reales con una base en memoria;
+no toca la base de produccion).
+
+1. Al abrir, la pantalla **precarga las confirmadas** (~230 filas, solo columnas del check-in) y
+   las mantiene al dia por realtime + refresco cada 30 s. La copia queda en localStorage
+   (`gtb-checkin-lista`) para abrir sin señal. Busqueda y QR se resuelven en el celular, sin
+   esperar a la red.
+2. **Una persona se registra una sola vez aunque 5 celulares la escaneen a la vez.** Nunca
+   "leer y despues escribir": `registrarCheckIn()` hace un UPDATE condicional
+   (`.eq("estado","confirmada").not("checked_in","is",true).select()`). Postgres bloquea la fila y
+   el segundo UPDATE no encuentra nada; ese celular ve "YA REGISTRADO" con quien y a que hora.
+3. **Nunca un "exitoso" falso**: si el UPDATE no devolvio la fila se vuelve a leer y se dice el
+   motivo (ya registrado, no confirmada, no existe, o **sin permiso** = RLS / `auth_user_id` sin
+   vincular).
+4. **Sin señal**: el registro queda en el celular (`gtb-checkin-cola`) y se sube solo (evento
+   `online`, cada 10 s y al reabrir) con la hora original y la misma condicion: si otro celular ya
+   lo habia registrado, queda el primero. `/admin/check-in` esta en `IGUAL_SE_GUARDA` de
+   `public/sw.js` (junto con `/admin/sorteos`).
+5. **Busqueda inteligente** (`buscarParticipantes()`): nombre, apellido, DNI (con o sin puntos,
+   o un pedazo de 3+ cifras) o numero de inscripcion, en cualquier orden, sin acentos y con un
+   error de tipeo: "iara", "colombo iara", "ia colomb", "colonbo". Enter registra solo si no hay
+   dudas (`resultadoUnico()`: un resultado o DNI exacto); con dos "Ana" muestra la lista. Si no
+   hay confirmadas que coincidan, busca en toda la base para poder decir "pendiente".
+6. Camara: solo QR, lector nativo del navegador si existe, recuadro grande, y el mismo QR se
+   ignora 4 s (no se pausa la camara entre personas). Vibra y suena distinto en exito y en aviso.
+7. Deshacer pide dos toques (sin `confirm()` del navegador).
 
 ### Flujo de Sponsors
 
@@ -583,7 +605,7 @@ Reglas del bolillero, todas en `lib/sorteos.ts` (puro, cubierto por `e2e/unit/so
 **Sin internet** (`lib/sorteosLocal.ts`): el dia del evento no hay wifi. Al abrir el panel con
 conexion se precarga todo (sorteos, premios, resultados e inscriptos) en el dispositivo; despues
 el azar se tira en el telefono y cada tirada se guarda local con su UUID y se sube sola al volver
-la señal (upsert: reintentar no duplica). `/admin/sorteos` es la **unica** ruta de /admin que el
+la señal (upsert: reintentar no duplica). `/admin/sorteos` y `/admin/check-in` son las **unicas** rutas de /admin que el
 Service Worker cachea (`IGUAL_SE_GUARDA` en `public/sw.js`), para que la pantalla abra sin red.
 **Prohibido** agregar al bolillero algo que necesite servidor en el momento (una RPC para sortear,
 validaciones online): el sorteo se hace en el escenario, sin señal.

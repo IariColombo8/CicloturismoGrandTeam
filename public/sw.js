@@ -34,7 +34,10 @@ const NUNCA_CACHEAR = [/^\/api\//, /^\/admin/, /^\/login/, /^\/auth/]
 // del evento aunque no haya señal. Lo que se guarda es la pagina vacia (el
 // shell) y sus archivos JS; los nombres y los premios los precarga la propia
 // pagina en el telefono (lib/sorteosLocal.ts).
-const IGUAL_SE_GUARDA = [/^\/admin\/sorteos/]
+// El check-in tambien: en la entrada del evento puede no haber señal. La lista
+// de inscriptos la guarda la propia pagina (app/admin/check-in) y los registros
+// hechos sin señal se suben solos despues (lib/checkin.ts).
+const IGUAL_SE_GUARDA = [/^\/admin\/sorteos/, /^\/admin\/check-in/]
 
 const esGet = (req) => req.method === "GET"
 const mismoOrigen = (url) => url.origin === self.location.origin
